@@ -1,6 +1,6 @@
 'use client'
 
-import { appStoreLinks } from './veroServices'
+import StoreDownloadLinks from './StoreDownloadLinks'
 import Image from 'next/image'
 
 type Props = {
@@ -45,59 +45,7 @@ export default function DownloadAppModal({ open, onClose }: Props) {
           Choose your platform to download the Vero360 super app.
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <a
-            href={appStoreLinks.ios}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 14,
-              padding: '16px 18px', borderRadius: 14,
-              border: '1.5px solid var(--border)',
-              transition: 'border-color 0.2s, box-shadow 0.2s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--primary)'
-              e.currentTarget.style.boxShadow = 'var(--shadow-primary)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--border)'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          >
-            <span style={{ fontSize: 28 }}>🍎</span>
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Download on the</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>App Store</div>
-            </div>
-          </a>
-
-          <a
-            href={appStoreLinks.android}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 14,
-              padding: '16px 18px', borderRadius: 14,
-              border: '1.5px solid var(--border)',
-              transition: 'border-color 0.2s, box-shadow 0.2s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--primary)'
-              e.currentTarget.style.boxShadow = 'var(--shadow-primary)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--border)'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          >
-            <span style={{ fontSize: 28 }}>🤖</span>
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Get it on</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Google Play</div>
-            </div>
-          </a>
-        </div>
+        <StoreDownloadLinks maxWidth={undefined} style={{ margin: 0 }} />
       </div>
     </div>
   )

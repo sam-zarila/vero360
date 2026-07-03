@@ -3,8 +3,8 @@ import PanelSignIn from './PanelSignIn'
 
 
 export const metadata: Metadata = {
-  title: 'Sign in — Vero360',
-  description: 'Sign in to your Vero360 account.',
+  title: 'Admin sign in — Vero360',
+  description: 'Sign in to the Vero360 admin dashboard.',
 }
 
 export default function PanelPage() {

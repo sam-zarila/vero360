@@ -4,12 +4,21 @@ import Logo from './Logo'
 const links = {
     Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation'],
     Company: ['About Vero360', 'Careers', 'Blog', 'Panel'],
-    Partners: ['Become a merchant', 'List your business', 'Driver signup', 'Partner support'],
+    Partners: ['Become a merchant', 'Customers', 'Driver signup', 'Partner support'],
     Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service'],
   }
 
 const linkHrefs: Record<string, string> = {
+  'Marketplace': '/#services',
+  'Vero Ride': '/#services',
+  'Food & Courier': '/#services',
+  'Accommodation': '/#services',
   'About Vero360': '/#about-us',
+  'Careers': '/careers',
+  'Become a merchant': '/get-started?role=merchant',
+  'Customers': '/get-started?role=customer',
+  'Driver signup': '/get-started?role=driver',
+  'Partner support': '/#contact',
   'Panel': '/panel',
   'Contact us': '/#contact',
   'Help center': '/#contact',
@@ -17,21 +26,7 @@ const linkHrefs: Record<string, string> = {
   'Terms of service': '/terms',
 }
 
-const missionVisionValues = [
-  {
-    title: 'Our Mission',
-    body: 'To simplify everyday life by providing a reliable, secure, and unified digital platform for services and commerce.',
-  },
-  {
-    title: 'Our Vision',
-    body: "To become Malawi's leading super app for digital services, empowering businesses and improving customer experiences.",
-  },
-  {
-    title: 'Our Values',
-    body: 'Innovation · Reliability · Security · Accessibility · Customer-Centricity',
-  },
-]
-  
+
   export default function Footer() {
     return (
       <footer style={{ background: '#0f172a', color: '#fff', padding: '64px 24px 32px' }}>
@@ -54,8 +49,7 @@ const missionVisionValues = [
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
                   { icon: '📧', text: 'info@vero360.com' },
-                  { icon: '📞', text: '+265 888 000 000' },
-                  { icon: '📍', text: 'Blantyre, Malawi' },
+                  { icon: '📍', text: 'Lilongwe, Malawi' },
                 ].map(c => (
                   <div key={c.text} style={{ display: 'flex', gap: 10, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
                     <span>{c.icon}</span>
@@ -76,27 +70,6 @@ const missionVisionValues = [
                     </li>
                   ))}
                 </ul>
-              </div>
-            ))}
-          </div>
-  
-          {/* Mission, vision & values */}
-          <div className="footer-mvv" style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24,
-            marginBottom: 40, paddingBottom: 40,
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            {missionVisionValues.map(item => (
-              <div key={item.title}>
-                <h4 style={{
-                  fontSize: 14, fontWeight: 700, color: 'var(--primary)',
-                  marginBottom: 10, fontFamily: 'var(--font-display)',
-                }}>
-                  {item.title}
-                </h4>
-                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7 }}>
-                  {item.body}
-                </p>
               </div>
             ))}
           </div>
@@ -196,7 +169,6 @@ const missionVisionValues = [
           .footer-legal-link:hover { color: #fff; }
           @media (max-width: 900px) {
             .footer-grid { grid-template-columns: 1fr 1fr !important; }
-            .footer-mvv { grid-template-columns: 1fr !important; }
           }
           @media (max-width: 540px) { .footer-grid { grid-template-columns: 1fr !important; } }
         `}</style>

@@ -11,3 +11,10 @@ export const appStoreLinks = {
   ios: '#',
   android: 'https://play.google.com/store/apps/details?id=com.vero.vero360',
 }
+
+export const storeBadgeImages = {
+  appStore:
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/App_Store_%28iOS%29.svg/500px-App_Store_%28iOS%29.svg.png',
+  googlePlay:
+    'https://www.gstatic.com/marketing-cms/assets/images/15/b9/77649f194169be94fc4631a785bc/play-symbol.webp=n-w963-h543-fcrop64=1,380c0000c841ffff-rw',
+}

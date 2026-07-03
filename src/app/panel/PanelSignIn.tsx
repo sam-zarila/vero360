@@ -2,18 +2,28 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { signInWithEmailAndPassword } from 'firebase/auth'
 import Logo from '@/app/components/landing/Logo'
+import { auth, getAdminDashboardUrl } from '@/lib/firebase'
 
 export default function PanelSignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    // Auth integration point — wire to your admin API when ready
-    setTimeout(() => setLoading(false), 800)
+    setError('')
+
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password)
+      window.location.href = getAdminDashboardUrl()
+    } catch {
+      setError('Invalid email or password. Please try again.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -51,11 +61,11 @@ export default function PanelSignIn() {
               display: 'block', fontSize: 13, fontWeight: 600,
               color: 'var(--text-2)', marginBottom: 8,
             }}>
-              Email or username
+              Email
             </label>
             <input
               id="email"
-              type="text"
+              type="email"
               autoComplete="username"
               required
               value={email}
@@ -126,6 +136,15 @@ export default function PanelSignIn() {
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
+
+          {error && (
+            <p style={{
+              marginTop: 4, fontSize: 14, color: 'var(--error)',
+              textAlign: 'center', lineHeight: 1.5,
+            }}>
+              {error}
+            </p>
+          )}
         </form>
 
         <style>{`
