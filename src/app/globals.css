@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  --primary:       #F97316;
+  --primary-dark:  #EA580C;
+  --primary-light: #FFEDD5;
+  --primary-50:    #FFF7ED;
+  --accent:        #FBBF24;
+  --accent-dark:   #D97706;
+  --accent-light:  #FEF3C7;
+  --bg:         #FFFFFF;
+  --text:       #111827;
+  --text-2:     #374151;
+  --text-3:     #6B7280;
+  --text-4:     #9CA3AF;
+  --success:    #22C55E;
+  --error:      #EF4444;
+  --border:     #E5E7EB;
+  --border-2:   #D1D5DB;
+  --surface:    #F9FAFB;
+  --surface-2:  #F3F4F6;
+
+  --radius-sm:  6px;
+  --radius:     12px;
+  --radius-lg:  20px;
+  --radius-xl:  32px;
+
+  --shadow-sm:  0 1px 2px rgba(0,0,0,.06);
+  --shadow:     0 4px 16px rgba(0,0,0,.08);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,.12);
+  --shadow-primary: 0 8px 32px rgba(249,115,22,.25);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--text);
+}
+
+img { max-width: 100%; display: block; }
+a { text-decoration: none; color: inherit; }
+button { cursor: pointer; font-family: inherit; }
