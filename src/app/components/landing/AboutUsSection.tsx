@@ -2,9 +2,9 @@ import Image from 'next/image'
 
 const team = [
   { name: 'Patson Chilikumtima', role: 'CTO', photo: '/team/patson-cto.jpeg' },
-  { name: 'Samson Zalira', role: 'Full Stack Developer' },
+  { name: 'Samson Zalira', role: 'Full Stack Developer', photo: '/team/samson-zalira.jpeg' },
   { name: 'Tenganawo Njikho', role: 'Marketer and social media manager', photo: '/team/tenganawo-njikho.jpeg' },
-  { name: 'Patrick Thala', role: 'Techinical Support Manager' },
+  { name: 'Patrick Thala', role: 'Techinical Support Manager', photo: '/team/patrick-thala.jpeg' },
   { name: 'Gift Wahuta', role: 'Operations Manager', photo: '/team/gift-wahuta.jpg' },
 ]
 

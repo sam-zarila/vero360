@@ -1,5 +1,10 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
 const services = [
   {
+    id: 'vero-ride',
     emoji: '🚗',
     name: 'Vero Ride',
     tagline: 'Transport on demand',
@@ -7,8 +12,13 @@ const services = [
     badge: 'Popular',
     badgeColor: '#F97316',
     features: ['Cars, SUVs & bikes', 'Airport pickup', 'Live tracking'],
+    videoTitle: 'How to use Vero Ride',
+    videoDesc: 'Learn how to book a ride, track your driver, and pay securely on Vero360.',
+    // Set to a video URL or embed src when the tutorial is ready
+    videoUrl: null as string | null,
   },
   {
+    id: 'marketplace',
     emoji: '🛒',
     name: 'Marketplace',
     tagline: 'Shop local',
@@ -16,8 +26,12 @@ const services = [
     badge: 'New',
     badgeColor: '#22C55E',
     features: ['Verified sellers', 'Secure escrow', 'Fast delivery'],
+    videoTitle: 'How to use Marketplace',
+    videoDesc: 'See how to browse products, place orders, and shop safely with escrow on Vero360.',
+    videoUrl: null as string | null,
   },
   {
+    id: 'vero-courier',
     emoji: '🚚',
     name: 'Vero Courier',
     tagline: 'Send anything',
@@ -25,8 +39,12 @@ const services = [
     badge: 'Fast',
     badgeColor: '#F59E0B',
     features: ['Same-day delivery', 'Live tracking', 'Proof of delivery'],
+    videoTitle: 'How to use Vero Courier',
+    videoDesc: 'Learn how to send parcels, track deliveries, and confirm receipt on Vero360.',
+    videoUrl: null as string | null,
   },
   {
+    id: 'food',
     emoji: '🍔',
     name: 'Food',
     tagline: 'Order nearby',
@@ -34,8 +52,12 @@ const services = [
     badge: 'Trending',
     badgeColor: '#EF4444',
     features: ['Local restaurants', 'Quick delivery', 'Easy reorder'],
+    videoTitle: 'How to order food',
+    videoDesc: 'Learn how to find restaurants, place food orders, and track delivery on Vero360.',
+    videoUrl: null as string | null,
   },
   {
+    id: 'stay',
     emoji: '🛏️',
     name: 'Stay',
     tagline: 'Accommodation',
@@ -43,8 +65,12 @@ const services = [
     badge: 'Book now',
     badgeColor: '#8B5CF6',
     features: ['Hotels & lodges', 'Instant booking', 'Best rates'],
+    videoTitle: 'How to book accommodation',
+    videoDesc: 'See how to browse stays, compare options, and complete a booking on Vero360.',
+    videoUrl: null as string | null,
   },
   {
+    id: 'jobs',
     emoji: '💼',
     name: 'Jobs',
     tagline: 'Find work',
@@ -52,10 +78,30 @@ const services = [
     badge: 'Hiring',
     badgeColor: '#3B82F6',
     features: ['Local listings', 'Easy apply', 'Employer chat'],
+    videoTitle: 'How to find jobs',
+    videoDesc: 'Learn how to browse listings, apply for roles, and chat with employers on Vero360.',
+    videoUrl: null as string | null,
   },
 ]
 
+type Service = (typeof services)[number]
+
 export default function ServicesSection() {
+  const [activeService, setActiveService] = useState<Service | null>(null)
+
+  useEffect(() => {
+    if (!activeService) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveService(null)
+    }
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [activeService])
+
   return (
     <section id="services" style={{ padding: '100px 24px', background: 'var(--surface)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -78,7 +124,7 @@ export default function ServicesSection() {
           display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24,
         }} className="services-grid">
           {services.map((s, i) => (
-            <div key={i} className="service-card" style={{
+            <div key={s.id} className="service-card" style={{
               background: '#fff',
               borderRadius: 20, border: '1px solid var(--border)',
               overflow: 'hidden',
@@ -126,26 +172,125 @@ export default function ServicesSection() {
                 </ul>
 
                 <div style={{ marginTop: 'auto' }}>
-                  <a
-                    href="/register"
+                  <button
+                    type="button"
+                    onClick={() => setActiveService(s)}
                     className={i === 0 ? 'service-cta service-cta-primary' : 'service-cta service-cta-secondary'}
                   >
-                    Open in app
-                  </a>
+                    View tutorial
+                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {activeService && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tutorial-title"
+          onClick={() => setActiveService(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 20,
+              width: '100%',
+              maxWidth: 720,
+              maxHeight: '90vh',
+              overflow: 'auto',
+              padding: '32px 28px',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+              <div>
+                <span style={{
+                  display: 'inline-block', padding: '4px 12px', marginBottom: 10,
+                  background: 'var(--primary-light)', color: 'var(--primary-dark)',
+                  borderRadius: 100, fontSize: 12, fontWeight: 700,
+                }}>
+                  {activeService.emoji} {activeService.name} tutorial
+                </span>
+                <h3 id="tutorial-title" style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+                  {activeService.videoTitle}
+                </h3>
+                <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.7, marginTop: 8 }}>
+                  {activeService.videoDesc}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveService(null)}
+                aria-label="Close tutorial"
+                style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  border: '1px solid var(--border)', background: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--text-2)', fontSize: 20, lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              aspectRatio: '16 / 9',
+              borderRadius: 16,
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+            }}>
+              {activeService.videoUrl ? (
+                <iframe
+                  src={activeService.videoUrl}
+                  title={activeService.videoTitle}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{ width: '100%', height: '100%', border: 0 }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%', height: '100%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'column', gap: 12,
+                }}>
+                  <div style={{
+                    width: 64, height: 64, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="28" height="28" fill="#fff" viewBox="0 0 24 24" aria-hidden>
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </div>
+                  <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500, textAlign: 'center', padding: '0 24px' }}>
+                    Tutorial video for {activeService.name} — coming soon
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .service-card { transition: box-shadow 0.3s, transform 0.3s; }
         .service-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); }
         .service-cta {
-          display: block; text-align: center;
+          display: block; width: 100%; text-align: center;
           padding: 13px 24px; border-radius: 12px;
           font-weight: 600; font-size: 15px;
-          transition: all 0.2s;
+          transition: all 0.2s; cursor: pointer;
+          font-family: inherit;
         }
         .service-cta-primary { background: var(--primary); border: none; color: #fff; }
         .service-cta-primary:hover { background: var(--primary-dark); }

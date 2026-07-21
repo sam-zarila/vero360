@@ -59,9 +59,27 @@ export default function TermsPage() {
             fontSize: 15, color: 'var(--error)', lineHeight: 1.8,
             background: 'rgba(239,68,68,0.06)', borderRadius: 12,
             padding: '16px 18px', border: '1px solid rgba(239,68,68,0.2)',
+            marginBottom: 28,
           }}>
             The system holds money until both parties are satisfied with the business.
           </p>
+
+          <a
+            href="/legal/Vero360_Merchant_Terms_Conditions.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 15,
+              fontWeight: 600,
+              color: '#EA580C',
+              textDecoration: 'none',
+            }}
+          >
+            Read more →
+          </a>
         </article>
       </div>
     </main>

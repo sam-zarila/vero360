@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import Image from 'next/image'
 import {
   ensureSession,
   formatChatTime,
@@ -28,6 +27,12 @@ export default function VeroChat() {
 
   useEffect(() => {
     setSessionId(getOrCreateSessionId())
+  }, [])
+
+  useEffect(() => {
+    const openChat = () => setOpen(true)
+    window.addEventListener('verochat:open', openChat)
+    return () => window.removeEventListener('verochat:open', openChat)
   }, [])
 
   useEffect(() => {
@@ -83,7 +88,7 @@ export default function VeroChat() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Open VeroChat"
+          aria-label="Open Vero360 Help Center"
           className="verochat-fab"
           style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 150,
@@ -94,8 +99,10 @@ export default function VeroChat() {
             transition: 'transform 0.2s, box-shadow 0.2s',
           }}
         >
-          <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
-            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="28" height="28" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3a7 7 0 00-7 7v1.5a2.5 2.5 0 01-2.5 2.5H3a1 1 0 000 2h.5A4.5 4.5 0 008 11.5V10a4 4 0 118 0v1.5a4.5 4.5 0 004.5 4.5H21a1 1 0 000-2h-.5A2.5 2.5 0 0118 11.5V10a7 7 0 00-7-7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M9.5 19a2.5 2.5 0 005 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
           </svg>
           <span style={{
             position: 'absolute', top: 4, right: 4,
@@ -108,7 +115,7 @@ export default function VeroChat() {
       {open && (
         <div
           role="dialog"
-          aria-label="VeroChat"
+          aria-label="Vero360 Help Center"
           style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 150,
             width: 'min(380px, calc(100vw - 32px))',
@@ -124,10 +131,21 @@ export default function VeroChat() {
             padding: '16px 18px',
             display: 'flex', alignItems: 'center', gap: 12,
           }}>
-            <Image src="/logo.png" alt="" width={36} height={36} style={{ borderRadius: 8 }} />
+            <div style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3a7 7 0 00-7 7v1.5a2.5 2.5 0 01-2.5 2.5H3a1 1 0 000 2h.5A4.5 4.5 0 008 11.5V10a4 4 0 118 0v1.5a4.5 4.5 0 004.5 4.5H21a1 1 0 000-2h-.5A2.5 2.5 0 0118 11.5V10a7 7 0 00-7-7z" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9.5 19a2.5 2.5 0 005 0" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>
+                <circle cx="12" cy="12" r="1.2" fill="#fff"/>
+              </svg>
+            </div>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-display)' }}>
-                VeroChat
+                Vero360 Help Center
               </div>
               <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
@@ -137,7 +155,7 @@ export default function VeroChat() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close VeroChat"
+              aria-label="Close Help Center"
               style={{
                 background: 'rgba(255,255,255,0.2)', border: 'none',
                 borderRadius: 8, width: 32, height: 32,
@@ -159,7 +177,7 @@ export default function VeroChat() {
                 background: '#fff', border: '1px solid var(--border)',
                 fontSize: 14, color: 'var(--text-2)', lineHeight: 1.5,
               }}>
-                Start a conversation with our live VeroChat agent.
+                Hello! This is Vero360 Help Center. Chat with us — how can we help?
               </div>
             )}
 
@@ -261,7 +279,7 @@ export default function VeroChat() {
               type="text"
               value={needsDetails ? pendingMessage : input}
               onChange={e => needsDetails ? setPendingMessage(e.target.value) : setInput(e.target.value)}
-              placeholder={needsDetails ? 'Your message…' : 'Message VeroChat…'}
+              placeholder={needsDetails ? 'Your message…' : 'Message Help Center…'}
               disabled={loading}
               style={{
                 flex: 1, padding: '12px 14px', borderRadius: 12,
@@ -291,7 +309,7 @@ export default function VeroChat() {
           box-shadow: 0 12px 40px rgba(249,115,22,0.5) !important;
         }
         @media (max-width: 480px) {
-          [role="dialog"][aria-label="VeroChat"] {
+          [role="dialog"][aria-label="Vero360 Help Center"] {
             bottom: 0 !important;
             right: 0 !important;
             width: 100% !important;

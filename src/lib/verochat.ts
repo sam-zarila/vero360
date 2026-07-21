@@ -95,9 +95,9 @@ export async function ensureSession(
     })
 
     await addDoc(messagesRef(sessionId), {
-      text: "Hi! I'm VeroChat — your Vero360 live agent. How can we help you today?",
+      text: 'Hello! This is Vero360 Help Center. How can we help you today?',
       sender: 'agent',
-      agentName: 'VeroChat',
+      agentName: 'Vero360 Help Center',
       createdAt: serverTimestamp(),
     })
 

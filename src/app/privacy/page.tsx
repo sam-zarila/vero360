@@ -66,10 +66,45 @@ export default function PrivacyPage() {
           <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 14, fontFamily: 'var(--font-display)' }}>
             Your rights
           </h2>
-          <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.8 }}>
+          <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.8, marginBottom: 28 }}>
             You may clear cached data, update your information, or request account deletion at any time
             through the Settings section.
           </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <a
+              href="/legal/Vero360_Privacy_Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Read more — Privacy Policy →
+            </a>
+            <a
+              href="/legal/Vero360_Platform_Agreement_Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Read more — Platform Agreement →
+            </a>
+          </div>
         </article>
       </div>
     </main>

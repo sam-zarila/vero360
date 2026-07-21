@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import Logo from './Logo'
 
@@ -21,11 +23,13 @@ const linkHrefs: Record<string, string> = {
   'Partner support': '/#contact',
   'Panel': '/panel',
   'Contact us': '/#contact',
-  'Help center': '/#contact',
   'Privacy policy': '/privacy',
   'Terms of service': '/terms',
 }
 
+function openHelpCenter() {
+  window.dispatchEvent(new Event('verochat:open'))
+}
 
   export default function Footer() {
     return (
@@ -66,7 +70,25 @@ const linkHrefs: Record<string, string> = {
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {items.map(link => (
                     <li key={link}>
-                      <Link href={linkHrefs[link] ?? '#'} className="footer-link">{link}</Link>
+                      {link === 'Help center' ? (
+                        <button
+                          type="button"
+                          onClick={openHelpCenter}
+                          className="footer-link"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            font: 'inherit',
+                          }}
+                        >
+                          Help center
+                        </button>
+                      ) : (
+                        <Link href={linkHrefs[link] ?? '#'} className="footer-link">{link}</Link>
+                      )}
                     </li>
                   ))}
                 </ul>
