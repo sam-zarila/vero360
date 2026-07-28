@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import DownloadAppModal from './DownloadAppModal'
 import Logo from './Logo'
@@ -12,10 +12,17 @@ const navLinks = [
   { label: 'Our Team', href: '/#about-us' },
 ]
 
+const moreLinks = [
+  { label: 'Privacy policy', href: '/privacy' },
+  { label: 'Terms of service', href: '/terms' },
+]
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -23,8 +30,27 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    if (!moreOpen) return
+    const onPointerDown = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [moreOpen])
+
   const openDownload = () => {
     setMenuOpen(false)
+    setMoreOpen(false)
     setDownloadOpen(true)
   }
 
@@ -61,6 +87,72 @@ export default function Navbar() {
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >{link.label}</Link>
             ))}
+
+            <div ref={moreRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                aria-expanded={moreOpen}
+                aria-haspopup="menu"
+                onClick={() => setMoreOpen(o => !o)}
+                style={{
+                  ...linkStyle(scrolled),
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: moreOpen
+                    ? (scrolled ? 'var(--surface-2)' : 'rgba(255,255,255,0.15)')
+                    : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                }}
+              >
+                More
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"
+                  style={{ transform: moreOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {moreOpen && (
+                <div
+                  role="menu"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    minWidth: 180,
+                    background: '#fff',
+                    borderRadius: 12,
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-lg)',
+                    padding: 6,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {moreLinks.map(link => (
+                    <Link
+                      key={link.label}
+                      href={link.href}
+                      role="menuitem"
+                      onClick={() => setMoreOpen(false)}
+                      style={{
+                        display: 'block',
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: 'var(--text-2)',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }} className="nav-cta">
@@ -112,6 +204,24 @@ export default function Navbar() {
           boxShadow: 'var(--shadow-lg)',
         }}>
           {navLinks.map(link => (
+            <Link key={link.label} href={link.href}
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'block', padding: '14px 0',
+                fontSize: 16, fontWeight: 500, color: 'var(--text-2)',
+                borderBottom: '1px solid var(--border)',
+              }}>{link.label}</Link>
+          ))}
+          <p style={{
+            margin: '16px 0 8px',
+            fontSize: 12, fontWeight: 700,
+            color: 'var(--text-4)',
+            textTransform: 'uppercase',
+            letterSpacing: 0.6,
+          }}>
+            More
+          </p>
+          {moreLinks.map(link => (
             <Link key={link.label} href={link.href}
               onClick={() => setMenuOpen(false)}
               style={{

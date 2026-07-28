@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import Logo from './Logo'
 
@@ -32,6 +33,36 @@ function openHelpCenter() {
 }
 
   export default function Footer() {
+    const [email, setEmail] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [status, setStatus] = useState<'idle' | 'success' | 'exists' | 'error'>('idle')
+    const [errorMsg, setErrorMsg] = useState('')
+
+    const handleSubscribe = async (e: FormEvent) => {
+      e.preventDefault()
+      setLoading(true)
+      setStatus('idle')
+      setErrorMsg('')
+
+      try {
+        const res = await fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Something went wrong')
+
+        setStatus(data.alreadySubscribed ? 'exists' : 'success')
+        setEmail('')
+      } catch (err) {
+        setStatus('error')
+        setErrorMsg(err instanceof Error ? err.message : 'Could not subscribe. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
     return (
       <footer style={{ background: '#0f172a', color: '#fff', padding: '64px 24px 32px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -52,12 +83,16 @@ function openHelpCenter() {
               {/* Contact */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  { icon: '📧', text: 'info@vero360.com' },
+                  { icon: '📧', text: 'info@vero360.app', href: 'mailto:info@vero360.app' },
                   { icon: '📍', text: 'Lilongwe, Malawi' },
                 ].map(c => (
                   <div key={c.text} style={{ display: 'flex', gap: 10, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
                     <span>{c.icon}</span>
-                    <span>{c.text}</span>
+                    {'href' in c && c.href ? (
+                      <a href={c.href} style={{ color: 'inherit' }}>{c.text}</a>
+                    ) : (
+                      <span>{c.text}</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -120,24 +155,54 @@ function openHelpCenter() {
                 Get updates on new cities, features, and product news. No spam — unsubscribe anytime.
               </p>
             </div>
-            <div className="footer-newsletter-form" style={{ display: 'flex', gap: 10, flex: '1 1 320px', maxWidth: 440 }}>
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="footer-email-input"
-                style={{
-                  flex: 1,
-                  background: '#fff',
-                  border: '2px solid transparent',
-                  borderRadius: 12, padding: '14px 18px',
-                  color: 'var(--text)', fontSize: 15, outline: 'none',
-                  minWidth: 0,
-                }}
-              />
-              <button className="footer-subscribe-btn" type="button">
-                Subscribe
-              </button>
-            </div>
+            <form
+              onSubmit={handleSubscribe}
+              className="footer-newsletter-form"
+              style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: '1 1 320px', maxWidth: 440 }}
+            >
+              <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={email}
+                  onChange={e => {
+                    setEmail(e.target.value)
+                    if (status !== 'idle') setStatus('idle')
+                  }}
+                  placeholder="Enter your email"
+                  disabled={loading}
+                  autoComplete="email"
+                  className="footer-email-input"
+                  style={{
+                    flex: 1,
+                    background: '#fff',
+                    border: '2px solid transparent',
+                    borderRadius: 12, padding: '14px 18px',
+                    color: 'var(--text)', fontSize: 15, outline: 'none',
+                    minWidth: 0,
+                  }}
+                />
+                <button className="footer-subscribe-btn" type="submit" disabled={loading}>
+                  {loading ? '…' : 'Subscribe'}
+                </button>
+              </div>
+              {status === 'success' && (
+                <p style={{ fontSize: 13, color: '#86EFAC', margin: 0 }}>
+                  You&apos;re subscribed. Thanks for joining Vero360!
+                </p>
+              )}
+              {status === 'exists' && (
+                <p style={{ fontSize: 13, color: '#86EFAC', margin: 0 }}>
+                  You&apos;re already on the list. Thanks!
+                </p>
+              )}
+              {status === 'error' && (
+                <p style={{ fontSize: 13, color: '#FCA5A5', margin: 0 }}>
+                  {errorMsg}
+                </p>
+              )}
+            </form>
           </div>
   
           {/* Bottom bar */}
@@ -169,11 +234,17 @@ function openHelpCenter() {
             white-space: nowrap;
             box-shadow: 0 4px 16px rgba(249,115,22,0.4);
             transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: none;
           }
-          .footer-subscribe-btn:hover {
+          .footer-subscribe-btn:hover:not(:disabled) {
             background: var(--primary-dark);
             transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(249,115,22,0.5);
+          }
+          .footer-subscribe-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
           }
           .footer-email-input:focus {
             border-color: var(--primary) !important;
@@ -181,7 +252,8 @@ function openHelpCenter() {
           }
           .footer-email-input::placeholder { color: var(--text-4); }
           @media (max-width: 600px) {
-            .footer-newsletter-form { flex-direction: column !important; max-width: 100% !important; }
+            .footer-newsletter-form > div { flex-direction: column !important; }
+            .footer-newsletter-form { max-width: 100% !important; }
             .footer-subscribe-btn { width: 100%; text-align: center; }
           }
           .footer-legal-link {

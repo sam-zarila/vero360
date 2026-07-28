@@ -21,10 +21,10 @@ export async function POST(request: Request) {
   const message = body.message?.trim() || ''
   const type = body.type === 'new_chat' ? 'new_chat' : 'new_message'
 
-  const to = process.env.CONTACT_TO_EMAIL || process.env.VEROCHAT_NOTIFY_EMAIL
+  const to = process.env.CONTACT_TO_EMAIL || process.env.VEROCHAT_NOTIFY_EMAIL || 'info@vero360.app'
   const resendKey = process.env.RESEND_API_KEY
 
-  if (!to || !resendKey) {
+  if (!resendKey) {
     return NextResponse.json({ ok: true, skipped: 'email_not_configured' })
   }
 

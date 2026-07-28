@@ -6,8 +6,8 @@ import DownloadAppModal from './DownloadAppModal'
 
 const stats = [
   { value: '8+', label: 'Services in one app' },
-  { value: '5K+', label: 'Active users' },
-  { value: '4.9★', label: 'App store rating' },
+  { value: '5K+', label: 'Users goal' },
+  { value: '20K+', label: 'Merchants goal' },
 ]
 
 const quickServices = [
@@ -125,8 +125,9 @@ export default function HeroSection() {
             fontSize: 18, color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.7, marginBottom: 40, maxWidth: 480,
           }}>
-            Vero360 is your all-in-one digital platform — marketplace, Vero Ride, courier, food,
-            accommodation, jobs, and more. Shop, book, ride, and connect from a single secure app.
+            Welcome to Vero360 App, the smarter way to connect with everyday services. From Marketplace 
+            and transport to food delivery, jobs, accommodation, and more, we&apos;ve got everything
+            you need in one secure app.
           </p>
 
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 52 }} className="hero-ctas">

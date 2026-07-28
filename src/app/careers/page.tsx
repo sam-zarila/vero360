@@ -24,7 +24,7 @@ const openings = [
   },
 ]
 
-const APPLY_EMAIL = 'info@vero360.com'
+const APPLY_EMAIL = 'info@vero360.app'
 const applyMailto = `mailto:${APPLY_EMAIL}?subject=${encodeURIComponent('Vero360 Careers Application')}&body=${encodeURIComponent('Hi Vero360 team,\n\nI would like to apply for a role at Vero360.\n\nName:\nRole applying for:\n\nPlease find my CV and qualifications attached.\n\nThank you.')}`
 
 export default function CareersPage() {

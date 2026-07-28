@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server'
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+
+const FORMSUBMIT_ID =
+  process.env.FORMSUBMIT_ID || 'af3930657a7c20515c4324c017f006ce'
 
 type InquiryBody = {
   name?: string
   email?: string
   subject?: string
   message?: string
+}
+
+function siteOrigin() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`
+  }
+  return 'https://vero360.app'
 }
 
 export async function POST(request: Request) {
@@ -16,8 +31,8 @@ export async function POST(request: Request) {
   }
 
   const name = body.name?.trim()
-  const email = body.email?.trim()
-  const subject = body.subject?.trim() || 'New inquiry from Vero360 website'
+  const email = body.email?.trim().toLowerCase()
+  const subject = body.subject?.trim() || 'Inquiry from Vero360 website'
   const message = body.message?.trim()
 
   if (!name || !email || !message) {
@@ -28,37 +43,80 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })
   }
 
-  const to = process.env.CONTACT_TO_EMAIL
-  const resendKey = process.env.RESEND_API_KEY
+  const inquiryId = `inquiry__${crypto.randomUUID()}`
 
-  if (!to || !resendKey) {
-    console.error('Inquiry received but email is not configured (CONTACT_TO_EMAIL / RESEND_API_KEY).')
-    return NextResponse.json(
-      { error: 'Inquiry service is not configured yet. Please try again later.' },
-      { status: 503 },
-    )
+  try {
+    await setDoc(doc(db, 'verochat_sessions', inquiryId), {
+      type: 'inquiry',
+      visitorName: name,
+      visitorEmail: email,
+      subject,
+      message,
+      status: 'open',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastMessage: message.slice(0, 200),
+      unreadForAgent: 1,
+      source: 'website_contact',
+    })
+  } catch (err) {
+    console.error('Inquiry Firestore error:', err)
   }
 
-  const from = process.env.RESEND_FROM_EMAIL || 'Vero360 Website <onboarding@resend.dev>'
+  const origin = siteOrigin()
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      reply_to: email,
-      subject: `[Vero360 Inquiry] ${subject}`,
-      text: `Name: ${name}\nEmail: ${email}\n\n${message}`,
-    }),
-  })
+  try {
+    const res = await fetch(`https://formsubmit.co/ajax/${FORMSUBMIT_ID}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Origin: origin,
+        Referer: `${origin}/`,
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        _replyto: email,
+        _subject: `[Vero360 Inquiry] ${subject}`,
+        _template: 'table',
+        _captcha: 'false',
+        message,
+      }),
+    })
 
-  if (!res.ok) {
-    console.error('Resend error:', await res.text())
-    return NextResponse.json({ error: 'Failed to send inquiry. Please try again.' }, { status: 502 })
+    const data = (await res.json().catch(() => ({}))) as {
+      success?: boolean | string
+      message?: string
+    }
+
+    const ok = data.success === true || data.success === 'true'
+    if (!ok) {
+      const needsActivation =
+        typeof data.message === 'string' &&
+        data.message.toLowerCase().includes('activation')
+
+      console.error('FormSubmit error:', data)
+
+      if (needsActivation) {
+        // First-time setup: FormSubmit emailed an Activate link to info@vero360.app
+        return NextResponse.json({
+          success: true,
+          pendingActivation: true,
+        })
+      }
+
+      return NextResponse.json(
+        { error: 'Failed to send inquiry. Please try again.' },
+        { status: 502 },
+      )
+    }
+  } catch (err) {
+    console.error('Inquiry email error:', err)
+    return NextResponse.json(
+      { error: 'Failed to send inquiry. Please try again.' },
+      { status: 502 },
+    )
   }
 
   return NextResponse.json({ success: true })
