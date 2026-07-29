@@ -15,6 +15,7 @@ const navLinks = [
 const moreLinks = [
   { label: 'Privacy policy', href: '/privacy' },
   { label: 'Terms of service', href: '/terms' },
+  { label: 'Business certificate', href: '/business-certificate' },
 ]
 
 export default function Navbar() {

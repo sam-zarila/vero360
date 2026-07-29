@@ -22,7 +22,7 @@ const linkHrefs: Record<string, string> = {
   'Customers': '/get-started?role=customer',
   'Driver signup': '/get-started?role=driver',
   'Partner support': '/#contact',
-  'Panel': '/panel',
+  'Admin Panel': '/panel',
   'Contact us': '/#contact',
   'Privacy policy': '/privacy',
   'Terms of service': '/terms',
