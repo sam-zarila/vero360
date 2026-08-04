@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
-import { parseLatestArrivals } from '@/lib/latest-arrivals'
+import {
+  filterLatestArrivalsLast24h,
+  parseLatestArrivals,
+} from '@/lib/latest-arrivals'
 import {
   apiErrorMessage,
   readJsonSafe,
@@ -20,13 +23,18 @@ export async function GET() {
       )
     }
 
-    const items = parseLatestArrivals(body).sort((a, b) => {
-      const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
-      const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
-      return bt - at
-    })
+    const all = parseLatestArrivals(body)
+    const items = filterLatestArrivalsLast24h(all)
 
-    return NextResponse.json({ success: true, items })
+    return NextResponse.json({
+      success: true,
+      items,
+      counts: {
+        active24h: items.length,
+        totalFromApi: all.length,
+      },
+      windowHours: 24,
+    })
   } catch (err) {
     console.error('Admin latest arrivals GET error:', err)
     return NextResponse.json({ error: 'Could not reach latest arrivals API' }, { status: 502 })

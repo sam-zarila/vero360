@@ -62,7 +62,7 @@ const cards = [
   {
     id: 'latest-arrivals',
     title: 'Latest arrivals',
-    desc: 'New products and featured items',
+    desc: 'Goods posted in the last 24 hours',
     icon: '✨',
     color: '#059669',
     bg: '#ECFDF5',

@@ -6,12 +6,14 @@ import Image from 'next/image'
 import {
   formatDateTime,
   formatMwk,
+  latestArrivalTimeLeft,
   resolveLatestImage,
   type LatestArrival,
 } from '@/lib/latest-arrivals'
 
 export default function LatestArrivalsAdminPage() {
   const [items, setItems] = useState<LatestArrival[]>([])
+  const [totalFromApi, setTotalFromApi] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -24,6 +26,7 @@ export default function LatestArrivalsAdminPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load latest arrivals')
       setItems(data.items || [])
+      setTotalFromApi(data.counts?.totalFromApi ?? (data.items || []).length)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load latest arrivals')
     } finally {
@@ -73,8 +76,14 @@ export default function LatestArrivalsAdminPage() {
             Latest arrivals
           </h1>
           <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0 }}>
-            Products posted as latest arrivals. Delete items that should not appear in the app.
+            Same as the app: goods posted in the <strong>last 24 hours</strong>. Older posts drop off automatically.
           </p>
+          {!loading ? (
+            <p style={{ fontSize: 13, color: '#6B7280', margin: '8px 0 0' }}>
+              Showing {items.length} active
+              {totalFromApi > items.length ? ` · ${totalFromApi - items.length} expired (hidden)` : ''}
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
@@ -123,11 +132,14 @@ export default function LatestArrivalsAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading latest arrivals…</p>
         ) : items.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>No latest arrivals found.</p>
+          <p style={{ color: 'var(--text-3)' }}>
+            No goods posted in the last 24 hours.
+          </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {items.map(item => {
               const img = resolveLatestImage(item.image)
+              const left = latestArrivalTimeLeft(item.createdAt)
               return (
                 <article
                   key={item.id}
@@ -189,6 +201,11 @@ export default function LatestArrivalsAdminPage() {
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-4)' }}>
                       {formatMwk(item.price)} · {formatDateTime(item.createdAt)}
+                      {left ? (
+                        <span style={{ marginLeft: 8, fontWeight: 700, color: '#0F766E' }}>
+                          · {left}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
