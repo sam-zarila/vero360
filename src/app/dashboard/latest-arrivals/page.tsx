@@ -1,0 +1,226 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import {
+  formatDateTime,
+  formatMwk,
+  resolveLatestImage,
+  type LatestArrival,
+} from '@/lib/latest-arrivals'
+
+export default function LatestArrivalsAdminPage() {
+  const [items, setItems] = useState<LatestArrival[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/latest-arrivals', { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to load latest arrivals')
+      setItems(data.items || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load latest arrivals')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const remove = async (id: number) => {
+    if (!confirm('Delete this latest arrival permanently?')) return
+    setError('')
+    setNotice('')
+    try {
+      const res = await fetch(`/api/admin/latest-arrivals/${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setNotice('Latest arrival deleted')
+      setItems(prev => prev.filter(item => item.id !== id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  return (
+    <div>
+      <Link
+        href="/dashboard"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 14,
+          fontWeight: 500,
+          color: 'var(--text-3)',
+          marginBottom: 20,
+        }}
+      >
+        ← Back to dashboard
+      </Link>
+
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, letterSpacing: '-0.4px', marginBottom: 6 }}>
+            Latest arrivals
+          </h1>
+          <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0 }}>
+            Products posted as latest arrivals. Delete items that should not appear in the app.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void load()}
+          style={{
+            alignSelf: 'flex-start',
+            padding: '8px 14px',
+            borderRadius: 100,
+            border: '1px solid var(--border)',
+            background: '#fff',
+            fontWeight: 600,
+            fontSize: 13,
+            color: 'var(--text-2)',
+          }}
+        >
+          Refresh
+        </button>
+      </div>
+
+      {(error || notice) && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: '12px 14px',
+            borderRadius: 12,
+            background: error ? '#FEF2F2' : '#ECFDF5',
+            color: error ? '#991B1B' : '#166534',
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          {error || notice}
+        </div>
+      )}
+
+      <section
+        style={{
+          background: '#fff',
+          border: '1px solid var(--border)',
+          borderRadius: 18,
+          padding: 22,
+          boxShadow: 'var(--shadow-sm)',
+          minHeight: 420,
+        }}
+      >
+        {loading ? (
+          <p style={{ color: 'var(--text-3)' }}>Loading latest arrivals…</p>
+        ) : items.length === 0 ? (
+          <p style={{ color: 'var(--text-3)' }}>No latest arrivals found.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {items.map(item => {
+              const img = resolveLatestImage(item.image)
+              return (
+                <article
+                  key={item.id}
+                  className="arrival-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '96px 1fr auto',
+                    gap: 14,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 96,
+                      height: 72,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      background: '#fff',
+                      border: '1px solid var(--border)',
+                      position: 'relative',
+                    }}
+                  >
+                    {img ? (
+                      <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-4)' }}>
+                        No img
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800 }}>{item.name}</h3>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                        padding: '8px 10px',
+                        borderRadius: 10,
+                        background: '#fff',
+                        border: '1px solid var(--border)',
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                        Posted by
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                        {item.merchantName || 'Unknown merchant'}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                        {item.merchantEmail || '—'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-4)' }}>
+                      {formatMwk(item.price)} · {formatDateTime(item.createdAt)}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void remove(item.id)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: '1px solid #FECACA',
+                      background: '#FEF2F2',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#991B1B',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      <style>{`
+        @media (max-width: 700px) {
+          .arrival-row { grid-template-columns: 72px 1fr !important; }
+          .arrival-row > button { grid-column: 1 / -1; }
+        }
+      `}</style>
+    </div>
+  )
+}

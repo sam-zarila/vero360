@@ -26,6 +26,8 @@ export type VeroChatSession = {
   updatedAt: Timestamp
   lastMessage: string
   unreadForAgent: number
+  type?: string
+  source?: string
 }
 
 export type VeroChatMessage = {
@@ -145,7 +147,7 @@ export async function sendVisitorMessage(
 export async function sendAgentMessage(
   sessionId: string,
   text: string,
-  agentName = 'VeroChat Agent',
+  agentName = 'Vero360 Help Center',
 ) {
   const trimmed = text.trim()
   if (!trimmed) return
@@ -189,6 +191,20 @@ export function subscribeToSessions(
       snap.docs.map(d => ({ id: d.id, ...(d.data() as VeroChatSession) })),
     )
   })
+}
+
+export async function closeSession(sessionId: string) {
+  await updateDoc(sessionRef(sessionId), {
+    status: 'closed',
+    updatedAt: serverTimestamp(),
+    unreadForAgent: 0,
+  })
+}
+
+export function isHelpCenterSession(session: VeroChatSessionView) {
+  if (session.type === 'newsletter' || session.type === 'inquiry') return false
+  if (session.id.startsWith('newsletter__') || session.id.startsWith('inquiry__')) return false
+  return true
 }
 
 export function formatChatTime(value: Timestamp | null | undefined) {

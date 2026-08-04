@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
       { protocol: 'https', hostname: 'www.gstatic.com' },
+      { protocol: 'http', hostname: '67.211.220.69', port: '3000' },
+      { protocol: 'https', hostname: '67.211.220.69' },
     ],
   },
   async redirects() {

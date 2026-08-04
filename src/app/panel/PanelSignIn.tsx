@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import Logo from '@/app/components/landing/Logo'
-import { auth, getAdminDashboardUrl } from '@/lib/firebase'
+import { auth } from '@/lib/firebase'
 
 export default function PanelSignIn() {
   const [email, setEmail] = useState('')
@@ -12,55 +12,115 @@ export default function PanelSignIn() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const goToDashboard = () => {
+    window.location.href = '/dashboard'
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password)
-      window.location.href = getAdminDashboardUrl()
-    } catch {
-      setError('Invalid email or password. Please try again.')
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password)
+      const token = await cred.user.getIdToken()
+
+      const res = await fetch('/api/admin/admins/me', {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (data?.needsBootstrap) {
+        // No admins in Firestore yet — let them through to create the first one.
+        window.location.href = '/dashboard/admins'
+        return
+      }
+
+      if (!res.ok || !data?.authenticated) {
+        await signOut(auth)
+        throw new Error(
+          data?.error ||
+            'This account is not an active  admin  Account. Ask a super admin to create or activate your access.',
+        )
+      }
+
+      if (data?.me?.status === 'suspended') {
+        await signOut(auth)
+        throw new Error('This admin account is suspended.')
+      }
+
+      goToDashboard()
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message && !err.message.includes('Firebase')
+          ? err.message
+          : 'Invalid email or password, or not an active admin.'
+      setError(message)
       setLoading(false)
     }
   }
 
   return (
-    <main style={{
-      minHeight: '100vh',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 24,
-      background: 'linear-gradient(135deg, #9A3412 0%, #F97316 40%, #FFF7ED 100%)',
-    }}>
-      <div style={{
-        width: '100%', maxWidth: 420,
-        background: '#fff', borderRadius: 24,
-        padding: '40px 36px',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
-        border: '1px solid var(--border)',
-      }}>
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        background: 'linear-gradient(135deg, #9A3412 0%, #F97316 40%, #FFF7ED 100%)',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          background: '#fff',
+          borderRadius: 24,
+          padding: '40px 36px',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
+          border: '1px solid var(--border)',
+        }}
+      >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Link href="/" style={{ display: 'inline-flex', marginBottom: 24 }}>
             <Logo height={44} showText={false} />
           </Link>
-          <h1 style={{
-            fontSize: 26, fontWeight: 800, marginBottom: 8,
-            fontFamily: 'var(--font-display)', color: 'var(--text)',
-          }}>
-            Sign in
+          <h1
+            style={{
+              fontSize: 26,
+              fontWeight: 800,
+              marginBottom: 8,
+              fontFamily: 'var(--font-display)',
+              color: 'var(--text)',
+            }}
+          >
+            Admin sign in
           </h1>
           <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.6 }}>
-            Enter your credentials to continue.
+            Only admins can sign in.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
+        >
           <div>
-            <label htmlFor="email" style={{
-              display: 'block', fontSize: 13, fontWeight: 600,
-              color: 'var(--text-2)', marginBottom: 8,
-            }}>
+            <label
+              htmlFor="email"
+              style={{
+                display: 'block',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                marginBottom: 8,
+              }}
+            >
               Email
             </label>
             <input
@@ -70,28 +130,29 @@ export default function PanelSignIn() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="you@vero360.com"
+              placeholder="you@vero360.app"
               style={{
-                width: '100%', padding: '14px 16px', borderRadius: 12,
-                border: '1.5px solid var(--border)', fontSize: 15,
-                outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s',
-              }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = 'var(--primary)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(249,115,22,0.15)'
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = 'var(--border)'
-                e.currentTarget.style.boxShadow = 'none'
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: 12,
+                border: '1.5px solid var(--border)',
+                fontSize: 15,
+                outline: 'none',
               }}
             />
           </div>
 
           <div>
-            <label htmlFor="password" style={{
-              display: 'block', fontSize: 13, fontWeight: 600,
-              color: 'var(--text-2)', marginBottom: 8,
-            }}>
+            <label
+              htmlFor="password"
+              style={{
+                display: 'block',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                marginBottom: 8,
+              }}
+            >
               Password
             </label>
             <input
@@ -103,17 +164,12 @@ export default function PanelSignIn() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               style={{
-                width: '100%', padding: '14px 16px', borderRadius: 12,
-                border: '1.5px solid var(--border)', fontSize: 15,
-                outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s',
-              }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = 'var(--primary)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(249,115,22,0.15)'
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = 'var(--border)'
-                e.currentTarget.style.boxShadow = 'none'
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: 12,
+                border: '1.5px solid var(--border)',
+                fontSize: 15,
+                outline: 'none',
               }}
             />
           </div>
@@ -121,38 +177,37 @@ export default function PanelSignIn() {
           <button
             type="submit"
             disabled={loading}
-            className="panel-sign-in-btn"
             style={{
-              marginTop: 8, padding: '14px 24px', borderRadius: 12,
+              marginTop: 8,
+              padding: '14px 24px',
+              borderRadius: 12,
               width: '100%',
               border: 'none',
               background: loading ? 'var(--primary-light)' : 'var(--primary)',
-              color: '#fff', fontWeight: 700, fontSize: 16,
-              boxShadow: 'var(--shadow-primary)',
-              transition: 'background 0.2s, transform 0.2s',
-              opacity: loading ? 0.8 : 1,
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: 16,
               cursor: loading ? 'wait' : 'pointer',
+              opacity: loading ? 0.8 : 1,
             }}
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
 
-          {error && (
-            <p style={{
-              marginTop: 4, fontSize: 14, color: 'var(--error)',
-              textAlign: 'center', lineHeight: 1.5,
-            }}>
+          {error ? (
+            <p
+              style={{
+                marginTop: 4,
+                fontSize: 14,
+                color: 'var(--error)',
+                textAlign: 'center',
+                lineHeight: 1.5,
+              }}
+            >
               {error}
             </p>
-          )}
+          ) : null}
         </form>
-
-        <style>{`
-          .panel-sign-in-btn:hover:not(:disabled) {
-            background: var(--primary-dark) !important;
-            transform: translateY(-1px);
-          }
-        `}</style>
 
         <p style={{ textAlign: 'center', marginTop: 28, fontSize: 14 }}>
           <Link href="/" style={{ color: 'var(--text-3)', fontWeight: 500 }}>
