@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useAdminAlerts } from '../AdminAlertsProvider'
 import {
+  authProviderLabel,
   countUsers,
   formatDateTime,
   roleLabel,
@@ -367,6 +368,21 @@ export default function UsersAdminPage() {
                       {user.status ? (
                         <span style={{ fontSize: 12, color: 'var(--text-4)', fontWeight: 600 }}>
                           {user.status}
+                        </span>
+                      ) : null}
+                      {user.authProvider && user.authProvider !== 'unknown' ? (
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: '4px 10px',
+                            borderRadius: 100,
+                            background: '#F3F4F6',
+                            color: '#4B5563',
+                            border: '1px solid #E5E7EB',
+                          }}
+                        >
+                          {authProviderLabel(user.authProvider)}
                         </span>
                       ) : null}
                     </div>

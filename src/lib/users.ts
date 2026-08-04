@@ -6,6 +6,7 @@ export const USER_ROLES = ['customer', 'merchant', 'driver'] as const
 export type UserRole = (typeof USER_ROLES)[number]
 
 export type AccountStatus = 'active' | 'suspended'
+export type AuthProvider = 'google' | 'apple' | 'phone' | 'email' | 'unknown'
 
 export type AppUser = {
   id: string
@@ -17,6 +18,8 @@ export type AppUser = {
   /** Merchant review status (pending/approved) — not the same as accountStatus */
   status: string | null
   accountStatus: AccountStatus
+  authProvider: AuthProvider
+  photoURL: string | null
   createdAt: string | null
   updatedAt: string | null
 }
@@ -76,26 +79,112 @@ export function parseAccountStatus(data: Record<string, unknown>): AccountStatus
   return 'active'
 }
 
+export function detectAuthProvider(data: Record<string, unknown>): AuthProvider {
+  const raw = str(
+    data.authProvider || data.provider || data.signInProvider || data.loginProvider,
+  ).toLowerCase()
+  if (raw.includes('google')) return 'google'
+  if (raw.includes('apple')) return 'apple'
+  if (raw.includes('phone')) return 'phone'
+  if (raw.includes('email') || raw.includes('password')) return 'email'
+
+  const email = str(data.email || data.contactEmail).toLowerCase()
+  if (email.endsWith('@phone.vero360.app') || email.endsWith('@firebase.vero.local')) {
+    return 'phone'
+  }
+  return 'unknown'
+}
+
 export function parseAppUser(id: string, data: Record<string, unknown>): AppUser {
   const roleRaw = normalizeRole(data.role ?? data.userRole)
   const role: UserRole = roleRaw === 'other' ? 'customer' : roleRaw
 
-  const displayEmail = str(data.contactEmail) || str(data.email)
-  const cleanEmail = displayEmail.toLowerCase().endsWith('@phone.vero360.app')
-    ? ''
-    : displayEmail
+  const displayEmail =
+    str(data.contactEmail) ||
+    str(data.email) ||
+    str(data.Email) ||
+    str(data.userEmail)
+  const cleanEmail =
+    displayEmail.toLowerCase().endsWith('@phone.vero360.app') ||
+    displayEmail.toLowerCase().endsWith('@firebase.vero.local')
+      ? ''
+      : displayEmail
+
+  const name =
+    str(data.name) ||
+    str(data.displayName) ||
+    str(data.fullName) ||
+    str(data.givenName) ||
+    str(data.firstName) ||
+    ''
+
+  const phone =
+    str(data.phone) ||
+    str(data.phoneNumber) ||
+    str(data.mobile) ||
+    str(data.Phone) ||
+    ''
 
   return {
     id,
-    name: str(data.name) || str(data.displayName) || str(data.fullName) || '—',
+    name: name || '—',
     email: cleanEmail,
-    phone: str(data.phone),
+    phone,
     role,
     businessName: str(data.businessName) || null,
     status: str(data.status) || null,
     accountStatus: parseAccountStatus(data),
+    authProvider: detectAuthProvider(data),
+    photoURL: str(data.photoURL) || str(data.photoUrl) || str(data.profilepicture) || null,
     createdAt: tsToIso(data.createdAt) || tsToIso(data.updatedAt),
     updatedAt: tsToIso(data.updatedAt),
+  }
+}
+
+/** Fill gaps from Firebase Auth (Google/Apple often only populate Auth, not Firestore). */
+export function mergeAuthIntoUser(
+  user: AppUser,
+  auth: {
+    displayName?: string | null
+    email?: string | null
+    phoneNumber?: string | null
+    photoURL?: string | null
+    disabled?: boolean
+    providerIds?: string[]
+    creationTime?: string | null
+  },
+): AppUser {
+  const providers = (auth.providerIds || []).map(p => p.toLowerCase())
+  let authProvider = user.authProvider
+  if (authProvider === 'unknown') {
+    if (providers.some(p => p.includes('google'))) authProvider = 'google'
+    else if (providers.some(p => p.includes('apple'))) authProvider = 'apple'
+    else if (providers.some(p => p.includes('phone'))) authProvider = 'phone'
+    else if (providers.some(p => p.includes('password'))) authProvider = 'email'
+  }
+
+  const authEmail = str(auth.email)
+  const cleanAuthEmail =
+    authEmail.toLowerCase().endsWith('@phone.vero360.app') ||
+    authEmail.toLowerCase().endsWith('@firebase.vero.local')
+      ? ''
+      : authEmail
+
+  const nameFromAuth = str(auth.displayName)
+  const phoneFromAuth = str(auth.phoneNumber)
+
+  return {
+    ...user,
+    name: user.name && user.name !== '—' ? user.name : nameFromAuth || user.name,
+    email: user.email || cleanAuthEmail,
+    phone: user.phone || phoneFromAuth,
+    photoURL: user.photoURL || str(auth.photoURL) || null,
+    authProvider,
+    accountStatus:
+      auth.disabled === true ? 'suspended' : user.accountStatus,
+    createdAt:
+      user.createdAt ||
+      (auth.creationTime ? new Date(auth.creationTime).toISOString() : null),
   }
 }
 
@@ -129,6 +218,21 @@ export function roleLabel(role: UserRole | 'all') {
   }
 }
 
+export function authProviderLabel(provider: AuthProvider) {
+  switch (provider) {
+    case 'google':
+      return 'Google'
+    case 'apple':
+      return 'Apple'
+    case 'phone':
+      return 'Phone'
+    case 'email':
+      return 'Email'
+    default:
+      return 'Account'
+  }
+}
+
 export function roleTone(role: UserRole): { bg: string; color: string; border: string } {
   switch (role) {
     case 'customer':
@@ -140,4 +244,4 @@ export function roleTone(role: UserRole): { bg: string; color: string; border: s
   }
 }
 
-export { formatDateTime }
+export { formatDateTime, asRecord }
