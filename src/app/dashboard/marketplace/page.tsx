@@ -14,6 +14,7 @@ import {
   type MarketplaceCategory,
   type MarketplaceListing,
 } from '@/lib/marketplace'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 type CategoryTab = 'all' | MarketplaceCategory
 
@@ -30,6 +31,7 @@ const EMPTY_COUNTS: Counts = {
 }
 
 export default function MarketplaceAdminPage() {
+  const confirmDelete = useConfirmDelete()
   const [items, setItems] = useState<MarketplaceListing[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [loading, setLoading] = useState(true)
@@ -78,9 +80,10 @@ export default function MarketplaceAdminPage() {
 
   const remove = async (item: MarketplaceListing) => {
     if (
-      !confirm(
-        `Remove “${item.name}” from the marketplace?\n\nThis hides the listing for buyers (inappropriate / policy removal).`,
-      )
+      !(await confirmDelete(
+        item.name,
+        'This removes the listing for buyers (inappropriate / policy removal).',
+      ))
     ) {
       return
     }

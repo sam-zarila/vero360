@@ -17,6 +17,7 @@ import {
   type MarketplaceOrder,
   type OrderStatus,
 } from '@/lib/orders'
+import { useConfirm } from '../ConfirmDialog'
 
 type Tab = 'all' | OrderStatus
 
@@ -37,6 +38,7 @@ const EMPTY_COUNTS: Counts = {
 }
 
 export default function OrdersAdminPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<MarketplaceOrder[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [tab, setTab] = useState<Tab>('all')
@@ -92,6 +94,19 @@ export default function OrdersAdminPage() {
   }, [items, tab, query])
 
   const setStatus = async (id: number, status: OrderStatus) => {
+    const item = items.find(o => o.id === id)
+    if (
+      !(await confirm({
+        title: 'Change order status?',
+        message: `Mark order #${id}${item?.orderNumber ? ` (${item.orderNumber})` : ''} as “${statusLabel(status)}”?`,
+        confirmLabel: 'Yes',
+        cancelLabel: 'No',
+        danger: status === 'cancelled',
+      }))
+    ) {
+      return
+    }
+
     setBusyId(id)
     setError('')
     setNotice('')

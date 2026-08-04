@@ -20,6 +20,7 @@ import {
   type JobPost,
   type JobRegion,
 } from '@/lib/jobs'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 type Tab = 'all' | 'active' | 'inactive' | 'malawi' | 'international'
 
@@ -82,6 +83,7 @@ function formFromJob(j: JobPost): FormState {
 }
 
 export default function JobsAdminPage() {
+  const confirmDelete = useConfirmDelete()
   const [items, setItems] = useState<JobPost[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [tab, setTab] = useState<Tab>('all')
@@ -242,9 +244,10 @@ export default function JobsAdminPage() {
 
   const remove = async (j: JobPost) => {
     if (
-      !confirm(
-        `Delete “${j.position}”?\n\nThis permanently removes the job from Nest / the app.`,
-      )
+      !(await confirmDelete(
+        j.position,
+        'This permanently removes the job from Nest / the app.',
+      ))
     ) {
       return
     }

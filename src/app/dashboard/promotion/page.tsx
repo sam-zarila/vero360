@@ -11,11 +11,14 @@ import {
   resolvePromoImage,
   type Promo,
 } from '@/lib/promo'
+import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 
 type Tab = 'live' | 'inactive' | 'all'
 type Counts = { all: number; live: number; inactive: number }
 
 export default function PromotionAdminPage() {
+  const confirm = useConfirm()
+  const confirmDelete = useConfirmDelete()
   const [promos, setPromos] = useState<Promo[]>([])
   const [counts, setCounts] = useState<Counts>({ all: 0, live: 0, inactive: 0 })
   const [tab, setTab] = useState<Tab>('live')
@@ -50,6 +53,18 @@ export default function PromotionAdminPage() {
   }, [promos, tab])
 
   const deactivate = async (id: number) => {
+    const promo = promos.find(p => p.id === id)
+    if (
+      !(await confirm({
+        title: 'Deactivate?',
+        message: `Deactivate “${promo?.name || `promo #${id}`}”?\n\nIt will stop showing in the app.`,
+        confirmLabel: 'Yes, deactivate',
+        cancelLabel: 'No',
+        danger: true,
+      }))
+    ) {
+      return
+    }
     setError('')
     setNotice('')
     try {
@@ -70,7 +85,10 @@ export default function PromotionAdminPage() {
   }
 
   const remove = async (id: number) => {
-    if (!confirm('Delete this promotion permanently?')) return
+    const promo = promos.find(p => p.id === id)
+    if (!(await confirmDelete(promo?.name || `promo #${id}`, 'This permanently deletes the promotion.'))) {
+      return
+    }
     setError('')
     try {
       const res = await fetch(`/api/admin/promos/${id}`, { method: 'DELETE' })

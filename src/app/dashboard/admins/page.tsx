@@ -21,6 +21,7 @@ import {
   type AdminRole,
   type PanelAdmin,
 } from '@/lib/admins'
+import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 
 type Counts = {
   all: number
@@ -39,6 +40,8 @@ const EMPTY_COUNTS: Counts = {
 }
 
 export default function AdminsPage() {
+  const confirm = useConfirm()
+  const confirmDelete = useConfirmDelete()
   const [admins, setAdmins] = useState<PanelAdmin[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [me, setMe] = useState<PanelAdmin | null>(null)
@@ -173,9 +176,10 @@ export default function AdminsPage() {
     let confirmPassword = ''
     if (action === 'delete') {
       if (
-        !confirm(
-          `Delete admin ${admin.email}?\n\nRemoves panel access and the Firebase Auth account.`,
-        )
+        !(await confirmDelete(
+          admin.email,
+          'Removes panel access and the Firebase Auth account.',
+        ))
       ) {
         return
       }
@@ -189,7 +193,17 @@ export default function AdminsPage() {
         return
       }
     } else if (action === 'suspend') {
-      if (!confirm(`Suspend ${admin.email}? They will not be able to sign in.`)) return
+      if (
+        !(await confirm({
+          title: 'Suspend?',
+          message: `Suspend ${admin.email}?\n\nThey will not be able to sign in.`,
+          confirmLabel: 'Yes, suspend',
+          cancelLabel: 'No',
+          danger: true,
+        }))
+      ) {
+        return
+      }
     }
 
     setBusyId(admin.id)

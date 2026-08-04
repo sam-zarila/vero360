@@ -10,6 +10,7 @@ import {
   type CourierDelivery,
   type CourierStatus,
 } from '@/lib/courier'
+import { useConfirm } from '../ConfirmDialog'
 
 type Tab = 'all' | 'PENDING' | 'ACCEPTED' | 'ON_THE_WAY' | 'DELIVERED' | 'CANCELLED'
 
@@ -42,6 +43,7 @@ const ACTION_STYLES: Record<
 }
 
 export default function VeroCourierAdminPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<CourierDelivery[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [tab, setTab] = useState<Tab>('PENDING')
@@ -85,7 +87,29 @@ export default function VeroCourierAdminPage() {
 
   const setStatus = async (id: number, status: CourierStatus, label: string) => {
     if (status === 'CANCELLED') {
-      if (!confirm(`Reject delivery #${id}? The user will see this as Rejected.`)) return
+      if (
+        !(await confirm({
+          title: 'Reject delivery?',
+          message: `Reject delivery #${id}?\n\nThe user will see this as Rejected.`,
+          confirmLabel: 'Yes, reject',
+          cancelLabel: 'No',
+          danger: true,
+        }))
+      ) {
+        return
+      }
+    } else {
+      if (
+        !(await confirm({
+          title: 'Confirm action?',
+          message: `${label} for delivery #${id}?`,
+          confirmLabel: 'Yes',
+          cancelLabel: 'No',
+          danger: false,
+        }))
+      ) {
+        return
+      }
     }
 
     setError('')

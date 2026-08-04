@@ -10,8 +10,10 @@ import {
   resolveLatestImage,
   type LatestArrival,
 } from '@/lib/latest-arrivals'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 export default function LatestArrivalsAdminPage() {
+  const confirmDelete = useConfirmDelete()
   const [items, setItems] = useState<LatestArrival[]>([])
   const [totalFromApi, setTotalFromApi] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -38,16 +40,18 @@ export default function LatestArrivalsAdminPage() {
     load()
   }, [load])
 
-  const remove = async (id: number) => {
-    if (!confirm('Delete this latest arrival permanently?')) return
+  const remove = async (item: LatestArrival) => {
+    if (!(await confirmDelete(item.name || `arrival #${item.id}`, 'This permanently removes it from latest arrivals.'))) {
+      return
+    }
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/latest-arrivals/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/latest-arrivals/${item.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
       setNotice('Latest arrival deleted')
-      setItems(prev => prev.filter(item => item.id !== id))
+      setItems(prev => prev.filter(x => x.id !== item.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed')
     }
@@ -211,7 +215,7 @@ export default function LatestArrivalsAdminPage() {
 
                   <button
                     type="button"
-                    onClick={() => void remove(item.id)}
+                    onClick={() => void remove(item)}
                     style={{
                       padding: '8px 12px',
                       borderRadius: 10,

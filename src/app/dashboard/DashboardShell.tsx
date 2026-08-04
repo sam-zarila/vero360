@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Logo from '@/app/components/landing/Logo'
 import { AdminAlertsProvider, useAdminAlerts } from './AdminAlertsProvider'
+import { ConfirmDialogProvider } from './ConfirmDialog'
 import {
   isSuperAdminOnlyPath,
   PanelSessionProvider,
@@ -90,7 +91,9 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   return (
     <AdminAlertsProvider>
       <PanelSessionProvider>
-        <DashboardShellInner>{children}</DashboardShellInner>
+        <ConfirmDialogProvider>
+          <DashboardShellInner>{children}</DashboardShellInner>
+        </ConfirmDialogProvider>
       </PanelSessionProvider>
     </AdminAlertsProvider>
   )

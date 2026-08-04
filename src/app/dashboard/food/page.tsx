@@ -11,10 +11,12 @@ import {
   type FoodItem,
   type FoodSource,
 } from '@/lib/food'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 type SourceTab = 'all' | FoodSource
 
 export default function FoodAdminPage() {
+  const confirmDelete = useConfirmDelete()
   const [items, setItems] = useState<FoodItem[]>([])
   const [counts, setCounts] = useState({ all: 0, api: 0, marketplace: 0, menu: 0 })
   const [loading, setLoading] = useState(true)
@@ -58,7 +60,14 @@ export default function FoodAdminPage() {
   }, [items, query, sourceTab])
 
   const remove = async (item: FoodItem) => {
-    if (!confirm(`Delete “${item.name}” from ${sourceLabel(item.source)}?`)) return
+    if (
+      !(await confirmDelete(
+        item.name,
+        `Remove from ${sourceLabel(item.source)}? This cannot be undone.`,
+      ))
+    ) {
+      return
+    }
     setBusyKey(item.key)
     setError('')
     setNotice('')

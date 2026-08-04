@@ -12,6 +12,7 @@ import {
   type RefundRequest,
   type RefundStatus,
 } from '@/lib/refunds'
+import { useConfirm } from '../ConfirmDialog'
 
 type Tab = 'all' | 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -32,6 +33,7 @@ const EMPTY_COUNTS: Counts = {
 }
 
 export default function RefundsAdminPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<RefundRequest[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [tab, setTab] = useState<Tab>('pending')
@@ -84,6 +86,19 @@ export default function RefundsAdminPage() {
   }, [items, tab, query])
 
   const setStatus = async (item: RefundRequest, status: RefundStatus) => {
+    const label = refundStatusLabel(status)
+    if (
+      !(await confirm({
+        title: 'Confirm change?',
+        message: `Mark refund for ${item.orderNumber} as “${label}”?`,
+        confirmLabel: 'Yes',
+        cancelLabel: 'No',
+        danger: status === 'failed' || status === 'rejected',
+      }))
+    ) {
+      return
+    }
+
     setBusyId(item.id)
     setError('')
     setNotice('')

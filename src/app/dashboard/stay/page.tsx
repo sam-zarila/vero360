@@ -19,6 +19,7 @@ import {
   type StayBooking,
   type StayListing,
 } from '@/lib/stay'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 type MainTab = 'listings' | 'bookings'
 type TypeFilter = 'all' | (typeof ACCOMMODATION_TYPES)[number]
@@ -64,6 +65,7 @@ const EMPTY_BOOKING_COUNTS: BookingCounts = {
 }
 
 export default function StayAdminPage() {
+  const confirmDelete = useConfirmDelete()
   const [mainTab, setMainTab] = useState<MainTab>('listings')
   const [listings, setListings] = useState<StayListing[]>([])
   const [bookings, setBookings] = useState<StayBooking[]>([])
@@ -112,9 +114,10 @@ export default function StayAdminPage() {
 
   const removeListing = async (item: StayListing) => {
     if (
-      !confirm(
-        `Remove “${item.name}” from Stay?\n\nThis deletes the accommodation (same as app DELETE /accommodations/:id).`,
-      )
+      !(await confirmDelete(
+        item.name,
+        'This deletes the accommodation (same as app DELETE /accommodations/:id).',
+      ))
     ) {
       return
     }

@@ -10,10 +10,13 @@ import {
   roleTone,
   type UserRole,
 } from '@/lib/users'
+import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 
 type Tab = 'all' | UserRole
 
 export default function UsersAdminPage() {
+  const confirm = useConfirm()
+  const confirmDelete = useConfirmDelete()
   const {
     users: liveUsers,
     loading,
@@ -54,16 +57,30 @@ export default function UsersAdminPage() {
   const runAction = async (id: string, action: 'suspend' | 'activate' | 'delete') => {
     const label =
       action === 'suspend' ? 'Suspend' : action === 'activate' ? 'Activate' : 'Delete'
+    const user = liveUsers.find(u => u.id === id)
+    const name = user?.name || user?.email || id
+
     if (action === 'delete') {
       if (
-        !confirm(
-          'Permanently delete this account from Firebase Auth and Firestore? This cannot be undone.',
-        )
+        !(await confirmDelete(
+          name,
+          'Permanently deletes this account from Firebase Auth and Firestore. This cannot be undone.',
+        ))
       ) {
         return
       }
     } else if (action === 'suspend') {
-      if (!confirm('Suspend this account? The user will not be able to sign in.')) return
+      if (
+        !(await confirm({
+          title: 'Suspend?',
+          message: `Suspend “${name}”?\n\nThey will not be able to sign in.`,
+          confirmLabel: 'Yes, suspend',
+          cancelLabel: 'No',
+          danger: true,
+        }))
+      ) {
+        return
+      }
     }
 
     setBusyId(id)
