@@ -57,7 +57,7 @@ export default function PromotionAdminPage() {
     if (
       !(await confirm({
         title: 'Deactivate?',
-        message: `Deactivate “${promo?.name || `promo #${id}`}”?\n\nIt will stop showing in the app.`,
+        message: `Deactivate “${promo?.title || `promo #${id}`}”?\n\nIt will stop showing in the app.`,
         confirmLabel: 'Yes, deactivate',
         cancelLabel: 'No',
         danger: true,
@@ -86,7 +86,7 @@ export default function PromotionAdminPage() {
 
   const remove = async (id: number) => {
     const promo = promos.find(p => p.id === id)
-    if (!(await confirmDelete(promo?.name || `promo #${id}`, 'This permanently deletes the promotion.'))) {
+    if (!(await confirmDelete(promo?.title || `promo #${id}`, 'This permanently deletes the promotion.'))) {
       return
     }
     setError('')

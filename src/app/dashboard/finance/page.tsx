@@ -15,6 +15,8 @@ import {
   escrowStatusTone,
   formatDateTime,
   formatMwk,
+  isPayoutTx,
+  merchantPayoutContactLabel,
   txStatusTone,
   txTypeLabel,
   type EscrowRow,
@@ -36,9 +38,9 @@ const EMPTY_SUMMARY: FinanceSummary = {
   escrowAutoReleasedAmount: 0,
   escrowRefundedAmount: 0,
   escrowServiceFeesHeld: 0,
-  pendingPayoutCount: 0,
-  pendingPayoutAmount: 0,
-  completedPayoutAmount: 0,
+  payoutCount: 0,
+  payoutAmount: 0,
+  merchantsWithPayouts: 0,
   txCount: 0,
 }
 
@@ -52,6 +54,7 @@ export default function FinanceAdminPage() {
   const [summary, setSummary] = useState<FinanceSummary>(EMPTY_SUMMARY)
   const [query, setQuery] = useState('')
   const [escrowFilter, setEscrowFilter] = useState<EscrowFilter>('all')
+  const [payoutMerchant, setPayoutMerchant] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -80,6 +83,29 @@ export default function FinanceAdminPage() {
 
   const q = query.trim().toLowerCase()
 
+  const allPayouts = useMemo(() => transactions.filter(isPayoutTx), [transactions])
+
+  const payoutMerchants = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; total: number; count: number }>()
+    for (const t of allPayouts) {
+      const key = t.walletId || t.userId || 'unknown'
+      const cur = map.get(key) || {
+        key,
+        name: t.merchantName || merchantPayoutContactLabel(t) || 'Merchant',
+        total: 0,
+        count: 0,
+      }
+      cur.total += t.amount
+      cur.count += 1
+      if (t.merchantName) cur.name = t.merchantName
+      else if (t.merchantPhone || t.merchantEmail) {
+        cur.name = merchantPayoutContactLabel(t)
+      }
+      map.set(key, cur)
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total)
+  }, [allPayouts])
+
   const filteredEscrow = useMemo(() => {
     return escrow.filter(e => {
       if (escrowFilter !== 'all' && e.status !== escrowFilter) return false
@@ -99,19 +125,30 @@ export default function FinanceAdminPage() {
 
   const filteredTx = useMemo(() => {
     return transactions.filter(t => {
-      if (tab === 'payouts' && t.type.toLowerCase() !== 'payout') return false
+      if (tab === 'payouts') {
+        if (!isPayoutTx(t)) return false
+        if (payoutMerchant !== 'all') {
+          const key = t.walletId || t.userId || 'unknown'
+          if (key !== payoutMerchant) return false
+        }
+      }
       if (!q) return true
       return (
         t.transactionId.toLowerCase().includes(q) ||
         t.description.toLowerCase().includes(q) ||
         t.reference.toLowerCase().includes(q) ||
         (t.merchantName || '').toLowerCase().includes(q) ||
+        (t.merchantEmail || '').toLowerCase().includes(q) ||
+        (t.merchantPhone || '').toLowerCase().includes(q) ||
         (t.userId || '').toLowerCase().includes(q) ||
         t.type.toLowerCase().includes(q) ||
-        t.status.toLowerCase().includes(q)
+        t.status.toLowerCase().includes(q) ||
+        (t.payoutMethod || '').toLowerCase().includes(q) ||
+        (t.recipientName || '').toLowerCase().includes(q) ||
+        (t.recipientPhone || '').toLowerCase().includes(q)
       )
     })
-  }, [transactions, tab, q])
+  }, [transactions, tab, q, payoutMerchant])
 
   const filteredWallets = useMemo(() => {
     return wallets.filter(w => {
@@ -128,7 +165,7 @@ export default function FinanceAdminPage() {
     { id: 'overview', label: 'Overview' },
     { id: 'escrow', label: `Escrow (${summary.escrowHeldCount} held)` },
     { id: 'transactions', label: `Transactions (${summary.txCount})` },
-    { id: 'payouts', label: `Payouts (${summary.pendingPayoutCount} pending)` },
+    { id: 'payouts', label: `Payouts (${summary.payoutCount})` },
     { id: 'wallets', label: `Wallets (${summary.walletCount})` },
   ]
 
@@ -179,8 +216,8 @@ export default function FinanceAdminPage() {
             Finance & wallets
           </h1>
           <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-            Merchant balances, escrow holds, how funds were released (buyer confirm vs
-            auto after 7 days), and payouts — same Firestore data as the app.
+            Merchant balances, escrow holds, and every instant cash-out merchants run —
+            same Firestore data as the app.
           </p>
         </div>
         <button
@@ -233,9 +270,7 @@ export default function FinanceAdminPage() {
         <p style={{ color: 'var(--muted)' }}>Loading finance data…</p>
       ) : null}
 
-      {tab === 'overview' ? (
-        <Overview summary={summary} onGo={setTab} />
-      ) : null}
+      {tab === 'overview' ? <Overview summary={summary} onGo={setTab} /> : null}
 
       {tab === 'escrow' ? (
         <>
@@ -269,73 +304,83 @@ export default function FinanceAdminPage() {
         </>
       ) : null}
 
-      {tab === 'transactions' || tab === 'payouts' ? (
-        filteredTx.length === 0 ? (
-          <Empty>
-            {tab === 'payouts' ? 'No payouts found.' : 'No transactions found.'}
-          </Empty>
-        ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 12 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#F9FAFB', textAlign: 'left' }}>
-                  <th style={th}>When</th>
-                  <th style={th}>Type</th>
-                  <th style={th}>Merchant</th>
-                  <th style={th}>Amount</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>Description</th>
-                  <th style={th}>Reference</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTx.map(t => {
-                  const st = txStatusTone(t.status)
-                  return (
-                    <tr key={t.transactionId} style={{ borderTop: '1px solid #F3F4F6' }}>
-                      <td style={td}>{formatDateTime(t.createdAt)}</td>
-                      <td style={td}>{txTypeLabel(t.type)}</td>
-                      <td style={td}>
-                        <div style={{ fontWeight: 600 }}>{t.merchantName || '—'}</div>
-                        <div style={{ color: '#6B7280', fontSize: 11 }}>
-                          {t.userId || t.walletId}
-                        </div>
-                      </td>
-                      <td style={{ ...td, fontWeight: 700 }}>{formatMwk(t.amount)}</td>
-                      <td style={td}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            background: st.bg,
-                            color: st.color,
-                            border: `1px solid ${st.border}`,
-                            textTransform: 'capitalize',
-                          }}
-                        >
-                          {t.status}
-                        </span>
-                      </td>
-                      <td style={td}>{t.description}</td>
-                      <td style={{ ...td, fontFamily: 'monospace', fontSize: 11 }}>
-                        {t.reference}
-                        {t.type === 'payout' && t.payoutMethod ? (
-                          <div style={{ color: '#6B7280', marginTop: 4 }}>
-                            {[t.payoutMethod, t.bankName, t.recipientName, t.recipientPhone]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </div>
-                        ) : null}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+      {tab === 'payouts' ? (
+        <>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 10,
+              marginBottom: 14,
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>
+              Merchant
+            </span>
+            <select
+              value={payoutMerchant}
+              onChange={e => setPayoutMerchant(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1px solid #E5E7EB',
+                fontSize: 13,
+                minWidth: 220,
+              }}
+            >
+              <option value="all">
+                All merchants ({summary.payoutCount} payouts · {formatMwk(summary.payoutAmount)})
+              </option>
+              {payoutMerchants.map(m => (
+                <option key={m.key} value={m.key}>
+                  {m.name} — {m.count} · {formatMwk(m.total)}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {payoutMerchants.length > 0 && payoutMerchant === 'all' ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: 10,
+                marginBottom: 16,
+              }}
+            >
+              {payoutMerchants.slice(0, 12).map(m => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setPayoutMerchant(m.key)}
+                  style={{ ...card, textAlign: 'left', cursor: 'pointer' }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, marginTop: 6 }}>
+                    {formatMwk(m.total)}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                    {m.count} cash-out{m.count === 1 ? '' : 's'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {filteredTx.length === 0 ? (
+            <Empty>No merchant payouts recorded yet.</Empty>
+          ) : (
+            <PayoutTable rows={filteredTx} />
+          )}
+        </>
+      ) : null}
+
+      {tab === 'transactions' ? (
+        filteredTx.length === 0 ? (
+          <Empty>No transactions found.</Empty>
+        ) : (
+          <TxTable rows={filteredTx} />
         )
       ) : null}
 
@@ -379,13 +424,41 @@ export default function FinanceAdminPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 20, fontWeight: 800 }}>{formatMwk(w.balance)}</div>
-                    <div style={{ color: '#C2410C', fontSize: 12, marginTop: 2 }}>
-                      Pending payouts: {formatMwk(w.pendingBalance)}
+                    <div style={{ color: '#0F766E', fontSize: 12, marginTop: 2, fontWeight: 600 }}>
+                      Paid out: {formatMwk(w.payoutTotal)}
+                      {w.payoutCount > 0 ? ` (${w.payoutCount})` : ''}
                     </div>
+                    {w.pendingBalance > 0 ? (
+                      <div style={{ color: '#9CA3AF', fontSize: 11, marginTop: 2 }}>
+                        Legacy pending field: {formatMwk(w.pendingBalance)}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
-                <div style={{ color: '#9CA3AF', fontSize: 12, marginTop: 10 }}>
-                  Updated {formatDateTime(w.updatedAt)}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    marginTop: 10,
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ color: '#9CA3AF', fontSize: 12, flex: 1 }}>
+                    Updated {formatDateTime(w.updatedAt)}
+                  </div>
+                  {w.payoutCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPayoutMerchant(w.walletId)
+                        setTab('payouts')
+                      }}
+                      style={{ ...btnSecondary, padding: '6px 10px', fontSize: 12 }}
+                    >
+                      View payouts
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -412,7 +485,7 @@ function Overview({
     {
       label: 'Merchant wallet balances',
       value: formatMwk(summary.totalBalance),
-      sub: `${summary.walletCount} wallets · pending ${formatMwk(summary.totalPendingBalance)}`,
+      sub: `${summary.walletCount} wallets`,
       go: 'wallets',
     },
     {
@@ -434,9 +507,9 @@ function Overview({
       go: 'escrow',
     },
     {
-      label: 'Pending payouts',
-      value: formatMwk(summary.pendingPayoutAmount),
-      sub: `${summary.pendingPayoutCount} requests · completed ${formatMwk(summary.completedPayoutAmount)}`,
+      label: 'Merchant payouts (cash-outs)',
+      value: formatMwk(summary.payoutAmount),
+      sub: `${summary.payoutCount} payouts · ${summary.merchantsWithPayouts} merchants`,
       go: 'payouts',
     },
     {
@@ -483,15 +556,27 @@ function Overview({
       <div style={{ ...card, background: '#F8FAFC' }}>
         <h2 style={{ margin: '0 0 8px', fontSize: 15 }}>How merchant payout works</h2>
         <ol style={{ margin: 0, paddingLeft: 18, color: '#4B5563', fontSize: 13, lineHeight: 1.6 }}>
-          <li>Buyer pays → funds go into <strong>order_escrow</strong> (status <code>held</code>), not the wallet yet.</li>
-          <li>Merchant ships / marks delivered → <code>deliveredAt</code> + <code>releaseDueAt</code> (usually +7 days).</li>
           <li>
-            Money reaches the merchant wallet when either the <strong>buyer confirms receipt</strong> (
-            <code>released</code> / <code>buyer_confirm</code>) or the window passes (
-            <code>auto_released</code>).
+            Buyer pays → funds go into <strong>order_escrow</strong> (status <code>held</code>),
+            not the wallet yet.
           </li>
-          <li>Merchant requests a <strong>payout</strong> from available balance → shows as pending until paid out.</li>
-          <li>Refunds on held escrow set status <code>refunded</code> so the merchant is never credited.</li>
+          <li>
+            Merchant ships / marks delivered → <code>deliveredAt</code> + <code>releaseDueAt</code>{' '}
+            (usually +7 days).
+          </li>
+          <li>
+            Money reaches the merchant wallet when either the <strong>buyer confirms receipt</strong>{' '}
+            (<code>released</code>) or the window passes (<code>auto_released</code>).
+          </li>
+          <li>
+            Merchant cashes out from available balance → PayChangu payout runs and the wallet is
+            debited instantly (<code>type: payout</code>, <code>status: completed</code>). Every
+            cash-out is recorded under <strong>Payouts</strong>.
+          </li>
+          <li>
+            Refunds on held escrow set status <code>refunded</code> so the merchant is never
+            credited.
+          </li>
         </ol>
       </div>
 
@@ -500,6 +585,134 @@ function Overview({
           Escrow voided for refunds (merchant not paid): {formatMwk(summary.escrowRefundedAmount)}
         </p>
       ) : null}
+    </div>
+  )
+}
+
+function PayoutTable({ rows }: { rows: WalletTxRow[] }) {
+  return (
+    <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 12 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: '#F9FAFB', textAlign: 'left' }}>
+            <th style={th}>When</th>
+            <th style={th}>Merchant</th>
+            <th style={th}>Amount</th>
+            <th style={th}>Status</th>
+            <th style={th}>Destination</th>
+            <th style={th}>Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(t => {
+            const st = txStatusTone(t.status)
+            return (
+              <tr key={t.transactionId} style={{ borderTop: '1px solid #F3F4F6' }}>
+                <td style={td}>{formatDateTime(t.createdAt)}</td>
+                <td style={td}>
+                  <div style={{ fontWeight: 600 }}>{t.merchantName || '—'}</div>
+                  <div style={{ color: '#6B7280', fontSize: 11 }}>
+                    {merchantPayoutContactLabel(t)}
+                  </div>
+                </td>
+                <td style={{ ...td, fontWeight: 700 }}>{formatMwk(t.amount)}</td>
+                <td style={td}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      background: st.bg,
+                      color: st.color,
+                      border: `1px solid ${st.border}`,
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {t.status === 'completed' || t.status === 'success'
+                      ? 'Cashed out'
+                      : t.status}
+                  </span>
+                </td>
+                <td style={td}>
+                  <div>{t.description}</div>
+                  {[t.payoutMethod, t.bankName, t.recipientName, t.recipientPhone, t.accountNumber]
+                    .filter(Boolean)
+                    .length > 0 ? (
+                    <div style={{ color: '#6B7280', marginTop: 4, fontSize: 12 }}>
+                      {[t.payoutMethod, t.bankName, t.recipientName, t.recipientPhone, t.accountNumber]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                  ) : null}
+                </td>
+                <td style={{ ...td, fontFamily: 'monospace', fontSize: 11 }}>
+                  {t.reference}
+                  <div style={{ color: '#9CA3AF', marginTop: 2 }}>{t.transactionId}</div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function TxTable({ rows }: { rows: WalletTxRow[] }) {
+  return (
+    <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 12 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: '#F9FAFB', textAlign: 'left' }}>
+            <th style={th}>When</th>
+            <th style={th}>Type</th>
+            <th style={th}>Merchant</th>
+            <th style={th}>Amount</th>
+            <th style={th}>Status</th>
+            <th style={th}>Description</th>
+            <th style={th}>Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(t => {
+            const st = txStatusTone(t.status)
+            return (
+              <tr key={t.transactionId} style={{ borderTop: '1px solid #F3F4F6' }}>
+                <td style={td}>{formatDateTime(t.createdAt)}</td>
+                <td style={td}>{txTypeLabel(t.type)}</td>
+                <td style={td}>
+                  <div style={{ fontWeight: 600 }}>{t.merchantName || '—'}</div>
+                  <div style={{ color: '#6B7280', fontSize: 11 }}>
+                    {merchantPayoutContactLabel(t)}
+                  </div>
+                </td>
+                <td style={{ ...td, fontWeight: 700 }}>{formatMwk(t.amount)}</td>
+                <td style={td}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      background: st.bg,
+                      color: st.color,
+                      border: `1px solid ${st.border}`,
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {t.status}
+                  </span>
+                </td>
+                <td style={td}>{t.description}</td>
+                <td style={{ ...td, fontFamily: 'monospace', fontSize: 11 }}>{t.reference}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

@@ -452,10 +452,12 @@ export default function JobsAdminPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
             <button
               type="submit"
-              disabled={busyId === 'new' || busyId === editingId}
+              disabled={
+                busyId === 'new' || (editingId != null && busyId === editingId)
+              }
               style={btnPrimary}
             >
-              {busyId === 'new' || busyId === editingId
+              {busyId === 'new' || (editingId != null && busyId === editingId)
                 ? 'Saving…'
                 : editingId != null
                   ? 'Save changes'

@@ -6,13 +6,22 @@ import {
   WALLETS_COLLECTION,
   WALLET_TX_COLLECTION,
   buildFinanceSummary,
+  isPayoutTx,
   parseEscrow,
   parseWallet,
   parseWalletTx,
+  withWalletPayoutTotals,
   type EscrowRow,
   type WalletRow,
   type WalletTxRow,
 } from '@/lib/finance'
+import { enrichFinanceMerchants } from '@/lib/enrich-finance'
+
+function mergeTx(into: WalletTxRow[], row: WalletTxRow) {
+  if (!into.some(t => t.transactionId === row.transactionId)) {
+    into.push(row)
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -26,30 +35,48 @@ export async function GET(request: Request) {
   try {
     const db = getAdminDb()
 
-    const [walletsSnap, txSnap, escrowSnap] = await Promise.all([
+    const [walletsSnap, txSnap, payoutSnap, escrowSnap] = await Promise.all([
       db.collection(WALLETS_COLLECTION).get(),
-      db.collection(WALLET_TX_COLLECTION).orderBy('createdAt', 'desc').limit(500).get().catch(async () => {
-        return db.collection(WALLET_TX_COLLECTION).limit(500).get()
-      }),
+      db
+        .collection(WALLET_TX_COLLECTION)
+        .orderBy('createdAt', 'desc')
+        .limit(500)
+        .get()
+        .catch(async () => db.collection(WALLET_TX_COLLECTION).limit(500).get()),
+      // Explicit payout ledger so cash-outs are not missed if mixed with other recent txs.
+      db
+        .collection(WALLET_TX_COLLECTION)
+        .where('type', '==', 'payout')
+        .limit(1000)
+        .get()
+        .catch(async () => {
+          // Fallback without index / type filter
+          return db.collection(WALLET_TX_COLLECTION).limit(1000).get()
+        }),
       db.collection(ORDER_ESCROW_COLLECTION).get(),
     ])
 
-    const wallets: WalletRow[] = walletsSnap.docs
+    let wallets: WalletRow[] = walletsSnap.docs
       .map(d => parseWallet(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => b.balance - a.balance)
 
     const walletById = new Map(wallets.map(w => [w.walletId, w]))
 
-    const transactions: WalletTxRow[] = txSnap.docs
-      .map(d => parseWalletTx(d.id, d.data() as Record<string, unknown>, walletById))
-      .sort((a, b) => {
-        const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
-        const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
-        return bt - at
-      })
+    const transactions: WalletTxRow[] = []
+    for (const d of txSnap.docs) {
+      mergeTx(
+        transactions,
+        parseWalletTx(d.id, d.data() as Record<string, unknown>, walletById),
+      )
+    }
+    for (const d of payoutSnap.docs) {
+      mergeTx(
+        transactions,
+        parseWalletTx(d.id, d.data() as Record<string, unknown>, walletById),
+      )
+    }
 
-    // Also surface embedded wallet.transactions if collection is sparse
-    const embedded: WalletTxRow[] = []
+    // Also surface embedded wallet.transactions (app writes both places)
     for (const doc of walletsSnap.docs) {
       const data = doc.data() as Record<string, unknown>
       const list = data.transactions
@@ -57,22 +84,34 @@ export async function GET(request: Request) {
       const wallet = walletById.get(doc.id) || parseWallet(doc.id, data)
       for (const raw of list) {
         if (!raw || typeof raw !== 'object') continue
-        const row = parseWalletTx(
-          String((raw as { transactionId?: string }).transactionId || `${doc.id}_${embedded.length}`),
-          { ...(raw as Record<string, unknown>), walletId: doc.id },
-          new Map([[doc.id, wallet]]),
+        mergeTx(
+          transactions,
+          parseWalletTx(
+            String(
+              (raw as { transactionId?: string }).transactionId ||
+                `${doc.id}_${transactions.length}`,
+            ),
+            { ...(raw as Record<string, unknown>), walletId: doc.id },
+            new Map([[doc.id, wallet]]),
+          ),
         )
-        if (!transactions.some(t => t.transactionId === row.transactionId)) {
-          embedded.push(row)
-        }
       }
     }
 
-    const allTx = [...transactions, ...embedded].sort((a, b) => {
+    const allTxSorted = transactions.sort((a, b) => {
       const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
       const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
       return bt - at
     })
+
+    wallets = withWalletPayoutTotals(wallets, allTxSorted)
+
+    const enriched = await enrichFinanceMerchants(wallets, allTxSorted)
+    wallets = enriched.wallets.sort((a, b) => {
+      if (b.payoutTotal !== a.payoutTotal) return b.payoutTotal - a.payoutTotal
+      return b.balance - a.balance
+    })
+    const allTx = enriched.transactions
 
     const escrow: EscrowRow[] = escrowSnap.docs
       .map(d => parseEscrow(d.id, d.data() as Record<string, unknown>))
@@ -91,12 +130,14 @@ export async function GET(request: Request) {
       })
 
     const summary = buildFinanceSummary(wallets, allTx, escrow)
+    const payouts = allTx.filter(isPayoutTx)
 
     return NextResponse.json({
       success: true,
       summary,
       wallets,
       transactions: allTx,
+      payouts,
       escrow,
       counts: {
         wallets: wallets.length,
@@ -106,9 +147,7 @@ export async function GET(request: Request) {
         escrowReleased: escrow.filter(
           e => e.status === 'released' || e.status === 'auto_released',
         ).length,
-        payoutsPending: allTx.filter(
-          t => t.type === 'payout' && (t.status === 'pending' || t.status === 'processing'),
-        ).length,
+        payouts: payouts.length,
       },
     })
   } catch (err) {

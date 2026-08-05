@@ -55,6 +55,11 @@ const sections: Record<
     desc: 'Track pending and completed marketplace refunds.',
     icon: '↩️',
   },
+  'merchant-reports': {
+    title: 'Merchant reports',
+    desc: 'Review user reports about marketplace merchants.',
+    icon: '🚩',
+  },
   users: {
     title: 'Users',
     desc: 'Manage customers, merchants, and accounts.',

@@ -15,8 +15,13 @@ export type WalletRow = {
   walletId: string
   userId: string
   merchantName: string
+  merchantEmail: string | null
+  merchantPhone: string | null
   balance: number
   pendingBalance: number
+  /** Sum of recorded payout / cash-out transactions for this merchant. */
+  payoutTotal: number
+  payoutCount: number
   updatedAt: string | null
   createdAt: string | null
   isPlatform: boolean
@@ -26,6 +31,8 @@ export type WalletTxRow = {
   transactionId: string
   walletId: string
   merchantName: string | null
+  merchantEmail: string | null
+  merchantPhone: string | null
   userId: string | null
   type: string
   amount: number
@@ -102,12 +109,22 @@ export function parseWallet(id: string, data: Record<string, unknown>): WalletRo
     walletId: str(data.walletId) || id,
     userId,
     merchantName: str(data.merchantName) || (userId === 'super_admin' ? 'Vero 360 Platform' : 'Merchant'),
+    merchantEmail: str(data.email) || str(data.merchantEmail) || null,
+    merchantPhone: str(data.phone) || str(data.merchantPhone) || str(data.phoneNumber) || null,
     balance: num(data.balance),
     pendingBalance: num(data.pendingBalance),
+    payoutTotal: 0,
+    payoutCount: 0,
     updatedAt: tsToIso(data.updatedAt),
     createdAt: tsToIso(data.createdAt),
     isPlatform: userId === 'super_admin',
   }
+}
+
+/** True when a wallet tx is a merchant cash-out (instant payout). */
+export function isPayoutTx(t: Pick<WalletTxRow, 'type'>): boolean {
+  const type = t.type.toLowerCase()
+  return type === 'payout' || type === 'cashout' || type === 'cash_out' || type === 'withdrawal'
 }
 
 export function parseWalletTx(
@@ -121,6 +138,8 @@ export function parseWalletTx(
     transactionId: str(data.transactionId) || id,
     walletId,
     merchantName: wallet?.merchantName || null,
+    merchantEmail: wallet?.merchantEmail || null,
+    merchantPhone: wallet?.merchantPhone || null,
     userId: wallet?.userId || null,
     type: str(data.type) || 'credit',
     amount: num(data.amount),
@@ -276,6 +295,9 @@ export function txStatusTone(status: string): {
 export function txTypeLabel(type: string) {
   switch (type.toLowerCase()) {
     case 'payout':
+    case 'cashout':
+    case 'cash_out':
+    case 'withdrawal':
       return 'Payout'
     case 'sale_escrow':
       return 'Sale (escrow release)'
@@ -304,10 +326,45 @@ export type FinanceSummary = {
   escrowAutoReleasedAmount: number
   escrowRefundedAmount: number
   escrowServiceFeesHeld: number
-  pendingPayoutCount: number
-  pendingPayoutAmount: number
-  completedPayoutAmount: number
+  /** All recorded merchant cash-outs (instant payouts). */
+  payoutCount: number
+  payoutAmount: number
+  merchantsWithPayouts: number
   txCount: number
+}
+
+/** Attach per-merchant payout totals onto wallet rows (mutates copies). */
+export function withWalletPayoutTotals(
+  wallets: WalletRow[],
+  txs: WalletTxRow[],
+): WalletRow[] {
+  const byWallet = new Map<string, { total: number; count: number }>()
+  for (const t of txs) {
+    if (!isPayoutTx(t)) continue
+    const key = t.walletId
+    const cur = byWallet.get(key) || { total: 0, count: 0 }
+    cur.total += t.amount
+    cur.count += 1
+    byWallet.set(key, cur)
+  }
+  return wallets.map(w => {
+    const stats = byWallet.get(w.walletId)
+    return {
+      ...w,
+      payoutTotal: stats?.total ?? 0,
+      payoutCount: stats?.count ?? 0,
+    }
+  })
+}
+
+/** Secondary merchant line for payouts: phone and/or email — never UID. */
+export function merchantPayoutContactLabel(
+  t: Pick<WalletTxRow, 'merchantPhone' | 'merchantEmail'>,
+): string {
+  const phone = str(t.merchantPhone)
+  const email = str(t.merchantEmail)
+  if (phone && email) return `${phone} · ${email}`
+  return phone || email || '—'
 }
 
 export function buildFinanceSummary(
@@ -318,9 +375,10 @@ export function buildFinanceSummary(
   const merchantWallets = wallets.filter(w => !w.isPlatform)
   const platform = wallets.find(w => w.isPlatform)
 
-  const payouts = txs.filter(t => t.type.toLowerCase() === 'payout')
-  const pendingPayouts = payouts.filter(t => t.status === 'pending' || t.status === 'processing')
-  const completedPayouts = payouts.filter(t => t.status === 'completed' || t.status === 'success')
+  const payouts = txs.filter(isPayoutTx)
+  const merchantsWithPayouts = new Set(
+    payouts.map(t => t.walletId || t.userId || '').filter(Boolean),
+  ).size
 
   const held = escrow.filter(e => e.status === 'held')
   const released = escrow.filter(e => e.status === 'released')
@@ -338,9 +396,9 @@ export function buildFinanceSummary(
     escrowAutoReleasedAmount: auto.reduce((s, e) => s + e.merchantAmount, 0),
     escrowRefundedAmount: refunded.reduce((s, e) => s + e.merchantAmount, 0),
     escrowServiceFeesHeld: held.reduce((s, e) => s + e.serviceFeeAmount, 0),
-    pendingPayoutCount: pendingPayouts.length,
-    pendingPayoutAmount: pendingPayouts.reduce((s, t) => s + t.amount, 0),
-    completedPayoutAmount: completedPayouts.reduce((s, t) => s + t.amount, 0),
+    payoutCount: payouts.length,
+    payoutAmount: payouts.reduce((s, t) => s + t.amount, 0),
+    merchantsWithPayouts,
     txCount: txs.length,
   }
 }

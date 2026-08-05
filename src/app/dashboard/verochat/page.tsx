@@ -2,29 +2,40 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Link from 'next/link'
+import VeroChatMessageRow from '@/app/components/VeroChatMessageRow'
+import VeroChatReplyBar from '@/app/components/VeroChatReplyBar'
+import { useConfirmDelete } from '../ConfirmDialog'
 import {
   closeSession,
-  formatChatTime,
+  deleteSession,
   isHelpCenterSession,
   markSessionRead,
+  replyTargetFromMessage,
+  sendAgentImage,
   sendAgentMessage,
   subscribeToMessages,
   subscribeToSessions,
   type VeroChatMessageView,
+  type VeroChatReplyTo,
   type VeroChatSessionView,
 } from '@/lib/verochat'
 
 export default function HelpCenterInbox() {
+  const confirmDelete = useConfirmDelete()
   const [sessions, setSessions] = useState<VeroChatSessionView[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<VeroChatMessageView[]>([])
   const [input, setInput] = useState('')
+  const [replyTo, setReplyTo] = useState<VeroChatReplyTo | null>(null)
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const chatSessions = sessions.filter(isHelpCenterSession)
   const active = chatSessions.find(s => s.id === activeId) ?? null
+  const closed = active?.status === 'closed'
 
   useEffect(() => {
     return subscribeToSessions(setSessions)
@@ -49,18 +60,47 @@ export default function HelpCenterInbox() {
     if (chatSessions.length > 0) setActiveId(chatSessions[0]!.id)
   }, [activeId, chatSessions])
 
+  useEffect(() => {
+    setReplyTo(null)
+  }, [activeId])
+
   const handleSend = async (e: FormEvent) => {
     e.preventDefault()
-    if (!activeId || !input.trim() || loading) return
+    if (!activeId || !input.trim() || loading || closed) return
     setLoading(true)
     setError('')
     try {
-      await sendAgentMessage(activeId, input)
+      await sendAgentMessage(activeId, input, 'Vero360 Help Center', replyTo ?? undefined)
       setInput('')
+      setReplyTo(null)
     } catch {
       setError('Could not send reply. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePhoto = async (file: File | undefined) => {
+    if (!activeId || !file || loading || closed) return
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const caption = input.trim()
+      await sendAgentImage(activeId, file, 'Vero360 Help Center', {
+        caption: caption || undefined,
+        replyTo: replyTo ?? undefined,
+      })
+      setInput('')
+      setReplyTo(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload photo. Please try again.')
+    } finally {
+      setLoading(false)
+      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
@@ -70,6 +110,26 @@ export default function HelpCenterInbox() {
       await closeSession(activeId)
     } catch {
       setError('Could not close chat.')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!activeId || deleting) return
+    const label = active?.visitorName || active?.visitorEmail || 'this conversation'
+    const ok = await confirmDelete(label, 'All messages will be permanently removed.')
+    if (!ok) return
+
+    setDeleting(true)
+    setError('')
+    try {
+      const id = activeId
+      await deleteSession(id)
+      setActiveId(null)
+      setReplyTo(null)
+    } catch {
+      setError('Could not delete conversation.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -238,23 +298,42 @@ export default function HelpCenterInbox() {
                   <div style={{ fontWeight: 800, fontSize: 16 }}>{active.visitorName || 'Visitor'}</div>
                   <div style={{ fontSize: 13, color: 'var(--text-3)' }}>{active.visitorEmail}</div>
                 </div>
-                {active.status === 'open' && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {active.status === 'open' && (
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border)',
+                        background: '#fff',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--text-2)',
+                      }}
+                    >
+                      Close chat
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={handleClose}
+                    onClick={handleDelete}
+                    disabled={deleting}
                     style={{
                       padding: '8px 12px',
                       borderRadius: 10,
-                      border: '1px solid var(--border)',
-                      background: '#fff',
+                      border: '1px solid #FECACA',
+                      background: '#FEF2F2',
                       fontSize: 13,
                       fontWeight: 600,
-                      color: 'var(--text-2)',
+                      color: '#B91C1C',
+                      opacity: deleting ? 0.6 : 1,
                     }}
                   >
-                    Close chat
+                    {deleting ? 'Deleting…' : 'Delete'}
                   </button>
-                )}
+                </div>
               </div>
 
               <div
@@ -269,42 +348,13 @@ export default function HelpCenterInbox() {
                 }}
               >
                 {messages.map(msg => (
-                  <div
+                  <VeroChatMessageRow
                     key={msg.id}
-                    style={{
-                      alignSelf: msg.sender === 'agent' ? 'flex-end' : 'flex-start',
-                      maxWidth: '80%',
-                    }}
-                  >
-                    {msg.sender === 'agent' && msg.agentName && (
-                      <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700, marginBottom: 4, textAlign: 'right' }}>
-                        {msg.agentName}
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: msg.sender === 'agent' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                        background: msg.sender === 'agent' ? 'var(--primary)' : '#fff',
-                        color: msg.sender === 'agent' ? '#fff' : 'var(--text-2)',
-                        fontSize: 14,
-                        lineHeight: 1.5,
-                        border: msg.sender === 'visitor' ? '1px solid var(--border)' : 'none',
-                      }}
-                    >
-                      {msg.text}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: 'var(--text-4)',
-                        marginTop: 4,
-                        textAlign: msg.sender === 'agent' ? 'right' : 'left',
-                      }}
-                    >
-                      {formatChatTime(msg.createdAt)}
-                    </div>
-                  </div>
+                    msg={msg}
+                    alignEnd={msg.sender === 'agent'}
+                    showReply={!closed}
+                    onReply={() => setReplyTo(replyTargetFromMessage(msg))}
+                  />
                 ))}
                 <div ref={endRef} />
               </div>
@@ -315,22 +365,51 @@ export default function HelpCenterInbox() {
                 </p>
               )}
 
+              {replyTo && <VeroChatReplyBar replyTo={replyTo} onClear={() => setReplyTo(null)} />}
+
               <form
                 onSubmit={handleSend}
                 style={{
                   padding: 14,
-                  borderTop: '1px solid var(--border)',
+                  borderTop: replyTo ? 'none' : '1px solid var(--border)',
                   display: 'flex',
                   gap: 8,
                   background: '#fff',
+                  alignItems: 'center',
                 }}
               >
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={e => handlePhoto(e.target.files?.[0])}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={loading || closed}
+                  title="Send photo"
+                  aria-label="Send photo"
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    border: '1.5px solid var(--border)',
+                    background: '#fff',
+                    fontSize: 18,
+                    lineHeight: 1,
+                    opacity: loading || closed ? 0.5 : 1,
+                    cursor: loading || closed ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  📷
+                </button>
                 <input
                   type="text"
                   value={input}
                   onChange={e => setInput(e.target.value)}
-                  placeholder="Reply as Help Center…"
-                  disabled={loading || active.status === 'closed'}
+                  placeholder={closed ? 'Chat closed' : 'Reply as Help Center…'}
+                  disabled={loading || closed}
                   style={{
                     flex: 1,
                     padding: '12px 14px',
@@ -342,7 +421,7 @@ export default function HelpCenterInbox() {
                 />
                 <button
                   type="submit"
-                  disabled={loading || !input.trim() || active.status === 'closed'}
+                  disabled={loading || !input.trim() || closed}
                   style={{
                     padding: '12px 16px',
                     borderRadius: 12,
@@ -351,7 +430,7 @@ export default function HelpCenterInbox() {
                     color: '#fff',
                     fontWeight: 700,
                     fontSize: 14,
-                    opacity: loading || !input.trim() || active.status === 'closed' ? 0.6 : 1,
+                    opacity: loading || !input.trim() || closed ? 0.6 : 1,
                   }}
                 >
                   {loading ? '…' : 'Send'}

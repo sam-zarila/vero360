@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useCourierPendingBadge, useNewUsersBadge, useOrdersPendingBadge } from './AdminAlertsProvider'
+import { useCourierPendingBadge, useMerchantReportsOpenBadge, useNewUsersBadge, useOrdersPendingBadge } from './AdminAlertsProvider'
 import { usePanelSession } from './PanelSessionProvider'
 import {
   isHelpCenterSession,
@@ -92,6 +92,14 @@ const cards = [
     bg: '#FFF1F2',
   },
   {
+    id: 'merchant-reports',
+    title: 'Merchant reports',
+    desc: 'User reports about marketplace merchants',
+    icon: '🚩',
+    color: '#C2410C',
+    bg: '#FFF7ED',
+  },
+  {
     id: 'users',
     title: 'Users',
     desc: 'Customers, merchants, and accounts',
@@ -111,7 +119,7 @@ const cards = [
   {
     id: 'finance',
     title: 'Finance',
-    desc: 'Wallets, escrow release, and payouts',
+    desc: 'Wallets, escrow, and merchant cash-outs',
     icon: '💰',
     color: '#15803D',
     bg: '#F0FDF4',
@@ -138,6 +146,7 @@ export default function DashboardCards() {
   const courierPending = useCourierPendingBadge()
   const ordersPending = useOrdersPendingBadge()
   const newUsers = useNewUsersBadge()
+  const reportsOpen = useMerchantReportsOpenBadge()
   const { isSuperAdmin } = usePanelSession()
 
   useEffect(() => {
@@ -162,6 +171,7 @@ export default function DashboardCards() {
         const isCourier = card.id === 'vero-courier'
         const isOrders = card.id === 'orders'
         const isUsers = card.id === 'users'
+        const isReports = card.id === 'merchant-reports'
         const badgeCount = isHelp
           ? unread
           : isCourier
@@ -170,7 +180,9 @@ export default function DashboardCards() {
               ? ordersPending
               : isUsers
                 ? newUsers
-                : 0
+                : isReports
+                  ? reportsOpen
+                  : 0
         const showBadge = badgeCount > 0
         const alertLabel = isHelp
           ? `${badgeCount} unread Help Center messages`
@@ -178,21 +190,33 @@ export default function DashboardCards() {
             ? `${badgeCount} pending Vero Courier order${badgeCount === 1 ? '' : 's'}`
             : isOrders
               ? `${badgeCount} pending marketplace order${badgeCount === 1 ? '' : 's'}`
-              : `${badgeCount} new user${badgeCount === 1 ? '' : 's'}`
+              : isUsers
+                ? `${badgeCount} new user${badgeCount === 1 ? '' : 's'}`
+                : isReports
+                  ? `${badgeCount} open merchant report${badgeCount === 1 ? '' : 's'}`
+                  : ''
         const alertDesc = isHelp
           ? `${badgeCount} new message${badgeCount === 1 ? '' : 's'} waiting`
           : isCourier
             ? `${badgeCount} new order${badgeCount === 1 ? '' : 's'} waiting`
             : isOrders
               ? `${badgeCount} order${badgeCount === 1 ? '' : 's'} needing review`
-              : `${badgeCount} new registration${badgeCount === 1 ? '' : 's'}`
+              : isUsers
+                ? `${badgeCount} new registration${badgeCount === 1 ? '' : 's'}`
+                : isReports
+                  ? `${badgeCount} report${badgeCount === 1 ? '' : 's'} to review`
+                  : ''
         const alertCta = isHelp
           ? 'Reply now →'
           : isCourier
             ? 'Review now →'
             : isOrders
               ? 'Open orders →'
-              : 'View users →'
+              : isUsers
+                ? 'View users →'
+                : isReports
+                  ? 'Review reports →'
+                  : ''
 
         return (
           <Link

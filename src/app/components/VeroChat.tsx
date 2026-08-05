@@ -3,12 +3,16 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   ensureSession,
-  formatChatTime,
   getOrCreateSessionId,
+  replyTargetFromMessage,
+  sendVisitorImage,
   sendVisitorMessage,
   subscribeToMessages,
   type VeroChatMessageView,
+  type VeroChatReplyTo,
 } from '@/lib/verochat'
+import VeroChatMessageRow from './VeroChatMessageRow'
+import VeroChatReplyBar from './VeroChatReplyBar'
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '265992695612'
 
@@ -17,6 +21,7 @@ export default function VeroChat() {
   const [sessionId, setSessionId] = useState('')
   const [messages, setMessages] = useState<VeroChatMessageView[]>([])
   const [input, setInput] = useState('')
+  const [replyTo, setReplyTo] = useState<VeroChatReplyTo | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,6 +29,7 @@ export default function VeroChat() {
   const [pendingMessage, setPendingMessage] = useState('')
   const [error, setError] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setSessionId(getOrCreateSessionId())
@@ -44,22 +50,54 @@ export default function VeroChat() {
     if (open) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, open, needsDetails])
 
-  const deliverMessage = async (text: string) => {
+  const visitor = () => ({ name: name.trim(), email: email.trim() })
+
+  const requireDetails = (text: string) => {
+    if (name.trim() && email.trim()) return false
+    if (!needsDetails) {
+      setPendingMessage(text)
+      setNeedsDetails(true)
+      setInput('')
+    }
+    return true
+  }
+
+  const deliverMessage = async (text: string, reply?: VeroChatReplyTo | null) => {
     setLoading(true)
     setError('')
     try {
       await ensureSession(sessionId, name.trim(), email.trim())
-      await sendVisitorMessage(sessionId, text, {
-        name: name.trim(),
-        email: email.trim(),
-      })
+      await sendVisitorMessage(sessionId, text, visitor(), reply ?? undefined)
       setInput('')
       setPendingMessage('')
       setNeedsDetails(false)
+      setReplyTo(null)
     } catch {
       setError('Could not send message. Please try again or use WhatsApp.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const deliverImage = async (file: File, caption?: string, reply?: VeroChatReplyTo | null) => {
+    setLoading(true)
+    setError('')
+    try {
+      await ensureSession(sessionId, name.trim(), email.trim())
+      await sendVisitorImage(sessionId, file, {
+        caption,
+        visitor: visitor(),
+        replyTo: reply ?? undefined,
+      })
+      setInput('')
+      setPendingMessage('')
+      setNeedsDetails(false)
+      setReplyTo(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload photo. Please try again or use WhatsApp.')
+    } finally {
+      setLoading(false)
+      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
@@ -68,16 +106,26 @@ export default function VeroChat() {
     const text = (needsDetails ? pendingMessage : input).trim()
     if (!text || loading || !sessionId) return
 
-    if (!name.trim() || !email.trim()) {
-      if (!needsDetails) {
-        setPendingMessage(text)
-        setNeedsDetails(true)
-        setInput('')
-      }
+    if (requireDetails(text)) return
+
+    await deliverMessage(text, replyTo)
+  }
+
+  const handlePhoto = async (file: File | undefined) => {
+    if (!file || loading || !sessionId) return
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.')
       return
     }
 
-    await deliverMessage(text)
+    if (!name.trim() || !email.trim()) {
+      setNeedsDetails(true)
+      setError('Enter your name and email before sending a photo.')
+      return
+    }
+
+    const caption = (needsDetails ? pendingMessage : input).trim()
+    await deliverImage(file, caption || undefined, replyTo)
   }
 
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, '')}?text=${encodeURIComponent('Hi Vero360, I need help with...')}`
@@ -182,35 +230,13 @@ export default function VeroChat() {
             )}
 
             {messages.map(msg => (
-              <div
+              <VeroChatMessageRow
                 key={msg.id}
-                style={{
-                  alignSelf: msg.sender === 'visitor' ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%',
-                }}
-              >
-                {msg.sender === 'agent' && msg.agentName && (
-                  <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700, marginBottom: 4 }}>
-                    {msg.agentName}
-                  </div>
-                )}
-                <div style={{
-                  padding: '10px 14px',
-                  borderRadius: msg.sender === 'visitor' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                  background: msg.sender === 'visitor' ? 'var(--primary)' : '#fff',
-                  color: msg.sender === 'visitor' ? '#fff' : 'var(--text-2)',
-                  fontSize: 14, lineHeight: 1.5,
-                  border: msg.sender === 'agent' ? '1px solid var(--border)' : 'none',
-                }}>
-                  {msg.text}
-                </div>
-                <div style={{
-                  fontSize: 10, color: 'var(--text-4)', marginTop: 4,
-                  textAlign: msg.sender === 'visitor' ? 'right' : 'left',
-                }}>
-                  {formatChatTime(msg.createdAt)}
-                </div>
-              </div>
+                msg={msg}
+                alignEnd={msg.sender === 'visitor'}
+                showReply
+                onReply={() => setReplyTo(replyTargetFromMessage(msg))}
+              />
             ))}
 
             {needsDetails && (
@@ -268,13 +294,42 @@ export default function VeroChat() {
             <span>💬</span> Or chat on WhatsApp
           </a>
 
+          {replyTo && <VeroChatReplyBar replyTo={replyTo} onClear={() => setReplyTo(null)} viewer="visitor" />}
+
           <form
             onSubmit={handleSend}
             style={{
-              padding: 14, borderTop: '1px solid var(--border)',
-              display: 'flex', gap: 8, background: '#fff',
+              padding: 14,
+              borderTop: replyTo ? 'none' : '1px solid var(--border)',
+              display: 'flex', gap: 8, background: '#fff', alignItems: 'center',
             }}
           >
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={e => handlePhoto(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={loading}
+              title="Send photo"
+              aria-label="Send photo"
+              style={{
+                padding: '10px 12px',
+                borderRadius: 12,
+                border: '1.5px solid var(--border)',
+                background: '#fff',
+                fontSize: 18,
+                lineHeight: 1,
+                opacity: loading ? 0.5 : 1,
+                cursor: loading ? 'wait' : 'pointer',
+              }}
+            >
+              📷
+            </button>
             <input
               type="text"
               value={needsDetails ? pendingMessage : input}

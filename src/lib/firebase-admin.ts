@@ -1,8 +1,11 @@
+import 'server-only'
+
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 
 function normalizePrivateKey(key: string): string {
   let k = key.trim()
@@ -10,6 +13,23 @@ function normalizePrivateKey(key: string): string {
     k = k.slice(1, -1)
   }
   return k.replace(/\\n/g, '\n')
+}
+
+/** Default Firebase Storage bucket (must match Flutter / client config). */
+export function getAdminStorageBucket(): string {
+  return (
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    process.env.GOOGLE_CLOUD_STORAGE_BUCKET ||
+    'vero360app-ca423.firebasestorage.app'
+  ).trim()
+}
+
+function adminAppOptions(projectId: string) {
+  return {
+    projectId,
+    storageBucket: getAdminStorageBucket(),
+  }
 }
 
 function initAdminApp(): App {
@@ -25,6 +45,7 @@ function initAdminApp(): App {
     }
     if (raw.project_id && raw.client_email && raw.private_key) {
       return initializeApp({
+        ...adminAppOptions(raw.project_id),
         credential: cert({
           projectId: raw.project_id,
           clientEmail: raw.client_email,
@@ -46,6 +67,7 @@ function initAdminApp(): App {
         private_key: string
       }
       return initializeApp({
+        ...adminAppOptions(serviceAccount.project_id),
         credential: cert({
           projectId: serviceAccount.project_id,
           clientEmail: serviceAccount.client_email,
@@ -64,6 +86,7 @@ function initAdminApp(): App {
 
   if (clientEmail && privateKey) {
     return initializeApp({
+      ...adminAppOptions(projectId),
       credential: cert({
         projectId,
         clientEmail,
@@ -85,4 +108,9 @@ export function getAdminDb() {
 export function getAdminAuth() {
   const app = initAdminApp()
   return getAuth(app)
+}
+
+export function getAdminStorage() {
+  const app = initAdminApp()
+  return getStorage(app)
 }

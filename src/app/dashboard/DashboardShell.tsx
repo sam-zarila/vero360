@@ -21,7 +21,7 @@ type NavItem = {
   href: string
   label: string
   icon: string
-  badgeKey?: 'help' | 'courier' | 'orders' | 'users'
+  badgeKey?: 'help' | 'courier' | 'orders' | 'users' | 'reports'
 }
 
 type NavGroup = {
@@ -50,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/dashboard/marketplace', label: 'Marketplace', icon: '🛒' },
       { href: '/dashboard/orders', label: 'Orders', icon: '📦', badgeKey: 'orders' },
       { href: '/dashboard/refunds', label: 'Refunds', icon: '↩️' },
+      { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: '🚩', badgeKey: 'reports' },
       { href: '/dashboard/promotion', label: 'Promotion', icon: '📣' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: '✨' },
     ],
@@ -109,6 +110,11 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
     orders: { pending: ordersPending, toast: ordersToast, clearToast: clearOrdersToast },
     users: { newCount: newUsers, toast: usersToast, clearToast: clearUsersToast },
+    merchantReports: {
+      open: reportsOpen,
+      toast: reportsToast,
+      clearToast: clearReportsToast,
+    },
   } = useAdminAlerts()
 
   const navGroups = useMemo(() => {
@@ -154,6 +160,12 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => clearUsersToast(), 8000)
     return () => window.clearTimeout(timer)
   }, [usersToast, clearUsersToast])
+
+  useEffect(() => {
+    if (!reportsToast) return
+    const timer = window.setTimeout(() => clearReportsToast(), 8000)
+    return () => window.clearTimeout(timer)
+  }, [reportsToast, clearReportsToast])
 
   useEffect(() => {
     setOpen(false)
@@ -355,7 +367,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                             ? ordersPending
                             : item.badgeKey === 'users'
                               ? newUsers
-                              : 0
+                              : item.badgeKey === 'reports'
+                                ? reportsOpen
+                                : 0
                     const badge =
                       badgeCount > 0 ? (badgeCount > 99 ? '99+' : String(badgeCount)) : null
 
@@ -573,6 +587,58 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                       fontSize: 12,
                       fontWeight: 600,
                       color: '#1E40AF',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </div>
+            )}
+            {reportsToast && (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#FFF7ED',
+                  border: '1px solid #FED7AA',
+                  color: '#9A3412',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  boxShadow: '0 8px 24px rgba(249,115,22,0.12)',
+                }}
+              >
+                <span>🚩 {reportsToast}</span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
+                  <Link
+                    href="/dashboard/merchant-reports"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: '#C2410C',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Open
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={clearReportsToast}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #FED7AA',
+                      background: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#9A3412',
                     }}
                   >
                     Dismiss

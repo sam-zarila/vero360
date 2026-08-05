@@ -1,8 +1,10 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
+  getDocs,
   increment,
   onSnapshot,
   orderBy,
@@ -10,6 +12,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore'
@@ -17,6 +20,14 @@ import { db } from './firebase'
 
 export const VEROCHAT_COLLECTION = 'verochat_sessions'
 export const SESSION_STORAGE_KEY = 'verochat_session_id'
+
+export type ChatMessageKind = 'text' | 'image'
+
+export type VeroChatReplyTo = {
+  messageId: string
+  text: string
+  sender: 'visitor' | 'agent'
+}
 
 export type VeroChatSession = {
   visitorName: string
@@ -35,11 +46,46 @@ export type VeroChatMessage = {
   sender: 'visitor' | 'agent'
   agentName?: string
   createdAt: Timestamp
+  kind?: ChatMessageKind
+  imageUrl?: string
+  replyTo?: VeroChatReplyTo
 }
 
 export type VeroChatMessageView = VeroChatMessage & { id: string }
 
 export type VeroChatSessionView = VeroChatSession & { id: string }
+
+function parseMessage(id: string, data: Record<string, unknown>): VeroChatMessageView {
+  const replyRaw = data.replyTo
+  let replyTo: VeroChatReplyTo | undefined
+  if (replyRaw && typeof replyRaw === 'object') {
+    const r = replyRaw as Record<string, unknown>
+    const messageId = String(r.messageId ?? '').trim()
+    if (messageId) {
+      replyTo = {
+        messageId,
+        text: String(r.text ?? '').trim(),
+        sender: r.sender === 'agent' ? 'agent' : 'visitor',
+      }
+    }
+  }
+
+  return {
+    id,
+    text: String(data.text ?? ''),
+    sender: data.sender === 'agent' ? 'agent' : 'visitor',
+    agentName: data.agentName ? String(data.agentName) : undefined,
+    createdAt: data.createdAt as Timestamp,
+    kind: data.kind === 'image' ? 'image' : 'text',
+    imageUrl: data.imageUrl ? String(data.imageUrl) : undefined,
+    replyTo,
+  }
+}
+
+export function messagePreview(msg: Pick<VeroChatMessage, 'kind' | 'text' | 'imageUrl'>): string {
+  if (msg.kind === 'image') return msg.text?.trim() || '📷 Photo'
+  return msg.text?.trim() || ''
+}
 
 export function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return ''
@@ -77,6 +123,26 @@ async function notifyAgent(payload: {
   }
 }
 
+export async function uploadChatImage(sessionId: string, file: File): Promise<string> {
+  const form = new FormData()
+  form.append('sessionId', sessionId)
+  form.append('file', file)
+
+  const res = await fetch('/api/verochat/upload', {
+    method: 'POST',
+    body: form,
+  })
+
+  const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+  if (!res.ok) {
+    throw new Error(data.error || 'Upload failed')
+  }
+  if (!data.url) {
+    throw new Error('Upload failed')
+  }
+  return data.url
+}
+
 export async function ensureSession(
   sessionId: string,
   visitorName: string,
@@ -100,6 +166,7 @@ export async function ensureSession(
       text: 'Hello! This is Vero360 Help Center. How can we help you today?',
       sender: 'agent',
       agentName: 'Vero360 Help Center',
+      kind: 'text',
       createdAt: serverTimestamp(),
     })
 
@@ -112,26 +179,45 @@ export async function ensureSession(
   }
 }
 
+async function appendMessage(
+  sessionId: string,
+  message: Omit<VeroChatMessage, 'createdAt'>,
+  sessionUpdate: Record<string, unknown>,
+) {
+  const preview = messagePreview(message)
+  const payload: Record<string, unknown> = {
+    text: message.text ?? '',
+    sender: message.sender,
+    kind: message.kind ?? 'text',
+    createdAt: serverTimestamp(),
+  }
+  if (message.agentName) payload.agentName = message.agentName
+  if (message.imageUrl) payload.imageUrl = message.imageUrl
+  if (message.replyTo) payload.replyTo = message.replyTo
+
+  await addDoc(messagesRef(sessionId), payload)
+  await updateDoc(sessionRef(sessionId), {
+    lastMessage: preview,
+    updatedAt: serverTimestamp(),
+    ...sessionUpdate,
+  })
+  return preview
+}
+
 export async function sendVisitorMessage(
   sessionId: string,
   text: string,
   visitor?: { name: string; email: string },
+  replyTo?: VeroChatReplyTo,
 ) {
   const trimmed = text.trim()
   if (!trimmed) return
 
-  await addDoc(messagesRef(sessionId), {
-    text: trimmed,
-    sender: 'visitor',
-    createdAt: serverTimestamp(),
-  })
-
-  await updateDoc(sessionRef(sessionId), {
-    lastMessage: trimmed,
-    updatedAt: serverTimestamp(),
-    unreadForAgent: increment(1),
-    status: 'open',
-  })
+  const preview = await appendMessage(
+    sessionId,
+    { text: trimmed, sender: 'visitor', kind: 'text', replyTo },
+    { unreadForAgent: increment(1), status: 'open' },
+  )
 
   if (visitor) {
     notifyAgent({
@@ -139,7 +225,41 @@ export async function sendVisitorMessage(
       sessionId,
       visitorName: visitor.name,
       visitorEmail: visitor.email,
-      message: trimmed,
+      message: preview,
+    })
+  }
+}
+
+export async function sendVisitorImage(
+  sessionId: string,
+  file: File,
+  options?: {
+    caption?: string
+    visitor?: { name: string; email: string }
+    replyTo?: VeroChatReplyTo
+  },
+) {
+  const imageUrl = await uploadChatImage(sessionId, file)
+  const caption = options?.caption?.trim() || ''
+  const preview = await appendMessage(
+    sessionId,
+    {
+      text: caption,
+      sender: 'visitor',
+      kind: 'image',
+      imageUrl,
+      replyTo: options?.replyTo,
+    },
+    { unreadForAgent: increment(1), status: 'open' },
+  )
+
+  if (options?.visitor) {
+    notifyAgent({
+      type: 'new_message',
+      sessionId,
+      visitorName: options.visitor.name,
+      visitorEmail: options.visitor.email,
+      message: preview,
     })
   }
 }
@@ -148,22 +268,38 @@ export async function sendAgentMessage(
   sessionId: string,
   text: string,
   agentName = 'Vero360 Help Center',
+  replyTo?: VeroChatReplyTo,
 ) {
   const trimmed = text.trim()
   if (!trimmed) return
 
-  await addDoc(messagesRef(sessionId), {
-    text: trimmed,
-    sender: 'agent',
-    agentName,
-    createdAt: serverTimestamp(),
-  })
+  await appendMessage(
+    sessionId,
+    { text: trimmed, sender: 'agent', agentName, kind: 'text', replyTo },
+    { unreadForAgent: 0 },
+  )
+}
 
-  await updateDoc(sessionRef(sessionId), {
-    lastMessage: trimmed,
-    updatedAt: serverTimestamp(),
-    unreadForAgent: 0,
-  })
+export async function sendAgentImage(
+  sessionId: string,
+  file: File,
+  agentName = 'Vero360 Help Center',
+  options?: { caption?: string; replyTo?: VeroChatReplyTo },
+) {
+  const imageUrl = await uploadChatImage(sessionId, file)
+  const caption = options?.caption?.trim() || ''
+  await appendMessage(
+    sessionId,
+    {
+      text: caption,
+      sender: 'agent',
+      agentName,
+      kind: 'image',
+      imageUrl,
+      replyTo: options?.replyTo,
+    },
+    { unreadForAgent: 0 },
+  )
 }
 
 export async function markSessionRead(sessionId: string) {
@@ -176,9 +312,7 @@ export function subscribeToMessages(
 ): Unsubscribe {
   const q = query(messagesRef(sessionId), orderBy('createdAt', 'asc'))
   return onSnapshot(q, snap => {
-    onMessages(
-      snap.docs.map(d => ({ id: d.id, ...(d.data() as VeroChatMessage) })),
-    )
+    onMessages(snap.docs.map(d => parseMessage(d.id, d.data() as Record<string, unknown>)))
   })
 }
 
@@ -201,6 +335,19 @@ export async function closeSession(sessionId: string) {
   })
 }
 
+/** Deletes a conversation and all messages (admin inbox). */
+export async function deleteSession(sessionId: string) {
+  const msgsSnap = await getDocs(messagesRef(sessionId))
+  const docs = msgsSnap.docs
+  const chunk = 400
+  for (let i = 0; i < docs.length; i += chunk) {
+    const batch = writeBatch(db)
+    docs.slice(i, i + chunk).forEach(d => batch.delete(d.ref))
+    await batch.commit()
+  }
+  await deleteDoc(sessionRef(sessionId))
+}
+
 export function isHelpCenterSession(session: VeroChatSessionView) {
   if (session.type === 'newsletter' || session.type === 'inquiry') return false
   if (session.id.startsWith('newsletter__') || session.id.startsWith('inquiry__')) return false
@@ -210,4 +357,12 @@ export function isHelpCenterSession(session: VeroChatSessionView) {
 export function formatChatTime(value: Timestamp | null | undefined) {
   if (!value?.toDate) return ''
   return value.toDate().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+export function replyTargetFromMessage(msg: VeroChatMessageView): VeroChatReplyTo {
+  return {
+    messageId: msg.id,
+    text: messagePreview(msg),
+    sender: msg.sender,
+  }
 }
