@@ -37,7 +37,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Services',
     items: [
-      { href: '/dashboard/vero-ride', label: 'Vero Ride', icon: '🚗' },
+      { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: '🚗' },
       {
         href: '/dashboard/vero-courier',
         label: 'Vero Courier',
