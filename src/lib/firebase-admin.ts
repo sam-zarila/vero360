@@ -1,15 +1,19 @@
 import 'server-only'
 
-import { existsSync, readFileSync } from 'fs'
-import { resolve } from 'path'
 import { cert, getApps, initializeApp, type App, type ServiceAccount } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
 
+/**
+ * IMPORTANT: Do NOT import `fs` / `path` / `process.cwd()` here.
+ * That makes Next/Netlify NFT trace the entire repo and crash serverless
+ * functions with a plain-text HTTP 500 ("Internal Server Error").
+ * Use FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY (or JSON env) only.
+ */
+
 function normalizePrivateKey(key: string): string {
   let k = key.trim()
-  // Netlify UI often wraps values in quotes
   if (
     (k.startsWith('"') && k.endsWith('"')) ||
     (k.startsWith("'") && k.endsWith("'"))
@@ -27,7 +31,6 @@ function pickEnv(...keys: string[]): string {
   return ''
 }
 
-/** Parse service account from Netlify env (JSON, quoted JSON, or base64). */
 function parseServiceAccountEnv(raw: string): ServiceAccount {
   let s = raw.trim()
   if (s.charCodeAt(0) === 0xfeff) s = s.slice(1)
@@ -66,7 +69,6 @@ function parseServiceAccountEnv(raw: string): ServiceAccount {
   }
 }
 
-/** Default Firebase Storage bucket (must match Flutter / client config). */
 export function getAdminStorageBucket(): string {
   return (
     pickEnv(
@@ -96,11 +98,10 @@ function initAdminApp(): App {
   if (existing) return existing
 
   const errors: string[] = []
-
-  // 1) Prefer simple Netlify-friendly email + private key (no JSON paste issues)
   const projectId =
     pickEnv('FIREBASE_PROJECT_ID', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID') ||
     'vero360app-ca423'
+
   const clientEmail = pickEnv('FIREBASE_CLIENT_EMAIL')
   const privateKey = pickEnv('FIREBASE_PRIVATE_KEY')
   if (clientEmail && privateKey) {
@@ -120,7 +121,6 @@ function initAdminApp(): App {
     }
   }
 
-  // 2) JSON or base64 blob (try each independently)
   for (const key of [
     'FIREBASE_SERVICE_ACCOUNT_JSON',
     'FIREBASE_SERVICE_ACCOUNT_JSON_BASE64',
@@ -135,86 +135,45 @@ function initAdminApp(): App {
     }
   }
 
-  // 3) Local file path (dev only — does not exist on Netlify)
-  const jsonPath = pickEnv(
-    'FIREBASE_SERVICE_ACCOUNT_PATH',
-    'GOOGLE_APPLICATION_CREDENTIALS',
-  )
-  if (jsonPath) {
-    const resolvedPath = resolve(process.cwd(), jsonPath)
-    if (existsSync(resolvedPath)) {
-      try {
-        const serviceAccount = JSON.parse(readFileSync(resolvedPath, 'utf8')) as {
-          project_id: string
-          client_email: string
-          private_key: string
-        }
-        return initFromServiceAccount(
-          {
-            projectId: serviceAccount.project_id,
-            clientEmail: serviceAccount.client_email,
-            privateKey: normalizePrivateKey(serviceAccount.private_key),
-          },
-          serviceAccount.project_id,
-        )
-      } catch (err) {
-        errors.push(
-          `FIREBASE_SERVICE_ACCOUNT_PATH: ${err instanceof Error ? err.message : String(err)}`,
-        )
-      }
-    } else {
-      errors.push(`FIREBASE_SERVICE_ACCOUNT_PATH not found: ${resolvedPath}`)
-    }
-  }
-
   throw new Error(
-    `Firebase Admin is not configured on this host. ${
-      errors.length ? errors.join(' | ') : 'Set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY.'
-    }`,
+    `Firebase Admin is not configured. Set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY on Netlify. ${
+      errors.length ? errors.join(' | ') : ''
+    }`.trim(),
   )
 }
 
 export function getAdminDb() {
-  const app = initAdminApp()
-  return getFirestore(app)
+  return getFirestore(initAdminApp())
 }
 
 export function getAdminAuth() {
-  const app = initAdminApp()
-  return getAuth(app)
+  return getAuth(initAdminApp())
 }
 
 export function getAdminStorage() {
-  const app = initAdminApp()
-  return getStorage(app)
+  return getStorage(initAdminApp())
 }
 
-/** Non-secret status for debugging Netlify env (no private key leaked). */
+/** Non-secret status for debugging Netlify env. */
 export function getFirebaseAdminStatus() {
+  const flags = {
+    hasClientEmail: Boolean(pickEnv('FIREBASE_CLIENT_EMAIL')),
+    hasPrivateKey: Boolean(pickEnv('FIREBASE_PRIVATE_KEY')),
+    hasServiceAccountJson: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON')),
+    hasServiceAccountBase64: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON_BASE64')),
+  }
   try {
     const app = initAdminApp()
     return {
       ok: true,
       projectId: app.options.projectId || null,
-      hasClientEmail: Boolean(pickEnv('FIREBASE_CLIENT_EMAIL')),
-      hasPrivateKey: Boolean(pickEnv('FIREBASE_PRIVATE_KEY')),
-      hasServiceAccountJson: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON')),
-      hasServiceAccountBase64: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON_BASE64')),
-      hasServiceAccountPath: Boolean(
-        pickEnv('FIREBASE_SERVICE_ACCOUNT_PATH', 'GOOGLE_APPLICATION_CREDENTIALS'),
-      ),
+      ...flags,
     }
   } catch (err) {
     return {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
-      hasClientEmail: Boolean(pickEnv('FIREBASE_CLIENT_EMAIL')),
-      hasPrivateKey: Boolean(pickEnv('FIREBASE_PRIVATE_KEY')),
-      hasServiceAccountJson: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON')),
-      hasServiceAccountBase64: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON_BASE64')),
-      hasServiceAccountPath: Boolean(
-        pickEnv('FIREBASE_SERVICE_ACCOUNT_PATH', 'GOOGLE_APPLICATION_CREDENTIALS'),
-      ),
+      ...flags,
     }
   }
 }

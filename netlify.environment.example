@@ -1,14 +1,16 @@
-# Netlify — delete ALL old env vars, then add from local .env.netlify
-# Prefer these two for Admin (avoid JSON paste problems):
-#   FIREBASE_CLIENT_EMAIL
-#   FIREBASE_PRIVATE_KEY   (one line, with \n for newlines)
+# Netlify env checklist
+# 1) Delete ALL existing env vars
+# 2) Copy every line from local .env.netlify
+# 3) Redeploy
+# 4) Open https://vero360.app/api/admin/health
+#    then https://vero360.app/api/admin/health?probe=1
 #
-# Also set:
+# Required Admin credentials (no file paths):
+#   FIREBASE_CLIENT_EMAIL
+#   FIREBASE_PRIVATE_KEY
 #   VERO_SUPER_ADMIN_EMAILS=admin@vero360.app
 #
-# After deploy, check: https://vero360.app/api/admin/health
-#
-# Do NOT set FIREBASE_SERVICE_ACCOUNT_PATH on Netlify.
+# Do NOT set FIREBASE_SERVICE_ACCOUNT_PATH on Netlify (crashes functions).
 
 NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCQ5_4N2J_xwKqmY-lAa8-ifRxovoRTTYk
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=vero360app-ca423.firebaseapp.com
@@ -18,9 +20,6 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1010595167807
 NEXT_PUBLIC_FIREBASE_APP_ID=1:1010595167807:android:f63d7c7959bdb2891dc28a
 
 FIREBASE_PROJECT_ID=vero360app-ca423
-# FIREBASE_CLIENT_EMAIL=  ← from .env.netlify
-# FIREBASE_PRIVATE_KEY=   ← from .env.netlify
-
 VERO_SUPER_ADMIN_EMAILS=admin@vero360.app
 
 NEXT_PUBLIC_SITE_URL=https://vero360.app

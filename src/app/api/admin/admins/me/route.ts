@@ -12,6 +12,9 @@ import {
   parsePanelAdmin,
 } from '@/lib/admins'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 /** Current signed-in panel admin (+ whether any admins exist yet). */
 export async function GET(request: Request) {
   try {
