@@ -124,14 +124,14 @@ export function parseApiFoodItems(body: unknown): FoodItem[] {
       const cat = str(row.category).toLowerCase()
       return !cat || cat === 'food'
     })
-    .map(row => {
+    .map((row): FoodItem | null => {
       const rawId = str(row.id) || str(row._id)
       const name = str(row.name) || str(row.FoodName)
       if (!rawId || !name) return null
       return {
         key: `api:${rawId}`,
         rawId,
-        source: 'api' as const,
+        source: 'api',
         name,
         image: pickImage(row),
         restaurant: sellerName(row),
@@ -144,9 +144,9 @@ export function parseApiFoodItems(body: unknown): FoodItem[] {
         latitude: nullableNum(row.latitude ?? row.lat),
         longitude: nullableNum(row.longitude ?? row.lng),
         createdAt: tsToIso(row.createdAt),
-      } satisfies FoodItem
+      }
     })
-    .filter((item): item is FoodItem => !!item)
+    .filter((item): item is FoodItem => item != null)
 }
 
 export function parseFirestoreMarketplaceFood(

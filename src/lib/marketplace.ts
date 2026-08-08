@@ -177,7 +177,7 @@ export function parseMarketplaceListings(body: unknown): MarketplaceListing[] {
   return unwrapList(body)
     .map(row => asRecord(row))
     .filter((row): row is Record<string, unknown> => !!row)
-    .map(row => {
+    .map((row): MarketplaceListing | null => {
       const owner = ownerFromRow(row)
       const rawPhone = owner ? str(owner.phone) : ''
       const sqlId = resolveSqlId(row)
@@ -219,10 +219,10 @@ export function parseMarketplaceListings(body: unknown): MarketplaceListing[] {
         createdAt: tsToIso(row.createdAt),
         latitude: nullableNum(row.latitude ?? row.lat),
         longitude: nullableNum(row.longitude ?? row.lng),
-        source: 'api' as const,
-      } satisfies MarketplaceListing
+        source: 'api',
+      }
     })
-    .filter((item): item is MarketplaceListing => !!item)
+    .filter((item): item is MarketplaceListing => item != null)
 }
 
 /**
