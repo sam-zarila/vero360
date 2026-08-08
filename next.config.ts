@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['firebase-admin', '@google-cloud/storage'],
+  serverExternalPackages: [
+    'firebase-admin',
+    '@google-cloud/storage',
+    '@google-cloud/firestore',
+    'jose',
+    'jwks-rsa',
+  ],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
