@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { FieldValue } from 'firebase-admin/firestore'
+import { getAdminDb } from '@/lib/firebase-admin'
 
 const FORMSUBMIT_ID =
   process.env.FORMSUBMIT_ID || 'af3930657a7c20515c4324c017f006ce'
@@ -46,19 +46,22 @@ export async function POST(request: Request) {
   const inquiryId = `inquiry__${crypto.randomUUID()}`
 
   try {
-    await setDoc(doc(db, 'verochat_sessions', inquiryId), {
-      type: 'inquiry',
-      visitorName: name,
-      visitorEmail: email,
-      subject,
-      message,
-      status: 'open',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      lastMessage: message.slice(0, 200),
-      unreadForAgent: 1,
-      source: 'website_contact',
-    })
+    await getAdminDb()
+      .collection('verochat_sessions')
+      .doc(inquiryId)
+      .set({
+        type: 'inquiry',
+        visitorName: name,
+        visitorEmail: email,
+        subject,
+        message,
+        status: 'open',
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        lastMessage: message.slice(0, 200),
+        unreadForAgent: 1,
+        source: 'website_contact',
+      })
   } catch (err) {
     console.error('Inquiry Firestore error:', err)
   }
@@ -99,7 +102,6 @@ export async function POST(request: Request) {
       console.error('FormSubmit error:', data)
 
       if (needsActivation) {
-        // First-time setup: FormSubmit emailed an Activate link to info@vero360.app
         return NextResponse.json({
           success: true,
           pendingActivation: true,

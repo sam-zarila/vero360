@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { FieldValue } from 'firebase-admin/firestore'
+import { getAdminDb } from '@/lib/firebase-admin'
 
 type NewsletterBody = {
   email?: string
 }
 
 function newsletterDocId(email: string) {
-  // Deterministic id; keep Firestore path-safe (no '/')
   return `newsletter__${email.replace(/\//g, '_')}`
 }
 
@@ -32,18 +31,18 @@ export async function POST(request: Request) {
   let alreadySubscribed = false
 
   try {
-    const ref = doc(db, 'verochat_sessions', newsletterDocId(email))
-    const existing = await getDoc(ref)
-    alreadySubscribed = existing.exists()
+    const ref = getAdminDb().collection('verochat_sessions').doc(newsletterDocId(email))
+    const existing = await ref.get()
+    alreadySubscribed = existing.exists
 
     if (!alreadySubscribed) {
-      await setDoc(ref, {
+      await ref.set({
         type: 'newsletter',
         visitorName: 'Newsletter Subscriber',
         visitorEmail: email,
         status: 'closed',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         lastMessage: 'Newsletter signup',
         unreadForAgent: 0,
         source: 'website_footer',
@@ -72,7 +71,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           from,
           to: [to],
-          subject: '[Vero360] New newsletter subscriber',
+          subject: '[Vero360] New newsletter signup',
           text: `New newsletter signup\n\nEmail: ${email}\nSource: website footer`,
         }),
       })
