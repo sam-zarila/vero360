@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   const flags = {
     hasClientEmail: Boolean(process.env.FIREBASE_CLIENT_EMAIL?.trim()),
     hasPrivateKey: Boolean(process.env.FIREBASE_PRIVATE_KEY?.trim()),
+    hasPrivateKeyBase64: Boolean(process.env.FIREBASE_PRIVATE_KEY_BASE64?.trim()),
     hasServiceAccountJson: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()),
     hasServiceAccountBase64: Boolean(
       process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64?.trim(),
@@ -26,14 +27,15 @@ export async function GET(request: Request) {
 
   const probe = new URL(request.url).searchParams.get('probe') === '1'
   if (!probe) {
-    const ready = flags.hasClientEmail && flags.hasPrivateKey
+    const ready =
+      flags.hasClientEmail && (flags.hasPrivateKeyBase64 || flags.hasPrivateKey)
     return NextResponse.json({
       success: ready,
       stage: 'env',
       firebaseAdmin: flags,
       hint: ready
         ? 'Env looks set. Check /api/admin/health?probe=1 next.'
-        : 'On Netlify set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY from .env.netlify. Remove FIREBASE_SERVICE_ACCOUNT_PATH.',
+        : 'On Netlify set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY_BASE64 from .env.netlify. Remove FIREBASE_SERVICE_ACCOUNT_PATH and old FIREBASE_PRIVATE_KEY.',
     })
   }
 

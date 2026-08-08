@@ -14,13 +14,18 @@ import { getStorage } from 'firebase-admin/storage'
 
 function normalizePrivateKey(key: string): string {
   let k = key.trim()
-  if (
+  // Strip wrapping quotes (Netlify / dotenv often keep them)
+  while (
     (k.startsWith('"') && k.endsWith('"')) ||
     (k.startsWith("'") && k.endsWith("'"))
   ) {
-    k = k.slice(1, -1)
+    k = k.slice(1, -1).trim()
   }
-  return k.replace(/\\n/g, '\n')
+  // Convert escaped newlines (possibly double-escaped) to real PEM newlines
+  while (k.includes('\\n')) {
+    k = k.replace(/\\n/g, '\n')
+  }
+  return k
 }
 
 function pickEnv(...keys: string[]): string {
@@ -29,6 +34,14 @@ function pickEnv(...keys: string[]): string {
     if (typeof v === 'string' && v.trim()) return v.trim()
   }
   return ''
+}
+
+function resolvePrivateKey(): string {
+  const b64 = pickEnv('FIREBASE_PRIVATE_KEY_BASE64')
+  if (b64) {
+    return Buffer.from(b64, 'base64').toString('utf8')
+  }
+  return normalizePrivateKey(pickEnv('FIREBASE_PRIVATE_KEY'))
 }
 
 function parseServiceAccountEnv(raw: string): ServiceAccount {
@@ -103,14 +116,14 @@ function initAdminApp(): App {
     'vero360app-ca423'
 
   const clientEmail = pickEnv('FIREBASE_CLIENT_EMAIL')
-  const privateKey = pickEnv('FIREBASE_PRIVATE_KEY')
+  const privateKey = resolvePrivateKey()
   if (clientEmail && privateKey) {
     try {
       return initFromServiceAccount(
         {
           projectId,
           clientEmail,
-          privateKey: normalizePrivateKey(privateKey),
+          privateKey,
         },
         projectId,
       )
@@ -136,7 +149,7 @@ function initAdminApp(): App {
   }
 
   throw new Error(
-    `Firebase Admin is not configured. Set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY on Netlify. ${
+    `Firebase Admin is not configured. Set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY_BASE64 on Netlify. ${
       errors.length ? errors.join(' | ') : ''
     }`.trim(),
   )
@@ -159,6 +172,7 @@ export function getFirebaseAdminStatus() {
   const flags = {
     hasClientEmail: Boolean(pickEnv('FIREBASE_CLIENT_EMAIL')),
     hasPrivateKey: Boolean(pickEnv('FIREBASE_PRIVATE_KEY')),
+    hasPrivateKeyBase64: Boolean(pickEnv('FIREBASE_PRIVATE_KEY_BASE64')),
     hasServiceAccountJson: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON')),
     hasServiceAccountBase64: Boolean(pickEnv('FIREBASE_SERVICE_ACCOUNT_JSON_BASE64')),
   }
