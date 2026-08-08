@@ -36,14 +36,30 @@ export async function ensureAdminProfile(opts: {
   const db = getAdminDb()
   const ref = db.collection(ADMINS_COLLECTION).doc(opts.uid)
   const snap = await ref.get()
+  const email = opts.email.trim().toLowerCase()
+  const configured = email ? isConfiguredSuperAdminEmail(email) : false
+
   if (snap.exists) {
-    return parsePanelAdmin(opts.uid, (snap.data() || {}) as Record<string, unknown>)
+    let admin = parsePanelAdmin(opts.uid, (snap.data() || {}) as Record<string, unknown>)
+    // Break-glass: configured super emails are always kept active
+    if (configured && admin.status === 'suspended') {
+      await ref.set(
+        {
+          status: 'active',
+          role: 'super_admin',
+          email: email || admin.email,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      )
+      const fresh = await ref.get()
+      admin = parsePanelAdmin(opts.uid, (fresh.data() || {}) as Record<string, unknown>)
+    }
+    return admin
   }
 
-  const email = opts.email.trim().toLowerCase()
   if (!email) return null
 
-  const configured = isConfiguredSuperAdminEmail(email)
   const existing = await db.collection(ADMINS_COLLECTION).limit(1).get()
   const isFirstAdmin = existing.empty
 
@@ -112,7 +128,17 @@ export async function verifyPanelAdmin(
     }
 
     if (!admin) return null
-    if (admin.status === 'suspended') return null
+    if (admin.status === 'suspended') {
+      if (email && isConfiguredSuperAdminEmail(email)) {
+        await getAdminDb().collection(ADMINS_COLLECTION).doc(admin.id).set(
+          { status: 'active', role: 'super_admin', updatedAt: FieldValue.serverTimestamp() },
+          { merge: true },
+        )
+        admin = { ...admin, status: 'active', role: 'super_admin' }
+      } else {
+        return null
+      }
+    }
 
     // Touch last login (best-effort)
     try {

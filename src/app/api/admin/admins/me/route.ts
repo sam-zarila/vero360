@@ -19,6 +19,10 @@ export async function GET(request: Request) {
     const existing = await db.collection(ADMINS_COLLECTION).limit(1).get()
     const needsBootstrap = existing.empty
 
+    const hasBearer = Boolean(
+      request.headers.get('authorization') || request.headers.get('Authorization'),
+    )
+
     const actor = await verifyPanelAdmin(request)
     if (!actor) {
       return NextResponse.json(
@@ -26,11 +30,18 @@ export async function GET(request: Request) {
           success: false,
           authenticated: false,
           needsBootstrap,
+          reason: !hasBearer
+            ? 'missing_token'
+            : needsBootstrap
+              ? 'bootstrap'
+              : 'not_admin_or_token',
           error: needsBootstrap
             ? 'No admins yet. Create the first super admin from /dashboard/admins.'
-            : 'Not an active panel admin.',
+            : !hasBearer
+              ? 'Sign-in token missing.'
+              : 'Not an active panel admin. If Firebase login worked, Netlify FIREBASE_SERVICE_ACCOUNT_JSON is probably missing or invalid — token cannot be verified.',
         },
-        { status: needsBootstrap ? 200 : 401 },
+        { status: needsBootstrap || !hasBearer ? 200 : 401 },
       )
     }
 
@@ -46,7 +57,12 @@ export async function GET(request: Request) {
     if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
     console.error('Admin me GET error:', err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to resolve admin session' },
+      {
+        error:
+          err instanceof Error
+            ? err.message
+            : 'Failed to resolve admin session (check FIREBASE_SERVICE_ACCOUNT_JSON on Netlify)',
+      },
       { status: 502 },
     )
   }

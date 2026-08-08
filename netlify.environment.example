@@ -1,0 +1,33 @@
+# Netlify — delete ALL old env vars, then add from local .env.netlify
+# Prefer these two for Admin (avoid JSON paste problems):
+#   FIREBASE_CLIENT_EMAIL
+#   FIREBASE_PRIVATE_KEY   (one line, with \n for newlines)
+#
+# Also set:
+#   VERO_SUPER_ADMIN_EMAILS=admin@vero360.app
+#
+# After deploy, check: https://vero360.app/api/admin/health
+#
+# Do NOT set FIREBASE_SERVICE_ACCOUNT_PATH on Netlify.
+
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCQ5_4N2J_xwKqmY-lAa8-ifRxovoRTTYk
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=vero360app-ca423.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=vero360app-ca423
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=vero360app-ca423.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1010595167807
+NEXT_PUBLIC_FIREBASE_APP_ID=1:1010595167807:android:f63d7c7959bdb2891dc28a
+
+FIREBASE_PROJECT_ID=vero360app-ca423
+# FIREBASE_CLIENT_EMAIL=  ← from .env.netlify
+# FIREBASE_PRIVATE_KEY=   ← from .env.netlify
+
+VERO_SUPER_ADMIN_EMAILS=admin@vero360.app
+
+NEXT_PUBLIC_SITE_URL=https://vero360.app
+NEXT_PUBLIC_ADMIN_URL=https://vero360.app
+NEXT_PUBLIC_VERO_API_BASE=http://67.211.220.69:3000
+NEXT_PUBLIC_WHATSAPP_NUMBER=265992695612
+
+CONTACT_TO_EMAIL=info@vero360.app
+VEROCHAT_NOTIFY_EMAIL=info@vero360.app
+FORMSUBMIT_ID=af3930657a7c20515c4324c017f006ce

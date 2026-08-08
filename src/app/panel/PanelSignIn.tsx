@@ -32,7 +32,12 @@ export default function PanelSignIn() {
         },
         cache: 'no-store',
       })
-      const data = await res.json().catch(() => ({}))
+      const data = await res.json().catch(() => ({})) as {
+        needsBootstrap?: boolean
+        authenticated?: boolean
+        error?: string
+        me?: { status?: string }
+      }
 
       if (data?.needsBootstrap) {
         // No admins in Firestore yet — let them through to create the first one.
@@ -42,9 +47,12 @@ export default function PanelSignIn() {
 
       if (!res.ok || !data?.authenticated) {
         await signOut(auth)
+        const apiError = typeof data?.error === 'string' ? data.error.trim() : ''
         throw new Error(
-          data?.error ||
-            'This account is not an active  admin  Account. Ask a super admin to create or activate your access.',
+          apiError ||
+            (res.status >= 500
+              ? `Server error (${res.status}). Open /api/admin/health to check Firebase Admin env on Netlify.`
+              : 'This account is not an active admin. Ask a super admin to create or activate your access.'),
         )
       }
 
