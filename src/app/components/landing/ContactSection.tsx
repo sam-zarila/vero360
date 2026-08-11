@@ -115,7 +115,7 @@ export default function ContactSection() {
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@vero360.com"
+                placeholder="you@example.com"
                 style={inputStyle}
                 onFocus={onInputFocus}
                 onBlur={onInputBlur}

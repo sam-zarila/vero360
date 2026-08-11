@@ -1,8 +1,8 @@
 const items = [
     { icon: '📱', value: '8+', label: 'Services in one app' },
-    { icon: '👥', value: '5K+', label: 'Active users' },
-    { icon: '🏪', value: '200+', label: 'Merchants & partners' },
-    { icon: '⭐', value: '4.9', label: 'App store rating' },
+    { icon: '👥', value: '5K+', label: 'Users goal' },
+    { icon: '🏪', value: '20K+', label: 'Merchants goal' },
+    { icon: '🚀', value: '1 Sep', label: 'App launch 2026' },
   ]
   
   export default function TrustBar() {
