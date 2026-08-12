@@ -4,12 +4,24 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Logo from '@/app/components/landing/Logo'
+import { IconBadge, VeroIcon, type VeroIconName } from '@/app/components/landing/icons'
 import StoreDownloadLinks from '@/app/components/landing/StoreDownloadLinks'
+import type { GetStartedVideosMap } from '@/lib/get-started-videos'
 
-const roles = [
+import type { GetStartedRoleId } from '@/lib/get-started-videos'
+
+const roles: {
+  id: GetStartedRoleId
+  icon: VeroIconName
+  title: string
+  desc: string
+  cta: string
+  videoTitle: string
+  videoDesc: string
+}[] = [
   {
     id: 'customer',
-    emoji: '👤',
+    icon: 'user',
     title: 'Customer',
     desc: 'Shop, ride, order food, book stays, and access every Vero360 service as a user.',
     cta: 'Watch tutorial video',
@@ -18,7 +30,7 @@ const roles = [
   },
   {
     id: 'merchant',
-    emoji: '🏪',
+    icon: 'merchant',
     title: 'Merchant',
     desc: 'List products, manage orders, and grow your business on the Vero360 marketplace.',
     cta: 'Watch tutorial video',
@@ -27,26 +39,24 @@ const roles = [
   },
   {
     id: 'driver',
-    emoji: '🧑',
+    icon: 'steering',
     title: 'Driver',
     desc: 'Join Vero Ride and courier networks. Earn on your schedule with weekly payouts.',
     cta: 'Watch tutorial video',
     videoTitle: 'Getting started as a driver',
     videoDesc: 'Learn how to accept rides, manage deliveries, and get paid on Vero360.',
   },
-] as const
+] 
 
-type RoleId = (typeof roles)[number]['id']
-
-function isRoleId(value: string | null): value is RoleId {
+function isRoleId(value: string | null): value is GetStartedRoleId {
   return roles.some(r => r.id === value)
 }
 
-export default function GetStartedClient() {
+export default function GetStartedClient({ videos }: { videos: GetStartedVideosMap }) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const videoRef = useRef<HTMLDivElement>(null)
-  const [selectedRole, setSelectedRole] = useState<RoleId | null>(null)
+  const [selectedRole, setSelectedRole] = useState<GetStartedRoleId | null>(null)
 
   useEffect(() => {
     const role = searchParams.get('role')
@@ -58,7 +68,7 @@ export default function GetStartedClient() {
     }
   }, [searchParams])
 
-  const selectRole = (roleId: RoleId) => {
+  const selectRole = (roleId: GetStartedRoleId) => {
     setSelectedRole(roleId)
     router.replace(`/get-started?role=${roleId}`, { scroll: false })
     requestAnimationFrame(() => {
@@ -67,6 +77,8 @@ export default function GetStartedClient() {
   }
 
   const activeRole = roles.find(r => r.id === selectedRole)
+  const activeVideo = activeRole ? videos[activeRole.id] : null
+  const hasVideo = Boolean(activeVideo?.url && activeVideo.embedUrl)
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--surface)' }}>
@@ -124,8 +136,14 @@ export default function GetStartedClient() {
                   width: 56, height: 56, borderRadius: 16,
                   background: isActive ? 'var(--primary)' : 'var(--primary-light)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 28, marginBottom: 20,
-                }}>{role.emoji}</div>
+                  marginBottom: 20,
+                }}>
+                  <VeroIcon
+                    name={role.icon}
+                    size={26}
+                    color={isActive ? '#fff' : 'var(--primary-dark)'}
+                  />
+                </div>
                 <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10, fontFamily: 'var(--font-display)' }}>
                   {role.title}
                 </h2>
@@ -172,6 +190,34 @@ export default function GetStartedClient() {
             <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.7, marginBottom: 24 }}>
               {activeRole.videoDesc}
             </p>
+            {hasVideo && (activeVideo?.kind === 'youtube' || activeVideo?.kind === 'vimeo') ? (
+              <iframe
+                title={activeRole.videoTitle}
+                src={activeVideo.embedUrl || ''}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{
+                  width: '100%',
+                  aspectRatio: '16 / 9',
+                  border: 0,
+                  borderRadius: 16,
+                  background: '#0f172a',
+                }}
+              />
+            ) : hasVideo ? (
+              <video
+                src={activeVideo?.url || ''}
+                controls
+                playsInline
+                preload="metadata"
+                style={{
+                  width: '100%',
+                  aspectRatio: '16 / 9',
+                  borderRadius: 16,
+                  background: '#0f172a',
+                }}
+              />
+            ) : (
             <div style={{
               aspectRatio: '16 / 9',
               borderRadius: 16,
@@ -192,6 +238,7 @@ export default function GetStartedClient() {
                 Tutorial video for {activeRole.title.toLowerCase()}s — coming soon
               </p>
             </div>
+            )}
             <div style={{ marginTop: 24, textAlign: 'center' }}>
               <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.7, marginBottom: 20 }}>
                 Open the Vero360 app and create your {activeRole.title.toLowerCase()} account.

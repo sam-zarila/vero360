@@ -1,86 +1,84 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { IconBadge, type VeroIconName } from './icons'
 
-const services = [
+const services: {
+  id: string
+  icon: VeroIconName
+  name: string
+  tagline: string
+  desc: string
+  features: string[]
+  videoTitle: string
+  videoDesc: string
+  videoUrl: string | null
+}[] = [
   {
     id: 'vero-ride',
-    emoji: '🚗',
+    icon: 'car',
     name: 'Vero Ride',
     tagline: 'Transport on demand',
     desc: 'Book cars, bikes, and airport pickups. Track your driver in real-time with upfront pricing.',
-    badge: 'Popular',
-    badgeColor: '#F97316',
     features: ['Cars, SUVs & bikes', 'Airport pickup', 'Live tracking'],
     videoTitle: 'How to use Vero Ride',
     videoDesc: 'Learn how to book a ride, track your driver, and pay securely on Vero360.',
-    // Set to a video URL or embed src when the tutorial is ready
-    videoUrl: null as string | null,
+    videoUrl: null,
   },
   {
     id: 'marketplace',
-    emoji: '🛒',
+    icon: 'cart',
     name: 'Marketplace',
     tagline: 'Shop local',
     desc: 'Browse products from verified merchants. Secure payments held until both parties are satisfied.',
-    badge: 'New',
-    badgeColor: '#22C55E',
     features: ['Verified sellers', 'Secure escrow', 'Fast delivery'],
     videoTitle: 'How to use Marketplace',
     videoDesc: 'See how to browse products, place orders, and shop safely with escrow on Vero360.',
-    videoUrl: null as string | null,
+    videoUrl: null,
   },
   {
     id: 'vero-courier',
-    emoji: '🚚',
+    icon: 'truck',
     name: 'Vero Courier',
     tagline: 'Send anything',
     desc: 'Same-day parcel and document delivery across the city. Track your package every step of the way.',
-    badge: 'Fast',
-    badgeColor: '#F59E0B',
     features: ['Same-day delivery', 'Live tracking', 'Proof of delivery'],
     videoTitle: 'How to use Vero Courier',
     videoDesc: 'Learn how to send parcels, track deliveries, and confirm receipt on Vero360.',
-    videoUrl: null as string | null,
+    videoUrl: null,
   },
   {
     id: 'food',
-    emoji: '🍔',
+    icon: 'food',
     name: 'Food',
     tagline: 'Order nearby',
     desc: 'Discover restaurants and food vendors near you. Order meals and get them delivered to your door.',
-    badge: 'Trending',
-    badgeColor: '#EF4444',
     features: ['Local restaurants', 'Quick delivery', 'Easy reorder'],
     videoTitle: 'How to order food',
     videoDesc: 'Learn how to find restaurants, place food orders, and track delivery on Vero360.',
-    videoUrl: null as string | null,
+    videoUrl: null,
   },
   {
     id: 'stay',
-    emoji: '🛏️',
+    icon: 'bed',
     name: 'Stay',
     tagline: 'Accommodation',
     desc: 'Book hotels, lodges, and short-stay accommodation. Compare options and reserve in seconds.',
-    badge: 'Book now',
-    badgeColor: '#8B5CF6',
     features: ['Hotels & lodges', 'Instant booking', 'Best rates'],
     videoTitle: 'How to book accommodation',
     videoDesc: 'See how to browse stays, compare options, and complete a booking on Vero360.',
-    videoUrl: null as string | null,
+    videoUrl: null,
   },
   {
     id: 'jobs',
-    emoji: '💼',
+    icon: 'briefcase',
     name: 'Jobs',
     tagline: 'Find work',
     desc: 'Browse job listings and connect with employers. Apply directly from the app.',
-    badge: 'Hiring',
-    badgeColor: '#3B82F6',
     features: ['Local listings', 'Easy apply', 'Employer chat'],
     videoTitle: 'How to find jobs',
     videoDesc: 'Learn how to browse listings, apply for roles, and chat with employers on Vero360.',
-    videoUrl: null as string | null,
+    videoUrl: null,
   },
 ]
 
@@ -123,7 +121,7 @@ export default function ServicesSection() {
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24,
         }} className="services-grid">
-          {services.map((s, i) => (
+          {services.map(s => (
             <div key={s.id} className="service-card" style={{
               background: '#fff',
               borderRadius: 20, border: '1px solid var(--border)',
@@ -132,23 +130,13 @@ export default function ServicesSection() {
             }}>
               <div style={{
                 padding: '32px 28px 24px',
-                background: i % 3 === 0
-                  ? 'linear-gradient(135deg, #FFF7ED, #FFEDD5)'
-                  : i % 3 === 1
-                  ? 'linear-gradient(135deg, #FFFBEB, #FEF3C7)'
-                  : 'linear-gradient(135deg, #F9FAFB, #F3F4F6)',
+                background: 'var(--surface)',
+                borderBottom: '1px solid var(--border)',
               }}>
-                <div style={{
-                  fontSize: 48, marginBottom: 16,
-                  filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))',
-                }}>{s.emoji}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <h3 style={{ fontSize: 20, fontWeight: 700 }}>{s.name}</h3>
-                  <span style={{
-                    padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700,
-                    background: s.badgeColor, color: '#fff',
-                  }}>{s.badge}</span>
+                <div style={{ marginBottom: 16 }}>
+                  <IconBadge name={s.icon} size={24} />
                 </div>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{s.name}</h3>
                 <p style={{ fontSize: 13, color: 'var(--text-3)' }}>{s.tagline}</p>
               </div>
 
@@ -175,7 +163,7 @@ export default function ServicesSection() {
                   <button
                     type="button"
                     onClick={() => setActiveService(s)}
-                    className={i === 0 ? 'service-cta service-cta-primary' : 'service-cta service-cta-secondary'}
+                    className="service-cta service-cta-secondary"
                   >
                     View tutorial
                   </button>
@@ -215,11 +203,12 @@ export default function ServicesSection() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
               <div>
                 <span style={{
-                  display: 'inline-block', padding: '4px 12px', marginBottom: 10,
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '4px 12px', marginBottom: 10,
                   background: 'var(--primary-light)', color: 'var(--primary-dark)',
                   borderRadius: 100, fontSize: 12, fontWeight: 700,
                 }}>
-                  {activeService.emoji} {activeService.name} tutorial
+                  {activeService.name} tutorial
                 </span>
                 <h3 id="tutorial-title" style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)' }}>
                   {activeService.videoTitle}
@@ -247,7 +236,7 @@ export default function ServicesSection() {
               aspectRatio: '16 / 9',
               borderRadius: 16,
               overflow: 'hidden',
-              background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+              background: '#1e293b',
             }}>
               {activeService.videoUrl ? (
                 <iframe
@@ -265,7 +254,7 @@ export default function ServicesSection() {
                 }}>
                   <div style={{
                     width: 64, height: 64, borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.15)',
+                    background: 'rgba(255,255,255,0.12)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <svg width="28" height="28" fill="#fff" viewBox="0 0 24 24" aria-hidden>
@@ -292,8 +281,6 @@ export default function ServicesSection() {
           transition: all 0.2s; cursor: pointer;
           font-family: inherit;
         }
-        .service-cta-primary { background: var(--primary); border: none; color: #fff; }
-        .service-cta-primary:hover { background: var(--primary-dark); }
         .service-cta-secondary { background: transparent; border: 1.5px solid var(--border-2); color: var(--text-2); }
         .service-cta-secondary:hover { border-color: var(--primary); color: var(--primary); }
         @media (max-width: 900px) { .services-grid { grid-template-columns: 1fr 1fr !important; } }

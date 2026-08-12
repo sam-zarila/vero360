@@ -3,14 +3,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { signOut } from 'firebase/auth'
 import Logo from '@/app/components/landing/Logo'
-import { AdminAlertsProvider, useAdminAlerts } from './AdminAlertsProvider'
+import { VeroIcon } from '@/app/components/landing/icons'
+import { auth } from '@/lib/firebase'
+import { DASHBOARD_NAV_GROUPS } from '@/lib/dashboard-sections'
+import { AdminAlertsProvider, useAdminAlerts, useHelpCenterUnreadBadge } from './AdminAlertsProvider'
 import { ConfirmDialogProvider } from './ConfirmDialog'
 import {
   isSuperAdminOnlyPath,
   PanelSessionProvider,
   usePanelSession,
 } from './PanelSessionProvider'
+<<<<<<< HEAD
 import {
   isHelpCenterSession,
   subscribeToSessions,
@@ -83,6 +88,8 @@ function getHelpCenterUnread(sessions: VeroChatSessionView[]) {
     .filter(isHelpCenterSession)
     .reduce((sum, s) => sum + (s.unreadForAgent || 0), 0)
 }
+=======
+>>>>>>> 8662bc56413d6cc08b4740f609f2d8012f2f5027
 
 function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard'
@@ -91,13 +98,13 @@ function isActivePath(pathname: string, href: string) {
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
-    <AdminAlertsProvider>
-      <PanelSessionProvider>
+    <PanelSessionProvider>
+      <AdminAlertsProvider>
         <ConfirmDialogProvider>
           <DashboardShellInner>{children}</DashboardShellInner>
         </ConfirmDialogProvider>
-      </PanelSessionProvider>
-    </AdminAlertsProvider>
+      </AdminAlertsProvider>
+    </PanelSessionProvider>
   )
 }
 
@@ -105,7 +112,8 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [unread, setUnread] = useState(0)
+  const [signingOut, setSigningOut] = useState(false)
+  const unread = useHelpCenterUnreadBadge()
   const { isSuperAdmin, loading: sessionLoading, authenticated } = usePanelSession()
   const {
     courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
@@ -119,8 +127,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   } = useAdminAlerts()
 
   const navGroups = useMemo(() => {
-    return NAV_GROUPS.map(group => ({
+    return DASHBOARD_NAV_GROUPS.map(group => ({
       ...group,
+<<<<<<< HEAD
       items: group.items.filter(item => {
         if (
           item.href === '/dashboard/finance' ||
@@ -131,6 +140,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         }
         return true
       }),
+=======
+      items: group.items.filter(item => !item.superAdminOnly || isSuperAdmin),
+>>>>>>> 8662bc56413d6cc08b4740f609f2d8012f2f5027
     })).filter(group => group.items.length > 0)
   }, [isSuperAdmin])
 
@@ -141,12 +153,6 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       router.replace('/dashboard')
     }
   }, [sessionLoading, isSuperAdmin, pathname, router, authenticated])
-
-  useEffect(() => {
-    return subscribeToSessions(sessions => {
-      setUnread(getHelpCenterUnread(sessions))
-    })
-  }, [])
 
   useEffect(() => {
     if (!courierToast) return
@@ -188,6 +194,17 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = ''
     }
   }, [open])
+
+  const handleSignOut = async () => {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await signOut(auth)
+    } catch {
+      // Still send them to the sign-in page if Firebase sign-out fails.
+    }
+    router.push('/panel')
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface)' }}>
@@ -254,8 +271,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             <Link href="/" style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-3)' }}>
               Website
             </Link>
-            <Link
-              href="/panel"
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
               style={{
                 fontSize: 14,
                 fontWeight: 600,
@@ -263,10 +282,13 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 background: 'var(--primary)',
                 padding: '8px 14px',
                 borderRadius: 10,
+                border: 'none',
+                cursor: signingOut ? 'wait' : 'pointer',
+                opacity: signingOut ? 0.75 : 1,
               }}
             >
-              Sign out
-            </Link>
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
           </div>
         </div>
       </header>
@@ -399,12 +421,11 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                             transition: 'background 0.15s ease, color 0.15s ease',
                           }}
                         >
-                          <span
-                            aria-hidden
-                            style={{ width: 22, textAlign: 'center', fontSize: 15 }}
-                          >
-                            {item.icon}
-                          </span>
+                          <VeroIcon
+                            name={item.icon}
+                            size={18}
+                            style={{ flexShrink: 0, opacity: active ? 1 : 0.85 }}
+                          />
                           <span style={{ flex: 1 }}>{item.label}</span>
                           {badge && (
                             <span
@@ -462,7 +483,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   boxShadow: '0 8px 24px rgba(249,115,22,0.16)',
                 }}
               >
-                <span>🚚 {courierToast}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="truck" size={18} />
+                  {courierToast}
+                </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
                   <Link
                     href="/dashboard/vero-courier"
@@ -514,7 +538,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   boxShadow: '0 8px 24px rgba(3,105,161,0.12)',
                 }}
               >
-                <span>📦 {ordersToast}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="package" size={18} />
+                  {ordersToast}
+                </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
                   <Link
                     href="/dashboard/orders"
@@ -566,7 +593,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   boxShadow: '0 8px 24px rgba(37,99,235,0.12)',
                 }}
               >
-                <span>👥 {usersToast}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="users" size={18} />
+                  {usersToast}
+                </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
                   <Link
                     href="/dashboard/users"
@@ -618,7 +648,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   boxShadow: '0 8px 24px rgba(249,115,22,0.12)',
                 }}
               >
-                <span>🚩 {reportsToast}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="flag" size={18} />
+                  {reportsToast}
+                </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
                   <Link
                     href="/dashboard/merchant-reports"

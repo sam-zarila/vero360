@@ -1,10 +1,12 @@
-export const exploreServices = [
-  { emoji: '🚗', name: 'Vero Ride', desc: 'Cars, SUVs & bikes on demand' },
-  { emoji: '✈️', name: 'Airport Pickup', desc: 'Scheduled airport transfers' },
-  { emoji: '🚚', name: 'Vero Courier', desc: 'Same-day parcel delivery' },
-  { emoji: '🚲', name: 'Vero Bike', desc: 'Quick rides on two wheels' },
-  { emoji: '🍔', name: 'Food', desc: 'Order from nearby restaurants' },
-  { emoji: '🛏️', name: 'Accommodation', desc: 'Hotels, lodges & short stays' },
+import type { VeroIconName } from './icons'
+
+export const exploreServices: { icon: VeroIconName; name: string; desc: string }[] = [
+  { icon: 'car', name: 'Vero Ride', desc: 'Cars, SUVs & bikes on demand' },
+  { icon: 'plane', name: 'Airport Pickup', desc: 'Scheduled airport transfers' },
+  { icon: 'truck', name: 'Vero Courier', desc: 'Same-day parcel delivery' },
+  { icon: 'bike', name: 'Vero Bike', desc: 'Quick rides on two wheels' },
+  { icon: 'food', name: 'Food', desc: 'Order from nearby restaurants' },
+  { icon: 'bed', name: 'Accommodation', desc: 'Hotels, lodges & short stays' },
 ]
 
 export const appStoreLinks = {

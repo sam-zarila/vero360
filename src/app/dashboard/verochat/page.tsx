@@ -8,20 +8,23 @@ import { useConfirmDelete } from '../ConfirmDialog'
 import {
   closeSession,
   deleteSession,
+  hydrateMessage,
+  hydrateSession,
   isHelpCenterSession,
   markSessionRead,
   replyTargetFromMessage,
   sendAgentImage,
   sendAgentMessage,
-  subscribeToMessages,
-  subscribeToSessions,
   type VeroChatMessageView,
   type VeroChatReplyTo,
   type VeroChatSessionView,
 } from '@/lib/verochat'
+import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { usePanelSession } from '../PanelSessionProvider'
 
 export default function HelpCenterInbox() {
   const confirmDelete = useConfirmDelete()
+  const { authenticated, loading: sessionLoading } = usePanelSession()
   const [sessions, setSessions] = useState<VeroChatSessionView[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<VeroChatMessageView[]>([])
@@ -38,18 +41,61 @@ export default function HelpCenterInbox() {
   const closed = active?.status === 'closed'
 
   useEffect(() => {
-    return subscribeToSessions(setSessions)
-  }, [])
+    if (sessionLoading || !authenticated) return
+    let cancelled = false
+
+    const tick = async () => {
+      try {
+        const headers = await panelAuthHeaders()
+        const res = await fetch('/api/admin/verochat/sessions', { headers, cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || cancelled) return
+        const next = Array.isArray(data.sessions) ? data.sessions.map(hydrateSession) : []
+        setSessions(next)
+      } catch {
+        // keep last list
+      }
+    }
+
+    void tick()
+    const id = window.setInterval(() => void tick(), 4000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [sessionLoading, authenticated])
 
   useEffect(() => {
-    if (!activeId) {
+    if (!activeId || sessionLoading || !authenticated) {
       setMessages([])
       return
     }
-    const unsub = subscribeToMessages(activeId, setMessages)
+    let cancelled = false
+
+    const tick = async () => {
+      try {
+        const headers = await panelAuthHeaders()
+        const res = await fetch(`/api/admin/verochat/sessions/${activeId}/messages`, {
+          headers,
+          cache: 'no-store',
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || cancelled) return
+        const next = Array.isArray(data.messages) ? data.messages.map(hydrateMessage) : []
+        setMessages(next)
+      } catch {
+        // keep last messages
+      }
+    }
+
+    void tick()
     markSessionRead(activeId).catch(() => {})
-    return unsub
-  }, [activeId])
+    const id = window.setInterval(() => void tick(), 3000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [activeId, sessionLoading, authenticated])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })

@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react'
 import { useCourierAlerts, type CourierAlertState } from '@/lib/courier-alerts'
+import { useHelpCenterUnread } from '@/lib/help-center-alerts'
 import { useMerchantReportAlerts, type MerchantReportAlertState } from '@/lib/merchant-report-alerts'
 import { useOrderAlerts, type OrderAlertState } from '@/lib/order-alerts'
 import { useUserAlerts, type UserAlertState } from '@/lib/user-alerts'
@@ -11,6 +12,7 @@ type AdminAlertsContextValue = {
   orders: OrderAlertState
   users: UserAlertState
   merchantReports: MerchantReportAlertState
+  helpUnread: number
 }
 
 const AdminAlertsContext = createContext<AdminAlertsContextValue | null>(null)
@@ -20,8 +22,9 @@ export function AdminAlertsProvider({ children }: { children: React.ReactNode })
   const orders = useOrderAlerts()
   const users = useUserAlerts()
   const merchantReports = useMerchantReportAlerts()
+  const helpUnread = useHelpCenterUnread()
   return (
-    <AdminAlertsContext.Provider value={{ courier, orders, users, merchantReports }}>
+    <AdminAlertsContext.Provider value={{ courier, orders, users, merchantReports, helpUnread }}>
       {children}
     </AdminAlertsContext.Provider>
   )
@@ -54,4 +57,9 @@ export function useNewUsersBadge() {
 export function useMerchantReportsOpenBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.merchantReports.open ?? 0
+}
+
+export function useHelpCenterUnreadBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.helpUnread ?? 0
 }

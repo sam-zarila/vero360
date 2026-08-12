@@ -1,16 +1,18 @@
-# Netlify env checklist
-# 1) Delete ALL existing env vars
-# 2) Copy every line from local .env.netlify
-# 3) Redeploy
-# 4) Open https://vero360.app/api/admin/health
-#    then https://vero360.app/api/admin/health?probe=1
+# Use local file: .env.netlify
 #
-# Required Admin credentials (no file paths):
+# On Netlify, set ALL keys from .env.netlify.
+# Critical Admin pair:
 #   FIREBASE_CLIENT_EMAIL
-#   FIREBASE_PRIVATE_KEY
-#   VERO_SUPER_ADMIN_EMAILS=admin@vero360.app
+#   FIREBASE_PRIVATE_KEY_BASE64   ← prefer this (no newline paste issues)
 #
-# Do NOT set FIREBASE_SERVICE_ACCOUNT_PATH on Netlify (crashes functions).
+# Remove:
+#   FIREBASE_SERVICE_ACCOUNT_PATH
+#   FIREBASE_PRIVATE_KEY          (old broken paste)
+#   FIREBASE_SERVICE_ACCOUNT_JSON
+#
+# Then check:
+#   https://vero360.app/api/admin/health
+#   https://vero360.app/api/admin/health?probe=1
 
 NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCQ5_4N2J_xwKqmY-lAa8-ifRxovoRTTYk
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=vero360app-ca423.firebaseapp.com

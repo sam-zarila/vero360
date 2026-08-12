@@ -1,24 +1,25 @@
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
+import { IconBadge, type VeroIconName } from '@/app/components/landing/icons'
 
-const openings = [
+const openings: { icon: VeroIconName; title: string; desc: string }[] = [
   {
-    emoji: '📣',
+    icon: 'megaphone',
     title: 'Marketing',
     desc: 'Help us grow Vero360 across Malawi — campaigns, partnerships, community outreach, and brand strategy.',
   },
   {
-    emoji: '🎨',
+    icon: 'palette',
     title: 'Graphic Design',
     desc: 'Create visuals for our app, social media, marketing materials, and brand identity.',
   },
   {
-    emoji: '🎬',
+    icon: 'video',
     title: 'Video & Content Creation',
     desc: 'Produce tutorials, promotional videos, and social content that tells the Vero360 story.',
   },
   {
-    emoji: '💻',
+    icon: 'code',
     title: 'Developers',
     desc: 'Build and improve our platform — mobile, web, and backend systems that power everyday services.',
   },
@@ -68,12 +69,9 @@ export default function CareersPage() {
               padding: '32px 28px',
               boxShadow: 'var(--shadow)',
             }}>
-              <div style={{
-                width: 52, height: 52, borderRadius: 14,
-                background: 'var(--primary-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 26, marginBottom: 18,
-              }}>{role.emoji}</div>
+              <div style={{ marginBottom: 18 }}>
+                <IconBadge name={role.icon} size={22} />
+              </div>
               <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 10, fontFamily: 'var(--font-display)' }}>
                 {role.title}
               </h2>

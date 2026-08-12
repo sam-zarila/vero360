@@ -13,7 +13,7 @@ const reviews = [
       avatar: 'DC',
       avatarColor: '#D97706',
       stars: 5,
-      text: 'I have vero merchant account, super easy to use and very convenient,i post,edit,manage my listings and accept payments.',
+      text: 'I have a Vero merchant account. It is easy to use — I post, edit, and manage my listings and accept payments in one place.',
     },
     {
       name: 'Peter Chanda',
@@ -44,7 +44,7 @@ const reviews = [
             <h2 style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: '-0.5px', marginBottom: 16 }}>
               What people say
             </h2>
-            <p style={{ fontSize: 17, color: 'var(--text-3)' }}>Real stories from Vero360 riders and drivers.</p>
+            <p style={{ fontSize: 17, color: 'var(--text-3)' }}>Stories from early Vero360 riders, merchants, and drivers.</p>
           </div>
   
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }} className="reviews-grid">

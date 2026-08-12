@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useCourierPendingBadge, useMerchantReportsOpenBadge, useNewUsersBadge, useOrdersPendingBadge } from './AdminAlertsProvider'
-import { usePanelSession } from './PanelSessionProvider'
+import { VeroIcon } from '@/app/components/landing/icons'
+import { DASHBOARD_SECTIONS } from '@/lib/dashboard-sections'
 import {
+<<<<<<< HEAD
   isHelpCenterSession,
   subscribeToSessions,
   type VeroChatSessionView,
@@ -149,20 +149,23 @@ function getHelpCenterUnread(sessions: VeroChatSessionView[]) {
     .filter(isHelpCenterSession)
     .reduce((sum, s) => sum + (s.unreadForAgent || 0), 0)
 }
+=======
+  useCourierPendingBadge,
+  useHelpCenterUnreadBadge,
+  useMerchantReportsOpenBadge,
+  useNewUsersBadge,
+  useOrdersPendingBadge,
+} from './AdminAlertsProvider'
+import { usePanelSession } from './PanelSessionProvider'
+>>>>>>> 8662bc56413d6cc08b4740f609f2d8012f2f5027
 
 export default function DashboardCards() {
-  const [unread, setUnread] = useState(0)
+  const unread = useHelpCenterUnreadBadge()
   const courierPending = useCourierPendingBadge()
   const ordersPending = useOrdersPendingBadge()
   const newUsers = useNewUsersBadge()
   const reportsOpen = useMerchantReportsOpenBadge()
   const { isSuperAdmin } = usePanelSession()
-
-  useEffect(() => {
-    return subscribeToSessions(sessions => {
-      setUnread(getHelpCenterUnread(sessions))
-    })
-  }, [])
 
   return (
     <div
@@ -173,9 +176,7 @@ export default function DashboardCards() {
         gap: 18,
       }}
     >
-      {cards
-        .filter(card => !('superAdminOnly' in card && card.superAdminOnly) || isSuperAdmin)
-        .map(card => {
+      {DASHBOARD_SECTIONS.filter(card => !card.superAdminOnly || isSuperAdmin).map(card => {
         const isHelp = card.id === 'verochat'
         const isCourier = card.id === 'vero-courier'
         const isOrders = card.id === 'orders'
@@ -281,11 +282,10 @@ export default function DashboardCards() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 24,
                 position: 'relative',
               }}
             >
-              {card.icon}
+              <VeroIcon name={card.icon} size={24} color={card.color} />
               {showBadge && (
                 <span
                   style={{
