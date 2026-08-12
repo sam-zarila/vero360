@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
+import { VeroIcon } from '@/app/components/landing/icons'
 import { loadMerchantStore } from '@/lib/merchant-store'
 import { categoryLabel, resolveMarketplaceImage } from '@/lib/marketplace'
 import { formatMwk } from '@/lib/vero-api'
@@ -59,7 +60,6 @@ export default async function DashboardMerchantStorePage({ params }: Props) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 28,
           }}
         >
           {profile.profileUrl ? (
@@ -72,7 +72,7 @@ export default async function DashboardMerchantStorePage({ params }: Props) {
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
-            '🏪'
+            <VeroIcon name="store" size={32} color="#9CA3AF" />
           )}
         </div>
         <div style={{ flex: '1 1 220px' }}>
@@ -147,10 +147,9 @@ export default async function DashboardMerchantStorePage({ params }: Props) {
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#9CA3AF',
-                        fontSize: 32,
                       }}
                     >
-                      📦
+                      <VeroIcon name="package" size={32} color="#9CA3AF" />
                     </div>
                   )}
                 </div>

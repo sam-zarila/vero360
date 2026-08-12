@@ -3,30 +3,31 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import DownloadAppModal from './DownloadAppModal'
+import { IconBadge, VeroIcon, type VeroIconName } from './icons'
 
 const stats = [
   { value: '8+', label: 'Services in one app' },
-  { value: '5K+', label: 'Users goal' },
-  { value: '20K+', label: 'Merchants goal' },
+  { value: '5K+', label: 'Community target' },
+  { value: '20K+', label: 'Merchant partners' },
 ]
 
-const quickServices = [
-  { emoji: '🚗', label: 'Vero Ride' },
-  { emoji: '✈️', label: 'Airport' },
-  { emoji: '🚚', label: 'Courier' },
-  { emoji: '🚲', label: 'Vero Bike' },
-  { emoji: '💱', label: 'Forex' },
-  { emoji: '🍔', label: 'Food' },
-  { emoji: '💼', label: 'Jobs' },
-  { emoji: '🛏️', label: 'Stay' },
+const quickServices: { icon: VeroIconName; label: string }[] = [
+  { icon: 'car', label: 'Vero Ride' },
+  { icon: 'plane', label: 'Airport' },
+  { icon: 'truck', label: 'Courier' },
+  { icon: 'bike', label: 'Vero Bike' },
+  { icon: 'forex', label: 'Forex' },
+  { icon: 'food', label: 'Food' },
+  { icon: 'briefcase', label: 'Jobs' },
+  { icon: 'bed', label: 'Stay' },
 ]
 
-const navItems = [
-  { icon: '🏠', label: 'Home', active: true },
-  { icon: '🏪', label: 'Market' },
-  { icon: '🛒', label: 'Cart' },
-  { icon: '💬', label: 'Chat' },
-  { icon: '▦', label: 'More' },
+const navItems: { icon: VeroIconName; label: string; active?: boolean }[] = [
+  { icon: 'home', label: 'Home', active: true },
+  { icon: 'store', label: 'Market' },
+  { icon: 'cart', label: 'Cart' },
+  { icon: 'chat', label: 'Chat' },
+  { icon: 'grid', label: 'More' },
 ]
 
 function getGreeting(hour: number) {
@@ -69,28 +70,16 @@ export default function HeroSection() {
   return (
     <section style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #9A3412 0%, #F97316 45%, #EA580C 100%)',
+      background: 'linear-gradient(160deg, #9A3412 0%, #EA580C 55%, #F97316 100%)',
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
       alignItems: 'center',
     }}>
       <div style={{
-        position: 'absolute', top: -100, right: -100,
-        width: 500, height: 500, borderRadius: '50%',
-        background: 'rgba(255,255,255,0.12)',
-        filter: 'blur(60px)',
-      }}/>
-      <div style={{
-        position: 'absolute', bottom: -150, left: -80,
-        width: 400, height: 400, borderRadius: '50%',
-        background: 'rgba(255,255,255,0.06)',
-        filter: 'blur(60px)',
-      }}/>
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
-        backgroundSize: '40px 40px',
+        position: 'absolute', top: -120, right: -80,
+        width: 420, height: 420, borderRadius: '50%',
+        background: 'rgba(255,255,255,0.08)',
         pointerEvents: 'none',
       }}/>
 
@@ -108,7 +97,7 @@ export default function HeroSection() {
             borderRadius: 100, padding: '6px 16px', marginBottom: 28,
           }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }}/>
-            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: 500 }}>Malawi&apos;s super app</span>
+            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: 500 }}>Malawi&apos;s First Super App</span>
           </div>
 
           <h1 style={{
@@ -125,9 +114,8 @@ export default function HeroSection() {
             fontSize: 18, color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.7, marginBottom: 40, maxWidth: 480,
           }}>
-            Welcome to Vero360 App, the smarter way to connect with everyday services. From Marketplace 
-            and transport to food delivery, jobs, accommodation, and more, we&apos;ve got everything
-            you need in one secure app.
+            Welcome to Vero360   a smarter way to connect with everyday services. From marketplace
+            and transport to food delivery, jobs, accommodation, and more in one secure platform.
           </p>
 
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 52 }} className="hero-ctas">
@@ -253,12 +241,13 @@ export default function HeroSection() {
                     width: 28, height: 28, borderRadius: '50%',
                     background: 'rgba(255,255,255,0.2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12,
-                  }}>🔔</div>
+                  }}>
+                    <VeroIcon name="bell" size={13} color="#fff" strokeWidth={2} />
+                  </div>
                 </div>
 
                 <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, marginBottom: 2 }}>
-                  {now ? getGreeting(now.getHours()) : 'Good day'} 👋
+                  {now ? getGreeting(now.getHours()) : 'Good day'}
                 </p>
                 <p style={{ color: '#fff', fontWeight: 800, fontSize: 17, fontFamily: 'var(--font-display)', marginBottom: 2, letterSpacing: '-0.3px' }}>Hi, there</p>
                 <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, marginBottom: 10 }}>What do you need today?</p>
@@ -269,7 +258,7 @@ export default function HeroSection() {
                   display: 'flex', alignItems: 'center', gap: 8,
                   boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
                 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-4)' }}>🔍</span>
+                  <VeroIcon name="search" size={12} color="var(--text-4)" strokeWidth={2} />
                   <span style={{ color: 'var(--text-4)', fontSize: 10 }}>what are you looking for?</span>
                 </div>
               </div>
@@ -283,18 +272,17 @@ export default function HeroSection() {
                   <div style={{
                     padding: '5px 10px', borderRadius: 100, fontSize: 9, fontWeight: 600,
                     background: 'var(--primary)', color: '#fff', whiteSpace: 'nowrap',
-                    display: 'flex', alignItems: 'center', gap: 4,
-                  }}>⚡ Lightning deals</div>
+                  }}>Deals</div>
                   <div style={{
                     padding: '5px 10px', borderRadius: 100, fontSize: 9, fontWeight: 500,
                     background: '#fff', color: 'var(--text-2)', whiteSpace: 'nowrap',
                     border: '1px solid var(--border)',
-                  }}>🌍 Explore nearby</div>
+                  }}>Nearby</div>
                   <div style={{
                     padding: '5px 10px', borderRadius: 100, fontSize: 9, fontWeight: 500,
                     background: '#fff', color: 'var(--text-2)', whiteSpace: 'nowrap',
                     border: '1px solid var(--border)',
-                  }}>⭐ Top rated</div>
+                  }}>Top rated</div>
                 </div>
 
                 {/* Quick Services card */}
@@ -313,8 +301,10 @@ export default function HeroSection() {
                           width: 40, height: 40, borderRadius: 12,
                           background: 'var(--primary-light)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 16, margin: '0 auto 4px',
-                        }}>{s.emoji}</div>
+                          margin: '0 auto 4px',
+                        }}>
+                          <VeroIcon name={s.icon} size={18} color="var(--primary-dark)" />
+                        </div>
                         <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--text-2)', lineHeight: 1.2, display: 'block' }}>{s.label}</span>
                       </div>
                     ))}
@@ -337,8 +327,10 @@ export default function HeroSection() {
                   <div style={{
                     width: 36, height: 36, borderRadius: 10,
                     background: 'var(--primary-light)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-                  }}>🍔</div>
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <VeroIcon name="food" size={16} color="var(--primary-dark)" />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)' }}>Food & Restaurants</p>
                     <p style={{ fontSize: 8, color: 'var(--text-4)' }}>Order from nearby vendors</p>
@@ -357,11 +349,18 @@ export default function HeroSection() {
                 {navItems.map(n => (
                   <div key={n.label} style={{ textAlign: 'center', minWidth: 40 }}>
                     <div style={{
-                      fontSize: 13, marginBottom: 2,
+                      marginBottom: 2,
                       background: n.active ? 'var(--primary-light)' : 'transparent',
-                      borderRadius: 8, padding: '2px 6px',
-                      display: 'inline-block',
-                    }}>{n.icon}</div>
+                      borderRadius: 8, padding: '4px 6px',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <VeroIcon
+                        name={n.icon}
+                        size={14}
+                        color={n.active ? 'var(--primary)' : 'var(--text-4)'}
+                        strokeWidth={2}
+                      />
+                    </div>
                     <div style={{
                       fontSize: 7, fontWeight: n.active ? 700 : 500,
                       color: n.active ? 'var(--primary)' : 'var(--text-4)',

@@ -1,159 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useCourierPendingBadge, useMerchantReportsOpenBadge, useNewUsersBadge, useOrdersPendingBadge } from './AdminAlertsProvider'
-import { usePanelSession } from './PanelSessionProvider'
+import { VeroIcon } from '@/app/components/landing/icons'
+import { DASHBOARD_SECTIONS } from '@/lib/dashboard-sections'
 import {
-  isHelpCenterSession,
-  subscribeToSessions,
-  type VeroChatSessionView,
-} from '@/lib/verochat'
-
-const cards = [
-  {
-    id: 'vero-ride',
-    title: 'Vero Ride',
-    desc: 'Trips, drivers, and ride activity',
-    icon: '🚗',
-    color: '#F97316',
-    bg: '#FFF7ED',
-  },
-  {
-    id: 'vero-courier',
-    title: 'Vero Courier',
-    desc: 'Deliveries, parcels, and couriers',
-    icon: '🚚',
-    color: '#EA580C',
-    bg: '#FFEDD5',
-  },
-  {
-    id: 'food',
-    title: 'Food',
-    desc: 'Orders, restaurants, and menus',
-    icon: '🍔',
-    color: '#DC2626',
-    bg: '#FEF2F2',
-  },
-  {
-    id: 'jobs',
-    title: 'Jobs',
-    desc: 'Post, edit, and manage job listings',
-    icon: '💼',
-    color: '#2563EB',
-    bg: '#EFF6FF',
-  },
-  {
-    id: 'stay',
-    title: 'Stay',
-    desc: 'Accommodation bookings and hosts',
-    icon: '🏨',
-    color: '#7C3AED',
-    bg: '#F5F3FF',
-  },
-  {
-    id: 'promotion',
-    title: 'Promotion',
-    desc: 'Campaigns, ads, and offers',
-    icon: '📣',
-    color: '#DB2777',
-    bg: '#FDF2F8',
-  },
-  {
-    id: 'latest-arrivals',
-    title: 'Latest arrivals',
-    desc: 'Goods posted in the last 24 hours',
-    icon: '✨',
-    color: '#059669',
-    bg: '#ECFDF5',
-  },
-  {
-    id: 'marketplace',
-    title: 'Marketplace',
-    desc: 'Listings, merchants, and sales',
-    icon: '🛒',
-    color: '#D97706',
-    bg: '#FFFBEB',
-  },
-  {
-    id: 'orders',
-    title: 'Orders',
-    desc: 'Marketplace orders and fulfillment',
-    icon: '📦',
-    color: '#0369A1',
-    bg: '#F0F9FF',
-  },
-  {
-    id: 'refunds',
-    title: 'Refunds',
-    desc: 'Pending and completed refund requests',
-    icon: '↩️',
-    color: '#BE123C',
-    bg: '#FFF1F2',
-  },
-  {
-    id: 'merchant-reports',
-    title: 'Merchant reports',
-    desc: 'User reports about marketplace merchants',
-    icon: '🚩',
-    color: '#C2410C',
-    bg: '#FFF7ED',
-  },
-  {
-    id: 'users',
-    title: 'Users',
-    desc: 'Customers, merchants, and accounts',
-    icon: '👥',
-    color: '#0F766E',
-    bg: '#F0FDFA',
-  },
-  {
-    id: 'admins',
-    title: 'Admins',
-    desc: 'Super admins and panel admins',
-    icon: '🛡️',
-    color: '#6D28D9',
-    bg: '#F5F3FF',
-    superAdminOnly: true,
-  },
-  {
-    id: 'finance',
-    title: 'Finance',
-    desc: 'Wallets, escrow, and merchant cash-outs',
-    icon: '💰',
-    color: '#15803D',
-    bg: '#F0FDF4',
-    superAdminOnly: true,
-  },
-  {
-    id: 'verochat',
-    title: 'Help Center',
-    desc: 'Live chats from Vero360 Help Center',
-    icon: '🎧',
-    color: '#EA580C',
-    bg: '#FFF7ED',
-  },
-]
-
-function getHelpCenterUnread(sessions: VeroChatSessionView[]) {
-  return sessions
-    .filter(isHelpCenterSession)
-    .reduce((sum, s) => sum + (s.unreadForAgent || 0), 0)
-}
+  useCourierPendingBadge,
+  useHelpCenterUnreadBadge,
+  useMerchantReportsOpenBadge,
+  useNewUsersBadge,
+  useOrdersPendingBadge,
+} from './AdminAlertsProvider'
+import { usePanelSession } from './PanelSessionProvider'
 
 export default function DashboardCards() {
-  const [unread, setUnread] = useState(0)
+  const unread = useHelpCenterUnreadBadge()
   const courierPending = useCourierPendingBadge()
   const ordersPending = useOrdersPendingBadge()
   const newUsers = useNewUsersBadge()
   const reportsOpen = useMerchantReportsOpenBadge()
   const { isSuperAdmin } = usePanelSession()
-
-  useEffect(() => {
-    return subscribeToSessions(sessions => {
-      setUnread(getHelpCenterUnread(sessions))
-    })
-  }, [])
 
   return (
     <div
@@ -164,9 +29,7 @@ export default function DashboardCards() {
         gap: 18,
       }}
     >
-      {cards
-        .filter(card => !('superAdminOnly' in card && card.superAdminOnly) || isSuperAdmin)
-        .map(card => {
+      {DASHBOARD_SECTIONS.filter(card => !card.superAdminOnly || isSuperAdmin).map(card => {
         const isHelp = card.id === 'verochat'
         const isCourier = card.id === 'vero-courier'
         const isOrders = card.id === 'orders'
@@ -272,11 +135,10 @@ export default function DashboardCards() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 24,
                 position: 'relative',
               }}
             >
-              {card.icon}
+              <VeroIcon name={card.icon} size={24} color={card.color} />
               {showBadge && (
                 <span
                   style={{

@@ -21,10 +21,9 @@ function normalizePrivateKey(key: string): string {
   ) {
     k = k.slice(1, -1).trim()
   }
-  // Convert escaped newlines (possibly double-escaped) to real PEM newlines
-  while (k.includes('\\n')) {
-    k = k.replace(/\\n/g, '\n')
-  }
+  k = k.replace(/\r/g, '')
+  // Double-escaped first (\\n in the file), then single \n
+  k = k.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n')
   return k
 }
 

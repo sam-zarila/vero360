@@ -311,20 +311,15 @@ export function subscribeToMessages(
   onMessages: (messages: VeroChatMessageView[]) => void,
 ): Unsubscribe {
   const q = query(messagesRef(sessionId), orderBy('createdAt', 'asc'))
-  return onSnapshot(q, snap => {
-    onMessages(snap.docs.map(d => parseMessage(d.id, d.data() as Record<string, unknown>)))
-  })
-}
-
-export function subscribeToSessions(
-  onSessions: (sessions: VeroChatSessionView[]) => void,
-): Unsubscribe {
-  const q = query(collection(db, VEROCHAT_COLLECTION), orderBy('updatedAt', 'desc'))
-  return onSnapshot(q, snap => {
-    onSessions(
-      snap.docs.map(d => ({ id: d.id, ...(d.data() as VeroChatSession) })),
-    )
-  })
+  return onSnapshot(
+    q,
+    snap => {
+      onMessages(snap.docs.map(d => parseMessage(d.id, d.data() as Record<string, unknown>)))
+    },
+    () => {
+      onMessages([])
+    },
+  )
 }
 
 export async function closeSession(sessionId: string) {
@@ -348,15 +343,70 @@ export async function deleteSession(sessionId: string) {
   await deleteDoc(sessionRef(sessionId))
 }
 
-export function isHelpCenterSession(session: VeroChatSessionView) {
+export function isHelpCenterSession(session: { id: string; type?: string }) {
   if (session.type === 'newsletter' || session.type === 'inquiry') return false
   if (session.id.startsWith('newsletter__') || session.id.startsWith('inquiry__')) return false
   return true
 }
 
+export function isoToChatTime(iso: string | null | undefined): Timestamp {
+  const d = iso ? new Date(iso) : new Date(NaN)
+  return { toDate: () => d } as Timestamp
+}
+
+export function hydrateSession(raw: {
+  id: string
+  visitorName?: string
+  visitorEmail?: string
+  status?: string
+  lastMessage?: string
+  unreadForAgent?: number
+  type?: string
+  source?: string
+  createdAt?: string | null
+  updatedAt?: string | null
+}): VeroChatSessionView {
+  return {
+    id: raw.id,
+    visitorName: raw.visitorName || '',
+    visitorEmail: raw.visitorEmail || '',
+    status: raw.status === 'closed' ? 'closed' : 'open',
+    lastMessage: raw.lastMessage || '',
+    unreadForAgent: Number(raw.unreadForAgent || 0) || 0,
+    type: raw.type,
+    source: raw.source,
+    createdAt: isoToChatTime(raw.createdAt),
+    updatedAt: isoToChatTime(raw.updatedAt),
+  }
+}
+
+export function hydrateMessage(raw: {
+  id: string
+  text?: string
+  sender?: string
+  agentName?: string
+  createdAt?: string | null
+  kind?: string
+  imageUrl?: string
+  replyTo?: VeroChatReplyTo
+}): VeroChatMessageView {
+  return {
+    id: raw.id,
+    text: raw.text || '',
+    sender: raw.sender === 'agent' ? 'agent' : 'visitor',
+    agentName: raw.agentName,
+    createdAt: isoToChatTime(raw.createdAt),
+    kind: raw.kind === 'image' ? 'image' : 'text',
+    imageUrl: raw.imageUrl,
+    replyTo: raw.replyTo,
+  }
+}
+
 export function formatChatTime(value: Timestamp | null | undefined) {
   if (!value?.toDate) return ''
-  return value.toDate().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const d = value.toDate()
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 export function replyTargetFromMessage(msg: VeroChatMessageView): VeroChatReplyTo {

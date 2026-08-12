@@ -3,10 +3,11 @@
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import Logo from './Logo'
+import { VeroIcon } from './icons'
 
 const links = {
     Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation'],
-    Company: ['About Vero360', 'Careers', 'Blog', 'Panel'],
+    Company: ['About Vero360', 'Careers'],
     Partners: ['Become a merchant', 'Customers', 'Driver signup', 'Partner support'],
     Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service'],
   }
@@ -22,7 +23,6 @@ const linkHrefs: Record<string, string> = {
   'Customers': '/get-started?role=customer',
   'Driver signup': '/get-started?role=driver',
   'Partner support': '/#contact',
-  'Panel': '/panel',
   'Contact us': '/#contact',
   'Privacy policy': '/privacy',
   'Terms of service': '/terms',
@@ -81,20 +81,15 @@ function openHelpCenter() {
                 Malawi&apos;s all-in-one super app. Marketplace, rides, food, courier, jobs, and more — one secure platform.
               </p>
               {/* Contact */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[
-                  { icon: '📧', text: 'info@vero360.app', href: 'mailto:info@vero360.app' },
-                  { icon: '📍', text: 'Lilongwe, Malawi' },
-                ].map(c => (
-                  <div key={c.text} style={{ display: 'flex', gap: 10, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-                    <span>{c.icon}</span>
-                    {'href' in c && c.href ? (
-                      <a href={c.href} style={{ color: 'inherit' }}>{c.text}</a>
-                    ) : (
-                      <span>{c.text}</span>
-                    )}
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+                  <VeroIcon name="mail" size={16} color="rgba(255,255,255,0.45)" />
+                  <a href="mailto:info@vero360.app" style={{ color: 'inherit' }}>info@vero360.app</a>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+                  <VeroIcon name="map-pin" size={16} color="rgba(255,255,255,0.45)" />
+                  <span>Lilongwe, Malawi</span>
+                </div>
               </div>
             </div>
   
@@ -215,6 +210,7 @@ function openHelpCenter() {
               © {new Date().getFullYear()} Vero360 Technologies Ltd. All rights reserved.
             </p>
             <div style={{ display: 'flex', gap: 16 }}>
+              <Link href="/panel" className="footer-legal-link">Panel</Link>
               <Link href="/privacy" className="footer-legal-link">Privacy</Link>
               <Link href="/terms" className="footer-legal-link">Terms</Link>
             </div>
