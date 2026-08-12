@@ -48,11 +48,13 @@ export default function SuperAdminWalletPage() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [cashOutOpen, setCashOutOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
+    setNotice('')
     try {
       const headers = await panelAuthHeaders()
       const res = await fetch('/api/admin/wallet', { headers, cache: 'no-store' })
@@ -61,6 +63,16 @@ export default function SuperAdminWalletPage() {
       setWallet(data.wallet || null)
       setTransactions(data.transactions || [])
       setSummary({ ...EMPTY, ...(data.summary || {}) })
+      const bf = data.backfill
+      if (bf && typeof bf.credited === 'number' && bf.credited > 0) {
+        setNotice(
+          `Recovered ${bf.credited} missing fee credit${bf.credited === 1 ? '' : 's'} totaling ${formatMwk(bf.amount)}.`,
+        )
+      } else if (bf && typeof bf.mergedDuplicates === 'number' && bf.mergedDuplicates > 0) {
+        setNotice(
+          `Merged ${bf.mergedDuplicates} duplicate platform wallet${bf.mergedDuplicates === 1 ? '' : 's'} into the canonical admin wallet.`,
+        )
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load admin wallet')
     } finally {
@@ -100,9 +112,9 @@ export default function SuperAdminWalletPage() {
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Admin wallet</h1>
           <p style={{ color: '#6B7280', marginTop: 6, marginBottom: 0 }}>
-            Super admin platform wallet — 10% marketplace service fees credited when
-            escrow is released. Cash out the same way merchants do (PayChangu bank or
-            mobile money).
+            10% marketplace fee is held in escrow at checkout. It only becomes
+            available here after the buyer confirms receipt (or auto-release after
+            shipment).
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -146,6 +158,20 @@ export default function SuperAdminWalletPage() {
         </div>
       ) : null}
 
+      {notice ? (
+        <div
+          style={{
+            ...card,
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            color: '#047857',
+            marginBottom: 16,
+          }}
+        >
+          {notice}
+        </div>
+      ) : null}
+
       <div
         style={{
           ...card,
@@ -161,8 +187,24 @@ export default function SuperAdminWalletPage() {
           {formatMwk(summary.balance)}
         </div>
         <div style={{ fontSize: 13, opacity: 0.85 }}>
-          Available balance · userId {wallet?.userId || 'super_admin'}
+          Available to cash out · userId {wallet?.userId || 'super_admin'}
         </div>
+        {summary.feesHeld > 0 ? (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.12)',
+              fontSize: 13,
+              lineHeight: 1.45,
+            }}
+          >
+            <strong>{formatMwk(summary.feesHeld)}</strong> still held in escrow
+            across {summary.heldCount} order{summary.heldCount === 1 ? '' : 's'}.
+            That commission is not available until release.
+          </div>
+        ) : null}
         {!wallet && !loading ? (
           <p style={{ margin: '12px 0 0', fontSize: 13, opacity: 0.9 }}>
             Wallet is created automatically on the first released marketplace sale.
@@ -182,7 +224,7 @@ export default function SuperAdminWalletPage() {
         <Stat
           label="Fees still in escrow"
           value={formatMwk(summary.feesHeld)}
-          sub={`${summary.heldCount} held orders`}
+          sub={`${summary.heldCount} held orders · not cashable yet`}
         />
         <Stat label="Fees from released orders" value={formatMwk(summary.feesCollected)} />
         <Stat
@@ -213,8 +255,9 @@ export default function SuperAdminWalletPage() {
       ) : filtered.length === 0 ? (
         <div style={card}>
           <p style={{ margin: 0, color: '#6B7280' }}>
-            No fees or payouts yet. Fees land here when a marketplace escrow hold is
-            released (buyer confirm or 7-day auto-release).
+            No fees or payouts in the ledger yet. New purchases stay in escrow until
+            the buyer confirms receipt (or auto-release after shipment). Check
+            “Fees still in escrow” above for pending commission.
           </p>
         </div>
       ) : (

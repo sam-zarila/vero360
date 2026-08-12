@@ -51,20 +51,22 @@ export async function POST(request: Request) {
 
   try {
     const db = getAdminDb()
-    const walletsSnap = await db
-      .collection(WALLETS_COLLECTION)
-      .where('userId', '==', PLATFORM_WALLET_USER_ID)
-      .limit(1)
-      .get()
-
-    if (walletsSnap.empty) {
-      return NextResponse.json(
-        { error: 'Admin wallet not found yet. Fees create it on first escrow release.' },
-        { status: 404 },
-      )
+    let walletDoc = await db.collection(WALLETS_COLLECTION).doc('super_admin').get()
+    if (!walletDoc.exists) {
+      const q = await db
+        .collection(WALLETS_COLLECTION)
+        .where('userId', '==', PLATFORM_WALLET_USER_ID)
+        .limit(1)
+        .get()
+      if (q.empty) {
+        return NextResponse.json(
+          { error: 'Admin wallet not found yet. Fees create it on first escrow release.' },
+          { status: 404 },
+        )
+      }
+      walletDoc = q.docs[0]
     }
 
-    const walletDoc = walletsSnap.docs[0]
     const wallet = parseWallet(
       walletDoc.id,
       walletDoc.data() as Record<string, unknown>,
@@ -146,7 +148,7 @@ export async function POST(request: Request) {
     const now = Timestamp.now()
     const txPayload: Record<string, unknown> = {
       transactionId,
-      walletId: wallet.walletId,
+      walletId: walletDoc.id,
       userId: PLATFORM_WALLET_USER_ID,
       type: 'payout',
       amount,
@@ -176,10 +178,11 @@ export async function POST(request: Request) {
         ? [...(data.transactions as Record<string, unknown>[])]
         : []
       list.push(txPayload)
+      const capped = list.length > 25 ? list.slice(-25) : list
       txn.update(ref, {
         balance: newBalance,
         updatedAt: FieldValue.serverTimestamp(),
-        transactions: list,
+        transactions: capped,
       })
     })
 

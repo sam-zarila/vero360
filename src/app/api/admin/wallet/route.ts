@@ -13,6 +13,7 @@ import {
   type WalletRow,
   type WalletTxRow,
 } from '@/lib/finance'
+import { backfillMissingPlatformFees } from '@/lib/platform-fee-backfill'
 
 function mergeTx(into: WalletTxRow[], row: WalletTxRow) {
   if (!into.some(t => t.transactionId === row.transactionId)) {
@@ -32,31 +33,61 @@ export async function GET(request: Request) {
   try {
     const db = getAdminDb()
 
-    const [walletsSnap, feeSnap, payoutSnap, escrowSnap] = await Promise.all([
-      db
-        .collection(WALLETS_COLLECTION)
-        .where('userId', '==', PLATFORM_WALLET_USER_ID)
-        .limit(5)
-        .get(),
+    // Repair released holds that never credited the 10% platform fee.
+    let backfill = { credited: 0, amount: 0, skipped: 0 }
+    try {
+      backfill = await backfillMissingPlatformFees(db)
+    } catch (err) {
+      console.warn('Platform fee backfill skipped:', err)
+    }
+
+    const [platformWalletSnap, feeSnap, payoutSnap, escrowSnap] = await Promise.all([
+      db.collection(WALLETS_COLLECTION).doc('super_admin').get(),
       db
         .collection(WALLET_TX_COLLECTION)
         .where('type', '==', 'service_fee')
+        .orderBy('createdAt', 'desc')
         .limit(500)
         .get()
-        .catch(() => db.collection(WALLET_TX_COLLECTION).limit(500).get()),
+        .catch(() =>
+          db
+            .collection(WALLET_TX_COLLECTION)
+            .where('type', '==', 'service_fee')
+            .limit(500)
+            .get()
+            .catch(() => db.collection(WALLET_TX_COLLECTION).limit(500).get()),
+        ),
       db
         .collection(WALLET_TX_COLLECTION)
         .where('type', '==', 'payout')
-        .limit(500)
+        .orderBy('createdAt', 'desc')
+        .limit(200)
         .get()
-        .catch(() => null),
+        .catch(() =>
+          db
+            .collection(WALLET_TX_COLLECTION)
+            .where('type', '==', 'payout')
+            .limit(200)
+            .get()
+            .catch(() => null),
+        ),
       db.collection(ORDER_ESCROW_COLLECTION).get(),
     ])
 
-    let wallet: WalletRow | null = walletsSnap.docs[0]
+    let walletsSnapDocs = platformWalletSnap.exists
+      ? [platformWalletSnap]
+      : (
+          await db
+            .collection(WALLETS_COLLECTION)
+            .where('userId', '==', PLATFORM_WALLET_USER_ID)
+            .limit(5)
+            .get()
+        ).docs
+
+    let wallet: WalletRow | null = walletsSnapDocs[0]
       ? parseWallet(
-          walletsSnap.docs[0].id,
-          walletsSnap.docs[0].data() as Record<string, unknown>,
+          walletsSnapDocs[0].id,
+          walletsSnapDocs[0].data() as Record<string, unknown>,
         )
       : null
 
@@ -66,7 +97,6 @@ export async function GET(request: Request) {
     const belongsToPlatform = (row: WalletTxRow) => {
       if (row.userId === PLATFORM_WALLET_USER_ID) return true
       if (wallet && row.walletId && row.walletId === wallet.walletId) return true
-      // Older service-fee rows sometimes omit wallet/user ids.
       if (row.type.toLowerCase() === 'service_fee' && !row.walletId && !row.userId) {
         return true
       }
@@ -74,7 +104,9 @@ export async function GET(request: Request) {
     }
 
     const transactions: WalletTxRow[] = []
-    const ingest = (docs: typeof feeSnap.docs) => {
+    const ingestDocs = (
+      docs: ReadonlyArray<{ id: string; data: () => Record<string, unknown> }>,
+    ) => {
       for (const d of docs) {
         const row = parseWalletTx(d.id, d.data() as Record<string, unknown>, walletById)
         const type = row.type.toLowerCase()
@@ -83,18 +115,23 @@ export async function GET(request: Request) {
         mergeTx(transactions, row)
       }
     }
-    ingest(feeSnap.docs)
-    if (payoutSnap) ingest(payoutSnap.docs)
+    ingestDocs(feeSnap.docs)
+    if (payoutSnap) ingestDocs(payoutSnap.docs)
 
     if (wallet) {
-      const data = walletsSnap.docs[0].data() as Record<string, unknown>
+      const data = walletsSnapDocs[0].data() as Record<string, unknown>
       const list = data.transactions
       if (Array.isArray(list)) {
         for (const raw of list) {
           if (!raw || typeof raw !== 'object') continue
           const obj = raw as Record<string, unknown>
           const type = String(obj.type || '').toLowerCase()
-          if (type !== 'service_fee' && type !== 'payout' && type !== 'cashout' && type !== 'withdrawal') {
+          if (
+            type !== 'service_fee' &&
+            type !== 'payout' &&
+            type !== 'cashout' &&
+            type !== 'withdrawal'
+          ) {
             continue
           }
           mergeTx(
@@ -129,10 +166,27 @@ export async function GET(request: Request) {
     const payoutTxs = transactions.filter(isPayoutTx)
     const lifetimeFees = feeTxs.reduce((s, t) => s + t.amount, 0)
 
+    // Re-read balance after possible backfill.
+    if (wallet && backfill.credited > 0 && walletsSnapDocs[0]) {
+      const fresh = await walletsSnapDocs[0].ref.get()
+      if (fresh.exists) {
+        wallet = parseWallet(fresh.id, fresh.data() as Record<string, unknown>)
+      }
+    }
+
+    // Prefer canonical doc after backfill merge.
+    if (backfill.mergedDuplicates > 0 || backfill.credited > 0) {
+      const canonical = await db.collection(WALLETS_COLLECTION).doc('super_admin').get()
+      if (canonical.exists) {
+        wallet = parseWallet(canonical.id, canonical.data() as Record<string, unknown>)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       wallet,
       transactions,
+      backfill,
       summary: {
         balance: wallet?.balance ?? 0,
         pendingBalance: wallet?.pendingBalance ?? 0,
