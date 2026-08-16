@@ -14,11 +14,3 @@ export default function DashboardLayout({
 }) {
   return <DashboardShell>{children}</DashboardShell>
 }
-
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return <DashboardShell>{children}</DashboardShell>
-}
