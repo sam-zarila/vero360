@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import {
   apiErrorMessage,
   getVeroAuthHeader,
@@ -8,6 +9,8 @@ import {
 
 /** Triggers Nest `POST /jobs/sync` (Remotive + Jooble). */
 export async function POST(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const headers: HeadersInit = { Accept: 'application/json' }
     const auth = getVeroAuthHeader(request)

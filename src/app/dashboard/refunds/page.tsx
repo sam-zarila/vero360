@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -47,7 +48,7 @@ export default function RefundsAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/refunds', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/refunds', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load refunds')
       setItems(data.items || [])
@@ -103,7 +104,7 @@ export default function RefundsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/refunds/${encodeURIComponent(item.id)}`, {
+      const res = await adminFetch(`/api/admin/refunds/${encodeURIComponent(item.id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

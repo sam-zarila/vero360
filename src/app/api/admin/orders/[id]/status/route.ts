@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { enrichOrderContacts } from '@/lib/order-contacts'
 import { enrichOrderDelivery } from '@/lib/order-delivery'
 import { isOrderStatus, parseMarketplaceOrders } from '@/lib/orders'
@@ -12,6 +13,8 @@ import {
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id } = await ctx.params
 
   let body: unknown

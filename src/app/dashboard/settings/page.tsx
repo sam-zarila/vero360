@@ -16,7 +16,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import { adminRoleLabel, type PanelAdmin } from '@/lib/admins'
 
 export default function SettingsPage() {
@@ -47,7 +47,7 @@ export default function SettingsPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/admins/me', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/admins/me', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok || !data.authenticated) {
         throw new Error(data.error || 'Sign in at /panel to manage your settings.')
@@ -80,7 +80,7 @@ export default function SettingsPage() {
     setNotice('')
     try {
       const headers = await panelAuthHeaders(true)
-      const res = await fetch('/api/admin/admins/me', {
+      const res = await adminFetch('/api/admin/admins/me', {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ displayName: displayName.trim() }),
@@ -119,7 +119,7 @@ export default function SettingsPage() {
       await reauthenticateWithCredential(user, cred)
 
       const headers = await panelAuthHeaders(true)
-      const res = await fetch('/api/admin/admins/me', {
+      const res = await adminFetch('/api/admin/admins/me', {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ password: newPassword }),

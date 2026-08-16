@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import type { CollectionReference } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { MARKETPLACE_ITEMS_COLLECTION } from '@/lib/marketplace'
@@ -16,6 +17,8 @@ type Ctx = { params: Promise<{ key: string }> }
  * - API-only: `api:{sqlId}` → Nest admin delete
  */
 export async function DELETE(_request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(_request)
+  if (denied) return denied
   const { key: rawKey } = await ctx.params
   const key = decodeURIComponent(rawKey || '').trim()
   if (!key) {

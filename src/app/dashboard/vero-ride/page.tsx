@@ -9,7 +9,7 @@ import {
   type DriverStatus,
   type FleetDriver,
 } from '@/lib/drivers'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 
 type Tab = 'all' | DriverStatus | 'VEHICLE_PENDING'
 
@@ -44,7 +44,7 @@ export default function VeroRideDriversPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/drivers', {
+      const res = await adminFetch('/api/admin/drivers', {
         headers,
         cache: 'no-store',
       })

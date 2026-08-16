@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import type { AdminRole, PanelAdmin } from '@/lib/admins'
 
 type PanelSession = {
@@ -51,7 +51,7 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
         return
       }
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/admins/me', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/admins/me', { headers, cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data?.authenticated && data?.me) {
         setMe(data.me as PanelAdmin)

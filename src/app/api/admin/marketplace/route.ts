@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import {
   cleanContactEmail,
@@ -86,7 +87,9 @@ async function enrichMerchants(items: MarketplaceListing[]): Promise<Marketplace
  * Primary: Firestore `marketplace_items` (same as Flutter MarketplaceService).
  * Secondary: Nest GET /marketplace for any SQL-only leftovers.
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     let firestoreItems: MarketplaceListing[] = []
     let firestoreError = ''

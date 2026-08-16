@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { parsePromoList, type Promo } from '@/lib/promo'
 import {
   apiErrorMessage,
@@ -119,6 +120,8 @@ async function enrichMerchantNames(promos: Promo[], auth: string | null) {
 }
 
 export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const auth = getVeroAuthHeader(request)
   const url = new URL(request.url)
   const scope = url.searchParams.get('scope') || 'all'

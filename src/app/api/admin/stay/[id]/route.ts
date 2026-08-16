@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { ACCOMMODATION_ROOMS_COLLECTION } from '@/lib/stay-rooms'
 import {
@@ -11,6 +12,8 @@ type Ctx = { params: Promise<{ id: string }> }
 
 /** Admin delete — same Nest path the app uses for owner delete, via admin bypass. */
 export async function DELETE(_request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(_request)
+  if (denied) return denied
   const { id: raw } = await ctx.params
   const id = Number(raw)
   if (!Number.isFinite(id) || id <= 0) {

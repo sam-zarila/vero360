@@ -24,10 +24,8 @@ export function getVeroAdminToken() {
   return process.env.VERO_API_TOKEN || process.env.VERO_ADMIN_TOKEN || ''
 }
 
-/** Prefer client Authorization header, else server env token. */
-export function getVeroAuthHeader(request?: Request) {
-  const fromClient = request?.headers.get('authorization')
-  if (fromClient) return fromClient
+/** Prefer server env token. Do not forward a Firebase panel token to Nest. */
+export function getVeroAuthHeader(_request?: Request) {
   const token = getVeroAdminToken()
   return token ? `Bearer ${token}` : null
 }
@@ -35,9 +33,59 @@ export function getVeroAuthHeader(request?: Request) {
 export function resolveVeroMediaUrl(image?: string | null) {
   const raw = image?.trim()
   if (!raw) return null
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
-  if (raw.startsWith('/')) return `${VERO_API_BASE}${raw}`
-  return `${VERO_API_BASE}/${raw}`
+  if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw
+
+  let absolute = raw
+  if (raw.startsWith('//')) {
+    absolute = `https:${raw}`
+  } else if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
+    const path = raw.startsWith('/') ? raw : `/${raw}`
+    absolute = `${VERO_API_BASE}${path}`
+  }
+
+  try {
+    const parsed = new URL(absolute)
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+      absolute = `${VERO_API_BASE}${parsed.pathname}${parsed.search}`
+    }
+  } catch {
+    return absolute
+  }
+
+  // HTTPS pages (vero360.app) block plain HTTP images. Serve them same-origin.
+  if (mustProxyMedia(absolute)) {
+    return `/api/media?u=${encodeURIComponent(absolute)}`
+  }
+  return absolute
+}
+
+export function mustProxyMedia(url: string) {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'http:') return true
+    return false
+  } catch {
+    return false
+  }
+}
+
+export function isAllowedMediaHost(hostname: string) {
+  const allowed = new Set<string>([
+    '67.211.220.69',
+    'firebasestorage.googleapis.com',
+    'storage.googleapis.com',
+    'vero360app-ca423.firebasestorage.app',
+  ])
+  try {
+    allowed.add(new URL(VERO_API_BASE).hostname)
+  } catch {
+    // ignore
+  }
+  const host = hostname.trim().toLowerCase()
+  if (allowed.has(host)) return true
+  if (host.endsWith('.firebasestorage.app')) return true
+  if (host.endsWith('.googleapis.com')) return true
+  return false
 }
 
 export async function readJsonSafe(res: Response) {

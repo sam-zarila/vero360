@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,6 +10,8 @@ export const dynamic = 'force-dynamic'
  * 2) Optionally probes Admin init when ?probe=1
  */
 export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const flags = {
     hasClientEmail: Boolean(process.env.FIREBASE_CLIENT_EMAIL?.trim()),
     hasPrivateKey: Boolean(process.env.FIREBASE_PRIVATE_KEY?.trim()),

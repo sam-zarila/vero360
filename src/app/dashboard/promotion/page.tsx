@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -30,7 +31,7 @@ export default function PromotionAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/promos?scope=all', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/promos?scope=all', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load promotions')
       setPromos(data.promos || [])
@@ -68,7 +69,7 @@ export default function PromotionAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/promos/${id}/deactivate`, { method: 'PATCH' })
+      const res = await adminFetch(`/api/admin/promos/${id}/deactivate`, { method: 'PATCH' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Deactivate failed')
       setPromos(prev => prev.map(p => (p.id === id ? { ...p, isActive: false } : p)))
@@ -91,7 +92,7 @@ export default function PromotionAdminPage() {
     }
     setError('')
     try {
-      const res = await fetch(`/api/admin/promos/${id}`, { method: 'DELETE' })
+      const res = await adminFetch(`/api/admin/promos/${id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
       setNotice('Promotion deleted')

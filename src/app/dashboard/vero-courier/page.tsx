@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -57,7 +58,7 @@ export default function VeroCourierAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/courier', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/courier', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load courier deliveries')
       setItems(data.items || [])
@@ -116,7 +117,7 @@ export default function VeroCourierAdminPage() {
     setNotice('')
     setBusyId(id)
     try {
-      const res = await fetch(`/api/admin/courier/${id}/status`, {
+      const res = await adminFetch(`/api/admin/courier/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

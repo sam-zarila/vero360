@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -69,7 +70,7 @@ export function useMerchantReportAlerts(enabled = true): MerchantReportAlertStat
 
     const poll = async () => {
       try {
-        const res = await fetch('/api/admin/merchant-reports/open', { cache: 'no-store' })
+        const res = await adminFetch('/api/admin/merchant-reports/open', { cache: 'no-store' })
         if (!res.ok) return
         const data = (await res.json()) as {
           open?: number

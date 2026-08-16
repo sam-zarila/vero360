@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { enrichOrderContacts } from '@/lib/order-contacts'
 import { enrichOrderDelivery } from '@/lib/order-delivery'
 import { parseMarketplaceOrders } from '@/lib/orders'
@@ -8,7 +9,9 @@ import {
   veroEndpoint,
 } from '@/lib/vero-api'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const res = await fetch(veroEndpoint('orders', 'admin', 'all'), {
       headers: { Accept: 'application/json' },

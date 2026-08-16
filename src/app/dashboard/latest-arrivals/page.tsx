@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -24,7 +25,7 @@ export default function LatestArrivalsAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/latest-arrivals', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/latest-arrivals', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load latest arrivals')
       setItems(data.items || [])
@@ -47,7 +48,7 @@ export default function LatestArrivalsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/latest-arrivals/${item.id}`, { method: 'DELETE' })
+      const res = await adminFetch(`/api/admin/latest-arrivals/${item.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
       setNotice('Latest arrival deleted')

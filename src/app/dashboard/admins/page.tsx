@@ -12,7 +12,7 @@ import {
 import Link from 'next/link'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   adminRoleLabel,
   adminRoleTone,
@@ -72,7 +72,7 @@ export default function AdminsPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/admins', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/admins', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load admins')
       setAdmins(data.admins || [])
@@ -116,7 +116,7 @@ export default function AdminsPage() {
     setNotice('')
     try {
       const headers = await panelAuthHeaders(true)
-      const res = await fetch('/api/admin/admins', {
+      const res = await adminFetch('/api/admin/admins', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -212,7 +212,7 @@ export default function AdminsPage() {
     try {
       const headers = await panelAuthHeaders(true)
       if (action === 'delete') {
-        const res = await fetch(`/api/admin/admins/${admin.id}`, {
+        const res = await adminFetch(`/api/admin/admins/${admin.id}`, {
           method: 'DELETE',
           headers,
           body: JSON.stringify({ password: confirmPassword }),
@@ -221,7 +221,7 @@ export default function AdminsPage() {
         if (!res.ok) throw new Error(data.error || 'Delete failed')
         setNotice(data.message || 'Deleted')
       } else {
-        const res = await fetch(`/api/admin/admins/${admin.id}`, {
+        const res = await adminFetch(`/api/admin/admins/${admin.id}`, {
           method: 'PATCH',
           headers,
           body: JSON.stringify(

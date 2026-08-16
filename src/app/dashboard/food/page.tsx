@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -30,7 +31,7 @@ export default function FoodAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/food', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/food', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load food items')
       setItems(data.items || [])
@@ -72,7 +73,7 @@ export default function FoodAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/food/${encodeURIComponent(item.key)}`, {
+      const res = await adminFetch(`/api/admin/food/${encodeURIComponent(item.key)}`, {
         method: 'DELETE',
       })
       const data = await res.json()

@@ -4,6 +4,15 @@ import DashboardShell from './DashboardShell'
 export const metadata: Metadata = {
   title: 'Admin Dashboard — Vero360',
   description: 'Vero360 admin dashboard',
+  robots: { index: false, follow: false },
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return <DashboardShell>{children}</DashboardShell>
 }
 
 export default function DashboardLayout({

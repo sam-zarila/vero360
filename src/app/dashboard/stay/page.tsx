@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -85,8 +86,8 @@ export default function StayAdminPage() {
     setError('')
     try {
       const [listRes, bookRes] = await Promise.all([
-        fetch('/api/admin/stay', { cache: 'no-store' }),
-        fetch('/api/admin/stay/bookings', { cache: 'no-store' }),
+        adminFetch('/api/admin/stay', { cache: 'no-store' }),
+        adminFetch('/api/admin/stay/bookings', { cache: 'no-store' }),
       ])
       const listData = await listRes.json()
       const bookData = await bookRes.json()
@@ -125,7 +126,7 @@ export default function StayAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/stay/${item.id}`, { method: 'DELETE' })
+      const res = await adminFetch(`/api/admin/stay/${item.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
       setNotice(`Removed “${item.name}”`)

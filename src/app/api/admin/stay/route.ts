@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { enrichStayListings } from '@/lib/stay-rooms'
 import { parseStayListings } from '@/lib/stay'
 import {
@@ -7,7 +8,9 @@ import {
   veroEndpoint,
 } from '@/lib/vero-api'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const res = await fetch(veroEndpoint('accommodations', 'all'), {
       headers: { Accept: 'application/json' },

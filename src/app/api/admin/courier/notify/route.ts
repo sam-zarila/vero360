@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdminOrApiKey } from '@/lib/admin-auth'
 
 type NotifyBody = {
   id?: number
@@ -11,6 +12,8 @@ type NotifyBody = {
 
 /** Optional email alert when a new courier order is placed (Resend). */
 export async function POST(request: Request) {
+  const denied = await denyUnlessPanelAdminOrApiKey(request)
+  if (denied) return denied
   let body: NotifyBody
   try {
     body = await request.json()

@@ -19,7 +19,7 @@ import {
   type VeroChatReplyTo,
   type VeroChatSessionView,
 } from '@/lib/verochat'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import { usePanelSession } from '../PanelSessionProvider'
 
 export default function HelpCenterInbox() {
@@ -47,7 +47,7 @@ export default function HelpCenterInbox() {
     const tick = async () => {
       try {
         const headers = await panelAuthHeaders()
-        const res = await fetch('/api/admin/verochat/sessions', { headers, cache: 'no-store' })
+        const res = await adminFetch('/api/admin/verochat/sessions', { headers, cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || cancelled) return
         const next = Array.isArray(data.sessions) ? data.sessions.map(hydrateSession) : []
@@ -75,7 +75,7 @@ export default function HelpCenterInbox() {
     const tick = async () => {
       try {
         const headers = await panelAuthHeaders()
-        const res = await fetch(`/api/admin/verochat/sessions/${activeId}/messages`, {
+        const res = await adminFetch(`/api/admin/verochat/sessions/${activeId}/messages`, {
           headers,
           cache: 'no-store',
         })

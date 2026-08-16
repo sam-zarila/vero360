@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -45,7 +46,7 @@ export default function MarketplaceAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/marketplace', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/marketplace', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load marketplace')
       setItems(data.items || [])
@@ -91,7 +92,7 @@ export default function MarketplaceAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/marketplace/${encodeURIComponent(item.key)}`, {
+      const res = await adminFetch(`/api/admin/marketplace/${encodeURIComponent(item.key)}`, {
         method: 'DELETE',
       })
       const data = await res.json()

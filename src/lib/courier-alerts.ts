@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -72,7 +73,7 @@ export function useCourierAlerts(enabled = true): CourierAlertState {
 
     const poll = async () => {
       try {
-        const res = await fetch('/api/admin/courier/pending', { cache: 'no-store' })
+        const res = await adminFetch('/api/admin/courier/pending', { cache: 'no-store' })
         if (!res.ok) return
         const data = (await res.json()) as {
           pending?: number

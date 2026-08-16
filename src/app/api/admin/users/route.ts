@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import {
   countUsers,
@@ -50,7 +51,9 @@ async function enrichFromFirebaseAuth(users: AppUser[]): Promise<AppUser[]> {
   return users.map(u => byId.get(u.id) || u)
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const db = getAdminDb()
     const snap = await db.collection(USERS_COLLECTION).get()

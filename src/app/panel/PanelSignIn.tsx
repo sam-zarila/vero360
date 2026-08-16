@@ -13,7 +13,10 @@ export default function PanelSignIn() {
   const [error, setError] = useState('')
 
   const goToDashboard = () => {
-    window.location.href = '/dashboard'
+    const next = new URLSearchParams(window.location.search).get('next') || ''
+    const safe =
+      next.startsWith('/dashboard') && !next.startsWith('//') ? next : '/dashboard'
+    window.location.href = safe
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

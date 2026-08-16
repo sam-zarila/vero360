@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppUser } from '@/lib/users'
@@ -108,7 +109,7 @@ export function useUserAlerts(enabled = true): UserAlertState {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/users', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/users', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load users')
       applyUsers(Array.isArray(data.users) ? data.users : [])

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import Link from 'next/link'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   GET_STARTED_ROLE_META,
   GET_STARTED_ROLES,
@@ -47,7 +47,7 @@ export default function GetStartedVideosAdminPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/get-started-videos', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/get-started-videos', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load videos')
       setVideos(data.videos || emptyGetStartedVideosMap())
@@ -79,7 +79,7 @@ export default function GetStartedVideosAdminPage() {
     setNotice('')
     try {
       const headers = await panelAuthHeaders(true)
-      const res = await fetch('/api/admin/get-started-videos', {
+      const res = await adminFetch('/api/admin/get-started-videos', {
         method: 'PUT',
         headers,
         body: JSON.stringify({ role, url: links[role] }),
@@ -105,7 +105,7 @@ export default function GetStartedVideosAdminPage() {
     setNotice('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch(`/api/admin/get-started-videos?role=${role}`, {
+      const res = await adminFetch(`/api/admin/get-started-videos?role=${role}`, {
         method: 'DELETE',
         headers,
       })
@@ -130,7 +130,7 @@ export default function GetStartedVideosAdminPage() {
     setNotice('')
     try {
       const startHeaders = await panelAuthHeaders(true)
-      const startRes = await fetch('/api/admin/get-started-videos/upload', {
+      const startRes = await adminFetch('/api/admin/get-started-videos/upload', {
         method: 'POST',
         headers: startHeaders,
         body: JSON.stringify({
@@ -161,7 +161,7 @@ export default function GetStartedVideosAdminPage() {
       })
 
       const doneHeaders = await panelAuthHeaders(true)
-      const doneRes = await fetch('/api/admin/get-started-videos/upload', {
+      const doneRes = await adminFetch('/api/admin/get-started-videos/upload', {
         method: 'POST',
         headers: doneHeaders,
         body: JSON.stringify({

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import Link from 'next/link'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   escrowReleaseExplanation,
   escrowStatusTone,
@@ -63,7 +63,7 @@ export default function FinanceAdminPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/finance', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/finance', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load finance data')
       setWallets(data.wallets || [])

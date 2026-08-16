@@ -24,12 +24,56 @@ function isActivePath(pathname: string, href: string) {
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <PanelSessionProvider>
-      <AdminAlertsProvider>
-        <ConfirmDialogProvider>
-          <DashboardShellInner>{children}</DashboardShellInner>
-        </ConfirmDialogProvider>
-      </AdminAlertsProvider>
+      <DashboardAuthGate>{children}</DashboardAuthGate>
     </PanelSessionProvider>
+  )
+}
+
+function DashboardAuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const { isSuperAdmin, loading: sessionLoading, authenticated } = usePanelSession()
+
+  useEffect(() => {
+    if (sessionLoading) return
+    if (!authenticated) {
+      const next =
+        pathname && pathname.startsWith('/dashboard')
+          ? `?next=${encodeURIComponent(pathname)}`
+          : ''
+      router.replace(`/panel${next}`)
+      return
+    }
+    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
+      router.replace('/dashboard')
+    }
+  }, [sessionLoading, isSuperAdmin, pathname, router, authenticated])
+
+  if (sessionLoading || !authenticated) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--surface)',
+          padding: 24,
+        }}
+      >
+        <p style={{ color: 'var(--text-3)', fontSize: 15, fontWeight: 600, margin: 0 }}>
+          {sessionLoading ? 'Checking admin access…' : 'Redirecting to sign in…'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <AdminAlertsProvider>
+      <ConfirmDialogProvider>
+        <DashboardShellInner>{children}</DashboardShellInner>
+      </ConfirmDialogProvider>
+    </AdminAlertsProvider>
   )
 }
 
@@ -39,7 +83,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const unread = useHelpCenterUnreadBadge()
-  const { isSuperAdmin, loading: sessionLoading, authenticated } = usePanelSession()
+  const { isSuperAdmin } = usePanelSession()
   const {
     courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
     orders: { pending: ordersPending, toast: ordersToast, clearToast: clearOrdersToast },
@@ -57,14 +101,6 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       items: group.items.filter(item => !item.superAdminOnly || isSuperAdmin),
     })).filter(group => group.items.length > 0)
   }, [isSuperAdmin])
-
-  useEffect(() => {
-    if (sessionLoading) return
-    // Normal admins (or signed-out) cannot open finance / admins.
-    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
-      router.replace('/dashboard')
-    }
-  }, [sessionLoading, isSuperAdmin, pathname, router, authenticated])
 
   useEffect(() => {
     if (!courierToast) return
@@ -174,7 +210,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   borderRadius: 100,
                 }}
               >
-                {sessionLoading ? 'Admin' : isSuperAdmin ? 'Super admin' : 'Admin'}
+                {isSuperAdmin ? 'Super admin' : 'Admin'}
               </span>
             </Link>
           </div>

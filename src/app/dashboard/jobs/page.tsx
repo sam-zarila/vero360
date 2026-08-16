@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import {
   useCallback,
@@ -101,7 +102,7 @@ export default function JobsAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/jobs?activeOnly=false', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/jobs?activeOnly=false', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load jobs')
       setItems(data.items || [])
@@ -183,11 +184,10 @@ export default function JobsAdminPage() {
       if (form.location.trim()) payload.location = form.location.trim()
 
       const isEdit = editingId != null
-      const res = await fetch(
+      const res = await adminFetch(
         isEdit ? `/api/admin/jobs/${editingId}` : '/api/admin/jobs',
         {
           method: isEdit ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         },
       )
@@ -219,7 +219,7 @@ export default function JobsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/jobs/${j.id}`, {
+      const res = await adminFetch(`/api/admin/jobs/${j.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !j.isActive }),
@@ -255,7 +255,7 @@ export default function JobsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/jobs/${j.id}`, { method: 'DELETE' })
+      const res = await adminFetch(`/api/admin/jobs/${j.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
       setNotice(`Deleted “${j.position}”`)
@@ -274,7 +274,7 @@ export default function JobsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch('/api/admin/jobs/sync', { method: 'POST' })
+      const res = await adminFetch('/api/admin/jobs/sync', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Sync failed')
       setNotice('External job sync finished (Remotive / Jooble).')

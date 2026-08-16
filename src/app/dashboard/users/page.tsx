@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -65,7 +66,7 @@ export default function UsersAdminPage() {
       if (
         !(await confirmDelete(
           name,
-          'Permanently deletes this account from Firebase Auth and Firestore. This cannot be undone.',
+          'Permanently deletes this account and ALL related data (trips, messages, marketplace, carts, wallets, Auth). Signing up again with the same email starts from a blank account. This cannot be undone.',
         ))
       ) {
         return
@@ -88,7 +89,7 @@ export default function UsersAdminPage() {
     setActionError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await adminFetch(`/api/admin/users/${id}`, {
         method: action === 'delete' ? 'DELETE' : 'PATCH',
         headers: action === 'delete' ? undefined : { 'Content-Type': 'application/json' },
         body: action === 'delete' ? undefined : JSON.stringify({ action }),

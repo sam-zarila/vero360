@@ -1,5 +1,6 @@
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import { FieldValue } from 'firebase-admin/firestore'
+import { NextResponse } from 'next/server'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import {
   ADMINS_COLLECTION,
@@ -212,6 +213,38 @@ export function authErrorResponse(err: unknown) {
     return { status: err.status, error: err.message }
   }
   return null
+}
+
+/** 401/403 response, or null if the caller is an active panel admin. */
+export async function denyUnlessPanelAdmin(request: Request) {
+  try {
+    await requirePanelAdmin(request)
+    return null
+  } catch (err) {
+    const mapped = authErrorResponse(err)
+    if (mapped) {
+      return NextResponse.json({ error: mapped.error }, { status: mapped.status })
+    }
+    throw err
+  }
+}
+
+/** Panel admin, or a configured server API key (backend notify hooks). */
+export async function denyUnlessPanelAdminOrApiKey(request: Request) {
+  const expected = (
+    process.env.VERO_ADMIN_API_KEY ||
+    process.env.ADMIN_API_KEY ||
+    process.env.VERO_API_TOKEN ||
+    ''
+  ).trim()
+  if (expected) {
+    const header = String(request.headers.get('x-admin-api-key') || '').trim()
+    const bearer = String(request.headers.get('authorization') || '')
+      .replace(/^\s*Bearer\s+/i, '')
+      .trim()
+    if (header === expected || bearer === expected) return null
+  }
+  return denyUnlessPanelAdmin(request)
 }
 
 export function claimsForRole(role: AdminRole) {

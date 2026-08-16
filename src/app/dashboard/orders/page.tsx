@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -56,7 +57,7 @@ export default function OrdersAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/orders', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/orders', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load orders')
       setItems(data.items || [])
@@ -111,7 +112,7 @@ export default function OrdersAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/orders/${id}/status`, {
+      const res = await adminFetch(`/api/admin/orders/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

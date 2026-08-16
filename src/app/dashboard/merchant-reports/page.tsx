@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -74,7 +75,7 @@ export default function MerchantReportsAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/merchant-reports', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/merchant-reports', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load merchant reports')
       setItems(data.items || [])
@@ -124,8 +125,7 @@ export default function MerchantReportsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(
-        `/api/admin/merchant-reports/${encodeURIComponent(item.id)}`,
+      const res = await adminFetch(`/api/admin/merchant-reports/${encodeURIComponent(item.id)}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -163,8 +163,7 @@ export default function MerchantReportsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(
-        `/api/admin/merchant-reports/${encodeURIComponent(item.id)}`,
+      const res = await adminFetch(`/api/admin/merchant-reports/${encodeURIComponent(item.id)}`,
         { method: 'DELETE' },
       )
       const data = await res.json().catch(() => ({}))

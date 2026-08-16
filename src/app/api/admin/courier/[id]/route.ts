@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import {
   apiErrorMessage,
   getVeroAuthHeader,
@@ -9,6 +10,8 @@ import {
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function DELETE(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id } = await ctx.params
   const auth = getVeroAuthHeader(request)
 
