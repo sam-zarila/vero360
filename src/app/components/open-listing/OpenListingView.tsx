@@ -103,7 +103,9 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
 
       <section style={body}>
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-          {showImage ? <img style={hero} src={image} alt={title} /> : null}
+          {showImage ? (
+            <img key={`${id}-hero`} style={hero} src={image} alt={title} />
+          ) : null}
           <div style={{ padding: 20 }}>
             {type ? (
               <p
@@ -224,9 +226,9 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
                 gap: 8,
               }}
             >
-              {gallery.slice(0, 4).map(src => (
+              {gallery.slice(0, 4).map((src, index) => (
                 <img
-                  key={src}
+                  key={`${id}-g-${index}-${src}`}
                   src={src}
                   alt=""
                   style={{

@@ -93,7 +93,7 @@ async function fetchStayById(id: string) {
     try {
       const res = await fetch(url, {
         headers,
-        next: { revalidate: 60 },
+        cache: 'no-store',
       })
       if (!res.ok) continue
       const body = await readJsonSafe(res)
@@ -135,10 +135,13 @@ export async function listingFromProps(
       location = stay.location && stay.location !== '—' ? stay.location : location
       if (stay.price > 0) price = String(stay.price)
       period = periodSuffix(stay.pricingPeriod)
-      image = resolveVeroMediaUrl(stay.image) || image
+      const cover = (stay.image || '').trim()
+      image = resolveVeroMediaUrl(cover) || ''
       gallery = stay.gallery
+        .map(src => src.trim())
+        .filter(src => src && src !== cover)
         .map(src => resolveVeroMediaUrl(src) || '')
-        .filter(src => src && src !== image)
+        .filter(Boolean)
       description = stay.description || ''
       amenities = fetched.amenities
       type = stay.accommodationType || ''
@@ -147,7 +150,10 @@ export async function listingFromProps(
   }
 
   if (!name) name = first(query.q)
-  if (!image && gallery[0]) image = gallery[0]
+  if (!image && gallery[0]) {
+    image = gallery[0]
+    gallery = gallery.slice(1)
+  }
   if (image) image = resolveVeroMediaUrl(image) || image
 
   const appPath = kind === 'marketplace' ? 'marketplace' : 'accommodation'

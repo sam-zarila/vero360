@@ -6,6 +6,8 @@ import {
   type ListingPageProps,
 } from '@/lib/open-listing'
 
+export const dynamic = 'force-dynamic'
+
 export function listingGenerateMetadata(kind: ListingKind) {
   return (props: ListingPageProps) => listingMetadata(kind, props)
 }

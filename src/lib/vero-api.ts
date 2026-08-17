@@ -30,10 +30,21 @@ export function getVeroAuthHeader(_request?: Request) {
   return token ? `Bearer ${token}` : null
 }
 
+function mediaFileName(absolute: string) {
+  try {
+    const name = new URL(absolute).pathname.split('/').filter(Boolean).pop() || 'image'
+    return name.replace(/[^a-zA-Z0-9._-]/g, '_') || 'image'
+  } catch {
+    return 'image'
+  }
+}
+
 export function resolveVeroMediaUrl(image?: string | null) {
   const raw = image?.trim()
   if (!raw) return null
   if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw
+  // Already same-origin proxied — do not wrap again (that made every photo collide).
+  if (raw.startsWith('/api/media')) return raw
 
   let absolute = raw
   if (raw.startsWith('//')) {
@@ -53,8 +64,9 @@ export function resolveVeroMediaUrl(image?: string | null) {
   }
 
   // HTTPS pages (vero360.app) block plain HTTP images. Serve them same-origin.
+  // Put the filename in the path so CDNs cannot reuse one cached /api/media response.
   if (mustProxyMedia(absolute)) {
-    return `/api/media?u=${encodeURIComponent(absolute)}`
+    return `/api/media/${encodeURIComponent(mediaFileName(absolute))}?u=${encodeURIComponent(absolute)}`
   }
   return absolute
 }
