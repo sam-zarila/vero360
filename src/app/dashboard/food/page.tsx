@@ -4,14 +4,13 @@ import { adminFetch } from '@/lib/panel-client-auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import type { FoodItem, FoodSource } from '@/lib/food-types'
 import {
   formatDateTime,
   formatMwk,
   resolveFoodImage,
   sourceLabel,
-  type FoodItem,
-  type FoodSource,
-} from '@/lib/food'
+} from '@/lib/food-utils'
 import { useConfirmDelete } from '../ConfirmDialog'
 
 type SourceTab = 'all' | FoodSource

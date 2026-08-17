@@ -1,38 +1,14 @@
 import 'server-only'
 
 import { getAdminDb } from '@/lib/firebase-admin'
+import type { FoodItem, PublicFoodDetail } from '@/lib/food-types'
 import {
-  formatDateTime,
-  formatMwk,
   readJsonSafe,
-  resolveVeroMediaUrl,
   unwrapList,
   veroEndpoint,
 } from '@/lib/vero-api'
 
-export type FoodSource = 'api' | 'marketplace' | 'menu'
-
-export type FoodItem = {
-  /** Stable admin key: `${source}:${rawId}` */
-  key: string
-  rawId: string
-  source: FoodSource
-  name: string
-  image: string | null
-  gallery: string[]
-  restaurant: string
-  price: number
-  description: string | null
-  category: string
-  merchantId: string | null
-  location: string | null
-  available: boolean
-  latitude: number | null
-  longitude: number | null
-  createdAt: string | null
-}
-
-export type PublicFoodDetail = FoodItem
+export type { FoodItem, FoodSource, PublicFoodDetail } from '@/lib/food-types'
 
 function str(value: unknown): string {
   return value == null ? '' : String(value).trim()
@@ -246,21 +222,6 @@ export function mergeFoodItems(lists: FoodItem[][]): FoodItem[] {
   return out
 }
 
-export function sourceLabel(source: FoodSource) {
-  switch (source) {
-    case 'api':
-      return 'Marketplace API'
-    case 'marketplace':
-      return 'Marketplace listing'
-    case 'menu':
-      return 'Kitchen menu'
-  }
-}
-
-export function resolveFoodImage(image?: string | null) {
-  return resolveVeroMediaUrl(image)
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -344,5 +305,3 @@ export async function fetchPublicFoodById(id: string): Promise<PublicFoodDetail 
 
   return null
 }
-
-export { formatMwk, formatDateTime }
