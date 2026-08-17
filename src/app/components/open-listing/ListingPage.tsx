@@ -1,4 +1,5 @@
 import OpenListingView from '@/app/components/open-listing/OpenListingView'
+import FoodProductView from '@/app/components/open-listing/FoodProductView'
 import MarketplaceProductView from '@/app/components/open-listing/MarketplaceProductView'
 import {
   listingFromProps,
@@ -18,6 +19,9 @@ export function ListingPage(kind: ListingKind) {
     const listing = await listingFromProps(kind, props)
     if (kind === 'marketplace') {
       return <MarketplaceProductView listing={listing} />
+    }
+    if (kind === 'food') {
+      return <FoodProductView listing={listing} />
     }
     return <OpenListingView listing={listing} />
   }

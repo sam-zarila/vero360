@@ -1,8 +1,13 @@
+import 'server-only'
+
+import { getAdminDb } from '@/lib/firebase-admin'
 import {
   formatDateTime,
   formatMwk,
+  readJsonSafe,
   resolveVeroMediaUrl,
   unwrapList,
+  veroEndpoint,
 } from '@/lib/vero-api'
 
 export type FoodSource = 'api' | 'marketplace' | 'menu'
@@ -14,6 +19,7 @@ export type FoodItem = {
   source: FoodSource
   name: string
   image: string | null
+  gallery: string[]
   restaurant: string
   price: number
   description: string | null
@@ -25,6 +31,8 @@ export type FoodItem = {
   longitude: number | null
   createdAt: string | null
 }
+
+export type PublicFoodDetail = FoodItem
 
 function str(value: unknown): string {
   return value == null ? '' : String(value).trim()
@@ -64,6 +72,29 @@ function tsToIso(value: unknown): string | null {
   return null
 }
 
+function parseGallery(data: Record<string, unknown>): string[] {
+  for (const key of ['gallery', 'galleryUrls', 'images']) {
+    const list = data[key]
+    if (Array.isArray(list)) {
+      return list.map(x => str(x)).filter(Boolean)
+    }
+    if (typeof list === 'string' && list.trim()) {
+      try {
+        const decoded = JSON.parse(list)
+        if (Array.isArray(decoded)) {
+          return decoded.map(x => str(x)).filter(Boolean)
+        }
+      } catch {
+        return list
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean)
+      }
+    }
+  }
+  return []
+}
+
 function pickImage(data: Record<string, unknown>): string | null {
   for (const key of [
     'image',
@@ -77,14 +108,8 @@ function pickImage(data: Record<string, unknown>): string | null {
     const s = str(data[key])
     if (s) return s
   }
-  for (const key of ['gallery', 'galleryUrls', 'images']) {
-    const list = data[key]
-    if (Array.isArray(list) && list[0]) {
-      const s = str(list[0])
-      if (s) return s
-    }
-  }
-  return null
+  const gallery = parseGallery(data)
+  return gallery[0] ?? null
 }
 
 function sellerName(data: Record<string, unknown>): string {
@@ -134,6 +159,7 @@ export function parseApiFoodItems(body: unknown): FoodItem[] {
         source: 'api',
         name,
         image: pickImage(row),
+        gallery: parseGallery(row),
         restaurant: sellerName(row),
         price: num(row.price),
         description: str(row.description) || null,
@@ -163,6 +189,7 @@ export function parseFirestoreMarketplaceFood(
     source: 'marketplace',
     name,
     image: pickImage(data),
+    gallery: parseGallery(data),
     restaurant: sellerName(data),
     price: num(data.price),
     description: str(data.description) || null,
@@ -189,6 +216,7 @@ export function parseFirestoreMenuFood(
     source: 'menu',
     name,
     image: pickImage(data),
+    gallery: parseGallery(data),
     restaurant: sellerName(data),
     price: num(data.price),
     description: str(data.description) || null,
@@ -231,6 +259,90 @@ export function sourceLabel(source: FoodSource) {
 
 export function resolveFoodImage(image?: string | null) {
   return resolveVeroMediaUrl(image)
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function listingRows(body: unknown): Record<string, unknown>[] {
+  const list = unwrapList(body)
+  if (list.length) {
+    return list
+      .map(asRecord)
+      .filter((row): row is Record<string, unknown> => !!row)
+  }
+  const rec = asRecord(body)
+  if (!rec) return []
+  const nested =
+    asRecord(rec.data) ||
+    asRecord(rec.item) ||
+    asRecord(rec.product) ||
+    asRecord(rec.food)
+  if (nested) return [nested]
+  if (rec.id != null || rec.name != null || rec.FoodName != null) return [rec]
+  return []
+}
+
+/** Public share page: resolve a dish by SQL id or Firestore doc id. */
+export async function fetchPublicFoodById(id: string): Promise<PublicFoodDetail | null> {
+  const headers = { Accept: 'application/json' }
+  const sqlId = Number(id)
+
+  if (Number.isFinite(sqlId) && sqlId > 0) {
+    try {
+      const res = await fetch(veroEndpoint('marketplace', sqlId), {
+        headers,
+        cache: 'no-store',
+      })
+      if (res.ok) {
+        const body = await readJsonSafe(res)
+        const row = listingRows(body)[0]
+        if (row) {
+          const items = parseApiFoodItems([row])
+          if (items[0]) return items[0]
+        }
+      }
+    } catch {
+      // fall through to Firestore
+    }
+  }
+
+  try {
+    const db = getAdminDb()
+
+    let menuDoc = await db.collection('food_menu_items').doc(id).get()
+    if (menuDoc.exists) {
+      const parsed = parseFirestoreMenuFood(
+        menuDoc.id,
+        menuDoc.data() as Record<string, unknown>,
+      )
+      if (parsed) return parsed
+    }
+
+    let mpDoc = await db.collection('marketplace_items').doc(id).get()
+    if (!mpDoc.exists && Number.isFinite(sqlId) && sqlId > 0) {
+      const snap = await db
+        .collection('marketplace_items')
+        .where('sqlItemId', '==', sqlId)
+        .limit(1)
+        .get()
+      if (!snap.empty) mpDoc = snap.docs[0]!
+    }
+    if (mpDoc.exists) {
+      const parsed = parseFirestoreMarketplaceFood(
+        mpDoc.id,
+        mpDoc.data() as Record<string, unknown>,
+      )
+      if (parsed) return parsed
+    }
+  } catch (err) {
+    console.warn('Public food fetch failed:', err)
+  }
+
+  return null
 }
 
 export { formatMwk, formatDateTime }

@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { Metadata } from 'next'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { fetchPublicFoodById } from '@/lib/food'
 import { parseFirestoreMarketplaceListing } from '@/lib/marketplace'
 import type {
   ListingKind,
@@ -82,6 +83,7 @@ function periodSuffix(period: string | null | undefined): string {
 function appPathForKind(kind: ListingKind): string {
   if (kind === 'shop') return 'shop'
   if (kind === 'marketplace') return 'marketplace'
+  if (kind === 'food') return 'food'
   return 'accommodation'
 }
 
@@ -272,8 +274,36 @@ export async function listingFromProps(
     }
   }
 
+  if (kind === 'food' && id) {
+    period = ''
+    const dish = await fetchPublicFoodById(id)
+    if (dish) {
+      name = dish.name || name
+      location = dish.location || location
+      if (dish.price > 0) price = String(Math.round(dish.price))
+      const cover = (dish.image || '').trim()
+      image = resolveVeroMediaUrl(cover) || ''
+      gallery = dish.gallery
+        .map(src => src.trim())
+        .filter(src => src && src !== cover)
+        .map(src => resolveVeroMediaUrl(src) || '')
+        .filter(Boolean)
+      description = dish.description || description
+      type = dish.category || 'Food'
+      hostName = dish.restaurant || hostName
+      if (dish.merchantId) {
+        shopId = dish.merchantId
+        const seller = await fetchShopById(dish.merchantId)
+        if (seller?.image) {
+          sellerImage = resolveVeroMediaUrl(seller.image) || ''
+        }
+        if (!hostName && seller?.name) hostName = seller.name
+      }
+    }
+  }
+
   if (!name) name = first(query.q)
-  if (kind === 'marketplace' || kind === 'shop') period = ''
+  if (kind === 'marketplace' || kind === 'shop' || kind === 'food') period = ''
   if (!image && gallery[0]) {
     image = gallery[0]
     gallery = gallery.slice(1)
@@ -286,7 +316,9 @@ export async function listingFromProps(
       ? 'Shop on Vero360'
       : kind === 'marketplace'
         ? 'Product on Vero360'
-        : 'Stay on Vero360'
+        : kind === 'food'
+          ? 'Food on Vero360'
+          : 'Stay on Vero360'
   const title = name || defaultTitle
   const subtitle =
     [location, description].filter(Boolean).join(' · ') ||
@@ -294,7 +326,9 @@ export async function listingFromProps(
       ? 'Browse this shop in the Vero360 app, or view it here.'
       : kind === 'marketplace'
         ? 'Open this product in the Vero360 app, or view it here.'
-        : 'Open this stay in the Vero360 app, or view it here.')
+        : kind === 'food'
+          ? 'Order this dish in the Vero360 app, or view it here.'
+          : 'Open this stay in the Vero360 app, or view it here.')
 
   return {
     kind,
@@ -327,7 +361,9 @@ export async function listingMetadata(
       ? `/shop/${listing.id}`
       : kind === 'marketplace'
         ? `/marketplace/${listing.id}`
-        : `/accommodation/${listing.id}`
+        : kind === 'food'
+          ? `/food/${listing.id}`
+          : `/accommodation/${listing.id}`
   const imageOk =
     listing.image.startsWith('http') || listing.image.startsWith('/api/media')
 

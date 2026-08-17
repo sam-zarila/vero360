@@ -2,7 +2,11 @@ import { formatMwk } from '@/lib/vero-api'
 import type { ListingModel } from '@/lib/open-listing-types'
 
 export function listingPriceLabel(listing: ListingModel) {
-  if (listing.kind === 'marketplace' || listing.kind === 'shop') {
+  if (
+    listing.kind === 'marketplace' ||
+    listing.kind === 'shop' ||
+    listing.kind === 'food'
+  ) {
     const n = Number(String(listing.price).replace(/,/g, ''))
     if (Number.isFinite(n) && n > 0) return formatMwk(n)
     if (!listing.price) return ''

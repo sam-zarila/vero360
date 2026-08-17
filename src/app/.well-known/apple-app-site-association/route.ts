@@ -12,6 +12,7 @@ export function GET() {
             '/marketplace/*',
           '/shop/*',
           '/merchant/*',
+          '/food/*',
           ],
         },
       ],

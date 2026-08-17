@@ -1,4 +1,4 @@
-export type ListingKind = 'accommodation' | 'marketplace' | 'shop'
+export type ListingKind = 'accommodation' | 'marketplace' | 'shop' | 'food'
 
 export type ListingQuery = Record<string, string | string[] | undefined>
 
