@@ -28,6 +28,8 @@ export type ListingModel = {
   amenities: string[]
   type: string
   hostName: string
+  sellerImage: string
+  shopId: string
   appHref: string
   title: string
   subtitle: string
@@ -215,7 +217,12 @@ export async function listingFromProps(
   let amenities: string[] = []
   let type = ''
   let hostName = first(query.merchant)
+  let sellerImage = ''
+  let shopId = ''
   let gallery: string[] = []
+
+  description =
+    first(query.desc) || first(query.description) || description
 
   if (kind === 'accommodation' && id) {
     const fetched = await fetchStayById(id)
@@ -240,6 +247,7 @@ export async function listingFromProps(
   }
 
   if (kind === 'marketplace' && id) {
+    period = ''
     const product = await fetchMarketplaceProductById(id)
     if (product) {
       name = product.name || name
@@ -252,13 +260,22 @@ export async function listingFromProps(
         .filter(src => src && src !== cover)
         .map(src => resolveVeroMediaUrl(src) || '')
         .filter(Boolean)
-      description = product.description || ''
+      description = product.description || description
       type = product.category || 'Product'
       hostName = product.merchantName || hostName
+      if (product.merchantFirebaseUid) {
+        shopId = product.merchantFirebaseUid
+        const seller = await fetchShopById(product.merchantFirebaseUid)
+        if (seller?.image) {
+          sellerImage = resolveVeroMediaUrl(seller.image) || ''
+        }
+        if (!hostName && seller?.name) hostName = seller.name
+      }
     }
   }
 
   if (kind === 'shop' && id) {
+    period = ''
     const shop = await fetchShopById(id)
     if (shop) {
       name = shop.name || name
@@ -271,6 +288,7 @@ export async function listingFromProps(
   }
 
   if (!name) name = first(query.q)
+  if (kind === 'marketplace' || kind === 'shop') period = ''
   if (!image && gallery[0]) {
     image = gallery[0]
     gallery = gallery.slice(1)
@@ -306,6 +324,8 @@ export async function listingFromProps(
     amenities,
     type,
     hostName,
+    sellerImage,
+    shopId,
     appHref: `vero360://${appPath}${id ? `/${id}` : ''}`,
     title,
     subtitle,
@@ -341,9 +361,15 @@ export async function listingMetadata(
 }
 
 export function listingPriceLabel(listing: ListingModel) {
+  if (listing.kind === 'marketplace' || listing.kind === 'shop') {
+    const n = Number(String(listing.price).replace(/,/g, ''))
+    if (Number.isFinite(n) && n > 0) return formatMwk(n)
+    if (!listing.price) return ''
+    return `MWK ${listing.price}`
+  }
+
   const n = Number(String(listing.price).replace(/,/g, ''))
   if (Number.isFinite(n) && n > 0) {
-    if (listing.kind === 'marketplace') return formatMwk(n)
     const suffix = listing.period.startsWith('/')
       ? ` ${listing.period}`
       : listing.period
@@ -352,6 +378,5 @@ export function listingPriceLabel(listing: ListingModel) {
     return `${formatMwk(n)}${suffix}`
   }
   if (!listing.price) return ''
-  if (listing.kind === 'marketplace') return `MWK ${listing.price}`
   return `MWK ${listing.price}${listing.period ? ` ${listing.period}` : ''}`
 }

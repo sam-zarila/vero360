@@ -1,4 +1,5 @@
 import OpenListingView from '@/app/components/open-listing/OpenListingView'
+import MarketplaceProductView from '@/app/components/open-listing/MarketplaceProductView'
 import {
   listingFromProps,
   listingMetadata,
@@ -15,6 +16,9 @@ export function listingGenerateMetadata(kind: ListingKind) {
 export function ListingPage(kind: ListingKind) {
   return async function Page(props: ListingPageProps) {
     const listing = await listingFromProps(kind, props)
+    if (kind === 'marketplace') {
+      return <MarketplaceProductView listing={listing} />
+    }
     return <OpenListingView listing={listing} />
   }
 }
