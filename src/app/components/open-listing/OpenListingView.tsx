@@ -5,7 +5,8 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
 import { appStoreLinks } from '@/app/components/landing/veroServices'
-import { listingPriceLabel, type ListingModel } from '@/lib/open-listing'
+import type { ListingModel } from '@/lib/open-listing-types'
+import { listingPriceLabel } from '@/lib/open-listing-utils'
 
 const page: CSSProperties = {
   minHeight: '100vh',

@@ -1,44 +1,29 @@
+import 'server-only'
+
 import type { Metadata } from 'next'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { parseFirestoreMarketplaceListing } from '@/lib/marketplace'
+import type {
+  ListingKind,
+  ListingModel,
+  ListingPageProps,
+  ListingQuery,
+} from '@/lib/open-listing-types'
 import { parseStayListings } from '@/lib/stay'
 import { USERS_COLLECTION } from '@/lib/users'
 import {
-  formatMwk,
   readJsonSafe,
   resolveVeroMediaUrl,
   unwrapList,
   veroEndpoint,
 } from '@/lib/vero-api'
 
-export type ListingKind = 'accommodation' | 'marketplace' | 'shop'
-
-export type ListingQuery = Record<string, string | string[] | undefined>
-
-export type ListingModel = {
-  kind: ListingKind
-  id: string
-  name: string
-  location: string
-  price: string
-  period: string
-  image: string
-  gallery: string[]
-  description: string
-  amenities: string[]
-  type: string
-  hostName: string
-  sellerImage: string
-  shopId: string
-  appHref: string
-  title: string
-  subtitle: string
-}
-
-export type ListingPageProps = {
-  params?: Promise<{ id?: string }>
-  searchParams?: Promise<ListingQuery>
-}
+export type {
+  ListingKind,
+  ListingModel,
+  ListingPageProps,
+  ListingQuery,
+} from '@/lib/open-listing-types'
 
 function first(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return (value[0] ?? '').trim()
@@ -360,23 +345,3 @@ export async function listingMetadata(
   }
 }
 
-export function listingPriceLabel(listing: ListingModel) {
-  if (listing.kind === 'marketplace' || listing.kind === 'shop') {
-    const n = Number(String(listing.price).replace(/,/g, ''))
-    if (Number.isFinite(n) && n > 0) return formatMwk(n)
-    if (!listing.price) return ''
-    return `MWK ${listing.price}`
-  }
-
-  const n = Number(String(listing.price).replace(/,/g, ''))
-  if (Number.isFinite(n) && n > 0) {
-    const suffix = listing.period.startsWith('/')
-      ? ` ${listing.period}`
-      : listing.period
-        ? ` ${listing.period}`
-        : ' / night'
-    return `${formatMwk(n)}${suffix}`
-  }
-  if (!listing.price) return ''
-  return `MWK ${listing.price}${listing.period ? ` ${listing.period}` : ''}`
-}
