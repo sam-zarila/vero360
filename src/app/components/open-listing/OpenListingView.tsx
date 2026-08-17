@@ -74,7 +74,8 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
     const isIOS = /iPhone|iPad|iPod/i.test(ua)
     if (!isAndroid && !isIOS) return
 
-    const appPath = kind === 'marketplace' ? 'marketplace' : 'accommodation'
+    const appPath =
+      kind === 'shop' ? 'shop' : kind === 'marketplace' ? 'marketplace' : 'accommodation'
 
     if (isAndroid) {
       const fallback = new URL(window.location.href)
@@ -151,7 +152,7 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
             ) : null}
             {hostName ? (
               <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 6 }}>
-                Hosted by {hostName}
+                {kind === 'marketplace' ? 'Sold by' : 'By'} {hostName}
               </p>
             ) : null}
           </div>
@@ -167,7 +168,7 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
                 fontFamily: 'var(--font-display)',
               }}
             >
-              About this stay
+              About this {kind === 'shop' ? 'shop' : kind === 'marketplace' ? 'product' : 'stay'}
             </h2>
             <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.7 }}>
               {description}
@@ -265,8 +266,9 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
               lineHeight: 1.45,
             }}
           >
-            Have Vero360? This {kind === 'marketplace' ? 'listing' : 'stay'} opens
-            in the app. If you don’t, you can view the details here.
+            Have Vero360? This{' '}
+            {kind === 'shop' ? 'shop' : kind === 'marketplace' ? 'product' : 'stay'}{' '}
+            opens in the app. If you don’t, you can view the details here.
           </p>
         </div>
       </section>

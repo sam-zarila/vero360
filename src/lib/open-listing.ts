@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
+import { getAdminDb } from '@/lib/firebase-admin'
+import { parseFirestoreMarketplaceListing } from '@/lib/marketplace'
 import { parseStayListings } from '@/lib/stay'
+import { USERS_COLLECTION } from '@/lib/users'
 import {
   formatMwk,
   readJsonSafe,
@@ -8,7 +11,7 @@ import {
   veroEndpoint,
 } from '@/lib/vero-api'
 
-export type ListingKind = 'accommodation' | 'marketplace'
+export type ListingKind = 'accommodation' | 'marketplace' | 'shop'
 
 export type ListingQuery = Record<string, string | string[] | undefined>
 
@@ -40,6 +43,10 @@ function first(value: string | string[] | undefined): string {
   return (value ?? '').trim()
 }
 
+function str(value: unknown): string {
+  return value == null ? '' : String(value).trim()
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -56,7 +63,10 @@ function listingRows(body: unknown): Record<string, unknown>[] {
   const rec = asRecord(body)
   if (!rec) return []
   const nested =
-    asRecord(rec.data) || asRecord(rec.item) || asRecord(rec.accommodation)
+    asRecord(rec.data) ||
+    asRecord(rec.item) ||
+    asRecord(rec.accommodation) ||
+    asRecord(rec.product)
   if (nested) return [nested]
   if (rec.id != null || rec.name != null) return [rec]
   return []
@@ -82,6 +92,12 @@ function periodSuffix(period: string | null | undefined): string {
   return '/ night'
 }
 
+function appPathForKind(kind: ListingKind): string {
+  if (kind === 'shop') return 'shop'
+  if (kind === 'marketplace') return 'marketplace'
+  return 'accommodation'
+}
+
 async function fetchStayById(id: string) {
   const n = Number(id)
   if (!Number.isFinite(n) || n <= 0) return null
@@ -91,10 +107,7 @@ async function fetchStayById(id: string) {
 
   for (const url of urls) {
     try {
-      const res = await fetch(url, {
-        headers,
-        cache: 'no-store',
-      })
+      const res = await fetch(url, { headers, cache: 'no-store' })
       if (!res.ok) continue
       const body = await readJsonSafe(res)
       const items = parseStayListings(listingRows(body))
@@ -107,6 +120,83 @@ async function fetchStayById(id: string) {
     }
   }
   return null
+}
+
+async function fetchMarketplaceProductById(id: string) {
+  const headers = { Accept: 'application/json' }
+  const sqlId = Number(id)
+
+  if (Number.isFinite(sqlId) && sqlId > 0) {
+    try {
+      const res = await fetch(veroEndpoint('marketplace', sqlId), {
+        headers,
+        cache: 'no-store',
+      })
+      if (res.ok) {
+        const body = await readJsonSafe(res)
+        const row = listingRows(body)[0]
+        if (row) {
+          const parsed = parseFirestoreMarketplaceListing('api', row)
+          if (parsed) return parsed
+        }
+      }
+    } catch {
+      // fall through to Firestore
+    }
+  }
+
+  try {
+    const db = getAdminDb()
+    let doc = await db.collection('marketplace_items').doc(id).get()
+    if (!doc.exists && Number.isFinite(sqlId) && sqlId > 0) {
+      const snap = await db
+        .collection('marketplace_items')
+        .where('sqlItemId', '==', sqlId)
+        .limit(1)
+        .get()
+      if (!snap.empty) doc = snap.docs[0]!
+    }
+    if (doc.exists) {
+      return parseFirestoreMarketplaceListing(
+        doc.id,
+        doc.data() as Record<string, unknown>,
+      )
+    }
+  } catch (err) {
+    console.warn('Public marketplace fetch failed:', err)
+  }
+  return null
+}
+
+async function fetchShopById(merchantId: string) {
+  try {
+    const db = getAdminDb()
+    const doc = await db.collection(USERS_COLLECTION).doc(merchantId).get()
+    if (!doc.exists) return null
+    const d = doc.data() as Record<string, unknown>
+    return {
+      name:
+        str(d.businessName) ||
+        str(d.name) ||
+        str(d.displayName) ||
+        'Shop on Vero360',
+      image:
+        str(d.profilePicture) ||
+        str(d.profilepicture) ||
+        str(d.photoURL) ||
+        str(d.logoUrl) ||
+        null,
+      description:
+        str(d.businessDescription) ||
+        str(d.description) ||
+        str(d.bio) ||
+        null,
+      location: str(d.location) || str(d.city) || null,
+    }
+  } catch (err) {
+    console.warn('Public shop fetch failed:', err)
+    return null
+  }
 }
 
 export async function listingFromProps(
@@ -124,7 +214,7 @@ export async function listingFromProps(
   let description = ''
   let amenities: string[] = []
   let type = ''
-  let hostName = ''
+  let hostName = first(query.merchant)
   let gallery: string[] = []
 
   if (kind === 'accommodation' && id) {
@@ -145,7 +235,38 @@ export async function listingFromProps(
       description = stay.description || ''
       amenities = fetched.amenities
       type = stay.accommodationType || ''
-      hostName = stay.hostName || ''
+      hostName = stay.hostName || hostName
+    }
+  }
+
+  if (kind === 'marketplace' && id) {
+    const product = await fetchMarketplaceProductById(id)
+    if (product) {
+      name = product.name || name
+      location = product.location && product.location !== '—' ? product.location : location
+      if (product.price > 0) price = String(Math.round(product.price))
+      const cover = (product.image || '').trim()
+      image = resolveVeroMediaUrl(cover) || ''
+      gallery = product.gallery
+        .map(src => src.trim())
+        .filter(src => src && src !== cover)
+        .map(src => resolveVeroMediaUrl(src) || '')
+        .filter(Boolean)
+      description = product.description || ''
+      type = product.category || 'Product'
+      hostName = product.merchantName || hostName
+    }
+  }
+
+  if (kind === 'shop' && id) {
+    const shop = await fetchShopById(id)
+    if (shop) {
+      name = shop.name || name
+      location = shop.location || location
+      description = shop.description || ''
+      type = 'Merchant shop'
+      const cover = (shop.image || '').trim()
+      image = resolveVeroMediaUrl(cover) || image
     }
   }
 
@@ -156,14 +277,21 @@ export async function listingFromProps(
   }
   if (image) image = resolveVeroMediaUrl(image) || image
 
-  const appPath = kind === 'marketplace' ? 'marketplace' : 'accommodation'
-  const title =
-    name || (kind === 'marketplace' ? 'Listing on Vero360' : 'Stay on Vero360')
+  const appPath = appPathForKind(kind)
+  const defaultTitle =
+    kind === 'shop'
+      ? 'Shop on Vero360'
+      : kind === 'marketplace'
+        ? 'Product on Vero360'
+        : 'Stay on Vero360'
+  const title = name || defaultTitle
   const subtitle =
     [location, description].filter(Boolean).join(' · ') ||
-    (kind === 'marketplace'
-      ? 'Open this listing in the Vero360 app, or view it here.'
-      : 'Open this stay in the Vero360 app, or view it here.')
+    (kind === 'shop'
+      ? 'Browse this shop in the Vero360 app, or view it here.'
+      : kind === 'marketplace'
+        ? 'Open this product in the Vero360 app, or view it here.'
+        : 'Open this stay in the Vero360 app, or view it here.')
 
   return {
     kind,
@@ -190,10 +318,13 @@ export async function listingMetadata(
 ): Promise<Metadata> {
   const listing = await listingFromProps(kind, props)
   const path =
-    kind === 'marketplace'
-      ? `/marketplace/${listing.id}`
-      : `/accommodation/${listing.id}`
-  const imageIsHttp = /^https?:\/\//i.test(listing.image)
+    kind === 'shop'
+      ? `/shop/${listing.id}`
+      : kind === 'marketplace'
+        ? `/marketplace/${listing.id}`
+        : `/accommodation/${listing.id}`
+  const imageOk =
+    listing.image.startsWith('http') || listing.image.startsWith('/api/media')
 
   return {
     title: `${listing.title} · Vero360`,
@@ -204,7 +335,7 @@ export async function listingMetadata(
       url: `https://vero360.app${path}`,
       siteName: 'Vero360',
       type: 'website',
-      images: imageIsHttp ? [{ url: listing.image }] : undefined,
+      images: imageOk ? [{ url: listing.image }] : undefined,
     },
   }
 }
@@ -212,6 +343,7 @@ export async function listingMetadata(
 export function listingPriceLabel(listing: ListingModel) {
   const n = Number(String(listing.price).replace(/,/g, ''))
   if (Number.isFinite(n) && n > 0) {
+    if (listing.kind === 'marketplace') return formatMwk(n)
     const suffix = listing.period.startsWith('/')
       ? ` ${listing.period}`
       : listing.period
@@ -220,5 +352,6 @@ export function listingPriceLabel(listing: ListingModel) {
     return `${formatMwk(n)}${suffix}`
   }
   if (!listing.price) return ''
+  if (listing.kind === 'marketplace') return `MWK ${listing.price}`
   return `MWK ${listing.price}${listing.period ? ` ${listing.period}` : ''}`
 }

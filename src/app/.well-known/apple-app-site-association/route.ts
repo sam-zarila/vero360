@@ -10,6 +10,8 @@ export function GET() {
             '/stay/*',
             '/stays/*',
             '/marketplace/*',
+          '/shop/*',
+          '/merchant/*',
           ],
         },
       ],

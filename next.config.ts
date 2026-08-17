@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/merchant/:id',
-        destination: '/dashboard/merchant/:id',
+        destination: '/shop/:id',
         permanent: false,
       },
       {
