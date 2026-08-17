@@ -5,7 +5,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
 import { appStoreLinks } from '@/app/components/landing/veroServices'
-import type { ListingModel } from '@/lib/open-listing'
+import { listingPriceLabel, type ListingModel } from '@/lib/open-listing'
 
 const page: CSSProperties = {
   minHeight: '100vh',
@@ -24,7 +24,6 @@ const hero: CSSProperties = {
   width: '100%',
   aspectRatio: '16 / 10',
   objectFit: 'cover',
-  borderRadius: 18,
   background: 'var(--surface-2)',
   display: 'block',
 }
@@ -48,9 +47,21 @@ const btn: CSSProperties = {
 }
 
 export default function OpenListingView({ listing }: { listing: ListingModel }) {
-  const { kind, id, title, location, price, period, image, appHref } = listing
-  const showImage = /^https?:\/\//i.test(image)
-  const priceLabel = price ? `MWK ${price}${period ? ` ${period}` : ''}` : ''
+  const {
+    kind,
+    id,
+    title,
+    location,
+    image,
+    gallery,
+    description,
+    amenities,
+    type,
+    hostName,
+    appHref,
+  } = listing
+  const showImage = /^https?:\/\//i.test(image) || image.startsWith('/api/media')
+  const priceLabel = listingPriceLabel(listing)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -94,6 +105,20 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
           {showImage ? <img style={hero} src={image} alt={title} /> : null}
           <div style={{ padding: 20 }}>
+            {type ? (
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  color: 'var(--primary-dark)',
+                  marginBottom: 8,
+                }}
+              >
+                {type}
+              </p>
+            ) : null}
             <h1
               style={{
                 fontSize: 24,
@@ -122,8 +147,100 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
                 {priceLabel}
               </p>
             ) : null}
+            {hostName ? (
+              <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 6 }}>
+                Hosted by {hostName}
+              </p>
+            ) : null}
           </div>
         </div>
+
+        {description ? (
+          <div style={card}>
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                marginBottom: 8,
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              About this stay
+            </h2>
+            <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.7 }}>
+              {description}
+            </p>
+          </div>
+        ) : null}
+
+        {amenities.length > 0 ? (
+          <div style={card}>
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                marginBottom: 12,
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Offers
+            </h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {amenities.map(item => (
+                <span
+                  key={item}
+                  style={{
+                    background: 'var(--primary-light)',
+                    color: 'var(--text)',
+                    borderRadius: 999,
+                    padding: '6px 12px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {gallery.length > 0 ? (
+          <div style={card}>
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                marginBottom: 12,
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              Photos
+            </h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 8,
+              }}
+            >
+              {gallery.slice(0, 4).map(src => (
+                <img
+                  key={src}
+                  src={src}
+                  alt=""
+                  style={{
+                    width: '100%',
+                    height: 110,
+                    objectFit: 'cover',
+                    borderRadius: 12,
+                    background: 'var(--surface-2)',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div style={card}>
           <a
@@ -147,7 +264,7 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
             }}
           >
             Have Vero360? This {kind === 'marketplace' ? 'listing' : 'stay'} opens
-            in the app. If you don’t, you can view it here.
+            in the app. If you don’t, you can view the details here.
           </p>
         </div>
       </section>
