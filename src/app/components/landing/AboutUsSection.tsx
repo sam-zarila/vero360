@@ -40,10 +40,10 @@ export default function AboutUsSection() {
             Who we are
           </h2>
           <p style={{ fontSize: 17, color: 'var(--text-3)', maxWidth: 680, margin: '0 auto', lineHeight: 1.8 }}>
-            Vero360 started in 2025 when a group of university students saw everyday problems around them —
-            unreliable transport, hard-to-find local businesses, and fragmented services — and decided to build
+            Vero360 started in 2025 when a group of university students saw everyday problems around them 
+            unreliable transport, hard to find local businesses, and fragmented services and decided to build
             something better. What began as a student project to solve real problems in our communities has
-            grown into Malawi&apos;s all-in-one super app, connecting customers, merchants, and service providers
+            grown into Malawi&apos;s  all-in-one  super app, connecting customers, merchants, and service providers
             through one secure platform.
           </p>
         </div>

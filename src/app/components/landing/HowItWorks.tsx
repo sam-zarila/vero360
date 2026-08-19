@@ -7,7 +7,7 @@ const steps = [
         </svg>
       ),
       title: 'Browse & search',
-      desc: 'Open Vero360 and find what you need — rides, food, products, jobs, or accommodation.',
+      desc: 'Open Vero360 and find what you need  rides, food, products, jobs, or accommodation.',
       color: '#FFF7ED',
     },
     {
@@ -65,7 +65,7 @@ const steps = [
               Get started in 4 simple steps
             </h2>
             <p style={{ fontSize: 17, color: 'var(--text-3)', maxWidth: 480, margin: '0 auto' }}>
-              Vero360 simplifies everyday life — shop, ride, eat, stay, and connect from one app.
+              Vero360 simplifies everyday life by shopping, riding, eating, staying, and connecting from one app.
             </p>
           </div>
   

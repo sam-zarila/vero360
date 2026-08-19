@@ -113,7 +113,7 @@ export default function ServicesSection() {
             Everything you need, one app
           </h2>
           <p style={{ fontSize: 17, color: 'var(--text-3)', maxWidth: 560, margin: '0 auto' }}>
-            Vero360 connects customers, merchants, and service providers in one secure ecosystem —
+            Vero360 connects customers, merchants, and service providers in one secure ecosystem 
             marketplace, transport, food, courier, accommodation, jobs, and more.
           </p>
         </div>

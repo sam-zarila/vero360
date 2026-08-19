@@ -6,7 +6,7 @@ import Logo from './Logo'
 import { VeroIcon } from './icons'
 
 const links = {
-    Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation'],
+    Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation','Jobs','digital services'],
     Company: ['About Vero360', 'Careers'],
     Partners: ['Become a merchant', 'Customers', 'Driver signup', 'Partner support'],
     Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service'],
@@ -78,7 +78,7 @@ function openHelpCenter() {
                 <Logo height={36} textColor="#fff" />
               </div>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 24 }}>
-                Malawi&apos;s all-in-one super app. Marketplace, rides, food, courier, jobs, and more — one secure platform.
+                Malawi&apos;s all-in-one super app. Marketplace, rides, food, courier, jobs, and more on one secure platform.
               </p>
               {/* Contact */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -147,7 +147,7 @@ function openHelpCenter() {
                 Stay in the loop
               </h4>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, maxWidth: 400 }}>
-                Get updates on new cities, features, and product news. No spam — unsubscribe anytime.
+                Get updates on new cities, features, and product news. No spam  unsubscribe anytime.
               </p>
             </div>
             <form

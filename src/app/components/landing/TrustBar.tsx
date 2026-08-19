@@ -4,7 +4,7 @@ const items = [
   { icon: 'layers' as const, value: '8+', label: 'Services in one app' },
   { icon: 'users' as const, value: '5K+', label: 'Community target' },
   { icon: 'shop' as const, value: '20K+', label: 'Merchant partners' },
-  { icon: 'calendar' as const, value: '1 Sep', label: 'App launch 2026' },
+  { icon: 'calendar' as const, value: 'September 2026', label: 'App launch' },
 ]
 
 export default function TrustBar() {
