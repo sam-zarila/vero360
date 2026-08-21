@@ -8,6 +8,7 @@ export type DashboardSectionId =
   | 'stay'
   | 'promotion'
   | 'latest-arrivals'
+  | 'announcements'
   | 'marketplace'
   | 'orders'
   | 'refunds'
@@ -85,6 +86,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'sparkles',
     color: '#059669',
     bg: '#ECFDF5',
+  },
+  {
+    id: 'announcements',
+    title: 'Announcements',
+    desc: 'Website news with picture and post date',
+    icon: 'megaphone',
+    color: '#C2410C',
+    bg: '#FFF7ED',
   },
   {
     id: 'marketplace',
@@ -200,6 +209,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: 'flag', badgeKey: 'reports' },
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
+      { href: '/dashboard/announcements', label: 'Announcements', icon: 'megaphone' },
     ],
   },
   {
