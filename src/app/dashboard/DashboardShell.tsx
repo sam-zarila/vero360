@@ -371,8 +371,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                         >
                           <VeroIcon
                             name={item.icon}
-                            size={18}
-                            style={{ flexShrink: 0, opacity: active ? 1 : 0.85 }}
+                            size={20}
+                            strokeWidth={2.35}
+                            style={{ flexShrink: 0, opacity: active ? 1 : 0.9 }}
                           />
                           <span style={{ flex: 1 }}>{item.label}</span>
                           {badge && (
@@ -432,7 +433,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="truck" size={18} />
+                  <VeroIcon name="truck" size={20} strokeWidth={2.35} />
                   {courierToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
@@ -487,7 +488,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="package" size={18} />
+                  <VeroIcon name="package" size={20} strokeWidth={2.35} />
                   {ordersToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
@@ -542,7 +543,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="users" size={18} />
+                  <VeroIcon name="users" size={20} strokeWidth={2.35} />
                   {usersToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
@@ -597,7 +598,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="flag" size={18} />
+                  <VeroIcon name="flag" size={20} strokeWidth={2.35} />
                   {reportsToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>

@@ -38,6 +38,8 @@ export type VeroIconName =
   | 'headset'
   | 'sparkles'
   | 'settings'
+  | 'refresh'
+  | 'trash'
 
 type Props = {
   name: VeroIconName
@@ -288,6 +290,19 @@ function IconPath({ name }: { name: VeroIconName }): ReactNode {
           <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
         </>
       )
+    case 'refresh':
+      return (
+        <>
+          <path d="M21 12a9 9 0 11-2.6-6.3" />
+          <path d="M21 3v6h-6" />
+        </>
+      )
+    case 'trash':
+      return (
+        <>
+          <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+        </>
+      )
     default:
       return null
   }
@@ -297,7 +312,7 @@ export function VeroIcon({
   name,
   size = 24,
   color = 'currentColor',
-  strokeWidth = 1.75,
+  strokeWidth = 2.25,
   style,
   className,
 }: Props) {
@@ -331,13 +346,13 @@ export function IconBadge({
   bg?: string
   color?: string
 }) {
-  const box = Math.round(size * 2)
+  const box = Math.round(size * 2.15)
   return (
     <div
       style={{
         width: box,
         height: box,
-        borderRadius: 12,
+        borderRadius: 14,
         background: bg,
         display: 'flex',
         alignItems: 'center',
@@ -345,7 +360,7 @@ export function IconBadge({
         flexShrink: 0,
       }}
     >
-      <VeroIcon name={name} size={size} color={color} />
+      <VeroIcon name={name} size={size} color={color} strokeWidth={2.35} />
     </div>
   )
 }

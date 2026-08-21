@@ -14,7 +14,17 @@ import {
   type MerchantReport,
   type MerchantReportStatus,
 } from '@/lib/merchant-reports'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP['merchant-reports']
 
 type Tab = 'all' | 'open' | 'in_review' | 'resolved' | 'dismissed'
 
@@ -153,7 +163,7 @@ export default function MerchantReportsAdminPage() {
     if (
       !(await confirmDelete(
         merchantContactPrimary(item),
-        'This permanently deletes the report from Firestore.',
+        'This permanently removes the report.',
       ))
     ) {
       return
@@ -188,64 +198,13 @@ export default function MerchantReportsAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--text-3)',
-          marginBottom: 18,
-        }}
-      >
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 14,
-          marginBottom: 18,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 28,
-              fontWeight: 800,
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Merchant reports
-          </h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 14 }}>
-            Reports submitted from the app about marketplace merchants (Firestore{' '}
-            <code>merchant_reports</code>). Review messages and screenshots, then
-            resolve or dismiss.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontSize: 13,
-            fontWeight: 700,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="merchant-reports"
+        description="Review user reports about marketplace merchants. Review messages and screenshots, then resolve or dismiss."
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {error && (
         <div
@@ -282,62 +241,16 @@ export default function MerchantReportsAdminPage() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <label style={{ position: 'relative', flex: '1 1 260px' }}>
-          <span className="sr-only">Search reports</span>
-          <input
-            value={query}
-            onChange={e => {
-              setQuery(e.target.value)
-              if (e.target.value.trim()) setTab('all')
-            }}
-            placeholder="Search merchant, reporter, message…"
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <DashboardSearchField
+        value={query}
+        onChange={value => {
+          setQuery(value)
+          if (value.trim()) setTab('all')
+        }}
+        placeholder="Search merchant, reporter, message…"
+        label="Search reports"
+        onClear={() => setQuery('')}
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {tabs.map(t => {
@@ -376,11 +289,20 @@ export default function MerchantReportsAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading merchant reports…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim() || tab !== 'all'
-              ? 'No reports match your filters.'
-              : 'No merchant reports yet. When users report a merchant in the app, they appear here.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title={
+              query.trim() || tab !== 'all'
+                ? 'No reports match your filters'
+                : 'No merchant reports yet'
+            }
+            hint={
+              query.trim() || tab !== 'all'
+                ? 'Try clearing search or changing status.'
+                : 'When users report a merchant in the app, they appear here.'
+            }
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(item => {

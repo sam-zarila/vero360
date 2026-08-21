@@ -8,7 +8,6 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
-import Link from 'next/link'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   escrowReleaseExplanation,
@@ -24,6 +23,12 @@ import {
   type WalletRow,
   type WalletTxRow,
 } from '@/lib/finance'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 
 type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts'
 
@@ -195,40 +200,20 @@ export default function FinanceAdminPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 16,
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <Link
-            href="/dashboard"
-            style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}
-          >
-            ← Dashboard
-          </Link>
-          <h1 style={{ margin: '8px 0 4px', fontSize: 26, fontWeight: 700 }}>
-            Finance & wallets
-          </h1>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-            Merchant balances, escrow holds, and every instant cash-out merchants run —
-            same Firestore data as the app.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          style={btnSecondary}
-        >
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
-      </div>
+      <DashboardBackLink />
+
+      <DashboardPageHeader
+        sectionId="finance"
+        title="Finance & wallets"
+        description="Merchant balances, escrow holds, and every instant cash-out merchants run."
+        actions={
+          <DashboardRefreshButton
+            onClick={() => void load()}
+            disabled={loading}
+            label={loading ? 'Refreshing…' : 'Refresh'}
+          />
+        }
+      />
 
       {error ? <Banner tone="error">{error}</Banner> : null}
 
@@ -250,19 +235,12 @@ export default function FinanceAdminPage() {
       </div>
 
       {tab !== 'overview' ? (
-        <input
+        <DashboardSearchField
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={setQuery}
           placeholder="Search order, merchant, tx ref, wallet…"
-          style={{
-            width: '100%',
-            maxWidth: 420,
-            marginBottom: 16,
-            padding: '10px 12px',
-            borderRadius: 8,
-            border: '1px solid #E5E7EB',
-            fontSize: 14,
-          }}
+          label="Search finance records"
+          onClear={() => setQuery('')}
         />
       ) : null}
 

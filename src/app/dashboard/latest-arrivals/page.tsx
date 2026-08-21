@@ -2,7 +2,6 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   formatDateTime,
@@ -11,7 +10,17 @@ import {
   resolveLatestImage,
   type LatestArrival,
 } from '@/lib/latest-arrivals'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardThumbFallback,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP['latest-arrivals']
 
 export default function LatestArrivalsAdminPage() {
   const confirmDelete = useConfirmDelete()
@@ -60,53 +69,19 @@ export default function LatestArrivalsAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, letterSpacing: '-0.4px', marginBottom: 6 }}>
-            Latest arrivals
-          </h1>
-          <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0 }}>
-            Same as the app: goods posted in the <strong>last 24 hours</strong>. Older posts drop off automatically.
-          </p>
-          {!loading ? (
-            <p style={{ fontSize: 13, color: '#6B7280', margin: '8px 0 0' }}>
-              Showing {items.length} active
-              {totalFromApi > items.length ? ` · ${totalFromApi - items.length} expired (hidden)` : ''}
-            </p>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '8px 14px',
-            borderRadius: 100,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontWeight: 600,
-            fontSize: 13,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="latest-arrivals"
+        description="Goods posted in the last 24 hours. Older posts drop off automatically."
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
+      {!loading ? (
+        <p style={{ fontSize: 13, color: '#6B7280', margin: '-8px 0 16px' }}>
+          Showing {items.length} active
+          {totalFromApi > items.length ? ` · ${totalFromApi - items.length} expired (hidden)` : ''}
+        </p>
+      ) : null}
 
       {(error || notice) && (
         <div
@@ -137,9 +112,11 @@ export default function LatestArrivalsAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading latest arrivals…</p>
         ) : items.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            No goods posted in the last 24 hours.
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title="No goods posted in the last 24 hours"
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {items.map(item => {
@@ -174,9 +151,11 @@ export default function LatestArrivalsAdminPage() {
                     {img ? (
                       <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-4)' }}>
-                        No img
-                      </div>
+                      <DashboardThumbFallback
+                        icon={SECTION.icon}
+                        color={SECTION.color}
+                        bg={SECTION.bg}
+                      />
                     )}
                   </div>
 

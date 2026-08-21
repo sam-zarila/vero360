@@ -2,7 +2,6 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import {
   adminActionsFor,
   formatDateTime,
@@ -11,7 +10,17 @@ import {
   type CourierDelivery,
   type CourierStatus,
 } from '@/lib/courier'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP['vero-courier']
 
 type Tab = 'all' | 'PENDING' | 'ACCEPTED' | 'ON_THE_WAY' | 'DELIVERED' | 'CANCELLED'
 
@@ -148,62 +157,12 @@ export default function VeroCourierAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div
-        style={{
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: 'clamp(24px, 3vw, 32px)',
-              fontWeight: 900,
-              letterSpacing: '-0.4px',
-              marginBottom: 6,
-            }}
-          >
-            Vero Courier
-          </h1>
-          <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0, maxWidth: 560 }}>
-            Manage courier requests. Accept, mark Coming, or Reject — the user sees these updates in the app.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '8px 14px',
-            borderRadius: 100,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontWeight: 600,
-            fontSize: 13,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="vero-courier"
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {(error || notice) && (
         <div
@@ -221,84 +180,16 @@ export default function VeroCourierAdminPage() {
         </div>
       )}
 
-      <div
-        style={{
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          flexWrap: 'wrap',
-          alignItems: 'center',
+      <DashboardSearchField
+        value={query}
+        onChange={value => {
+          setQuery(value)
+          if (value.trim()) setTab('all')
         }}
-      >
-        <label
-          style={{
-            flex: '1 1 260px',
-            position: 'relative',
-            display: 'block',
-          }}
-        >
-          <span className="sr-only">Search courier number</span>
-          <input
-            type="search"
-            value={query}
-            onChange={e => {
-              const value = e.target.value
-              setQuery(value)
-              if (value.trim()) setTab('all')
-            }}
-            placeholder="Search courier / tracking number…"
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-            onFocus={e => {
-              e.currentTarget.style.borderColor = 'var(--primary)'
-            }}
-            onBlur={e => {
-              e.currentTarget.style.borderColor = 'var(--border)'
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+        placeholder="Search courier / tracking number…"
+        label="Search courier number"
+        onClear={() => setQuery('')}
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {tabs.map(t => {
@@ -337,13 +228,24 @@ export default function VeroCourierAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading courier deliveries…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim()
-              ? `No courier found for “${query.trim()}”.`
-              : tab === 'PENDING'
-                ? 'No pending courier requests. New requests will appear here for Accept / Reject.'
-                : 'No courier deliveries in this view.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title={
+              query.trim()
+                ? `No courier found for “${query.trim()}”`
+                : tab === 'PENDING'
+                  ? 'No pending courier requests'
+                  : 'No courier deliveries in this view'
+            }
+            hint={
+              query.trim()
+                ? 'Try a different tracking number.'
+                : tab === 'PENDING'
+                  ? 'New requests will appear here for Accept / Reject.'
+                  : undefined
+            }
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(item => {

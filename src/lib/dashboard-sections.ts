@@ -66,7 +66,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'stay',
     title: 'Stay',
-    desc: 'Accommodation bookings and hosts',
+    desc: 'Listings, hosts, and guest bookings',
     icon: 'bed',
     color: '#7C3AED',
     bg: '#F5F3FF',
@@ -90,15 +90,15 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'announcements',
     title: 'Announcements',
-    desc: 'Website news with picture and post date',
-    icon: 'megaphone',
+    desc: 'Homepage news with photo and post date',
+    icon: 'bell',
     color: '#C2410C',
     bg: '#FFF7ED',
   },
   {
     id: 'marketplace',
     title: 'Marketplace',
-    desc: 'Listings, merchants, and sales',
+    desc: 'Browse, filter, and remove catalog listings',
     icon: 'cart',
     color: '#D97706',
     bg: '#FFFBEB',
@@ -114,7 +114,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'refunds',
     title: 'Refunds',
-    desc: 'Pending and completed refund requests',
+    desc: 'Review and complete marketplace refunds',
     icon: 'refund',
     color: '#BE123C',
     bg: '#FFF1F2',
@@ -122,7 +122,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'merchant-reports',
     title: 'Merchant reports',
-    desc: 'User reports about marketplace merchants',
+    desc: 'Review user reports about merchants',
     icon: 'flag',
     color: '#C2410C',
     bg: '#FFF7ED',
@@ -209,7 +209,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: 'flag', badgeKey: 'reports' },
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
-      { href: '/dashboard/announcements', label: 'Announcements', icon: 'megaphone' },
+      { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
     ],
   },
   {
@@ -238,7 +238,7 @@ export function getDashboardSection(id: string) {
     return {
       id: 'settings' as const,
       title: 'Settings',
-      desc: 'Platform preferences, API config, and account settings.',
+      desc: 'Panel preferences and account settings.',
       icon: 'settings' as const,
       color: '#475569',
       bg: '#F8FAFC',

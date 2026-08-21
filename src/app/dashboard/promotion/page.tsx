@@ -2,7 +2,6 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   formatMwk,
@@ -12,7 +11,17 @@ import {
   resolvePromoImage,
   type Promo,
 } from '@/lib/promo'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardThumbFallback,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP.promotion
 
 type Tab = 'live' | 'inactive' | 'all'
 type Counts = { all: number; live: number; inactive: number }
@@ -104,29 +113,13 @@ export default function PromotionAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, letterSpacing: '-0.4px', marginBottom: 6 }}>
-          Promotion
-        </h1>
-        <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0 }}>
-          Review live and deactivated promos, and see which merchant posted each one.
-        </p>
-      </div>
+      <DashboardPageHeader
+        sectionId="promotion"
+        description="Review live and deactivated promos, and see which merchant posted each one."
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {(error || notice) && (
         <div
@@ -179,31 +172,21 @@ export default function PromotionAdminPage() {
               {label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => void load()}
-            style={{
-              marginLeft: 'auto',
-              padding: '8px 14px',
-              borderRadius: 100,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--text-2)',
-            }}
-          >
-            Refresh
-          </button>
         </div>
 
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading promotions…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            No promotions in this view.
-            {tab === 'inactive' && ' Deactivated promos appear here after you deactivate them.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title="No promotions in this view"
+            hint={
+              tab === 'inactive'
+                ? 'Deactivated promos appear here after you deactivate them.'
+                : undefined
+            }
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(promo => {
@@ -237,9 +220,11 @@ export default function PromotionAdminPage() {
                     {img ? (
                       <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-4)' }}>
-                        No img
-                      </div>
+                      <DashboardThumbFallback
+                        icon={SECTION.icon}
+                        color={SECTION.color}
+                        bg={SECTION.bg}
+                      />
                     )}
                   </div>
 

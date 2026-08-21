@@ -2,7 +2,6 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   ORDER_STATUSES,
@@ -18,7 +17,18 @@ import {
   type MarketplaceOrder,
   type OrderStatus,
 } from '@/lib/orders'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+  DashboardThumbFallback,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP.orders
 
 type Tab = 'all' | OrderStatus
 
@@ -139,62 +149,12 @@ export default function OrdersAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div
-        style={{
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: 'clamp(24px, 3vw, 32px)',
-              fontWeight: 900,
-              letterSpacing: '-0.4px',
-              marginBottom: 6,
-            }}
-          >
-            Orders
-          </h1>
-          <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0, maxWidth: 560 }}>
-            Marketplace orders from the app. Search by order number, update status for buyers and sellers.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '8px 14px',
-            borderRadius: 100,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontWeight: 600,
-            fontSize: 13,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="orders"
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {(error || notice) && (
         <div
@@ -212,71 +172,16 @@ export default function OrdersAdminPage() {
         </div>
       )}
 
-      <div
-        style={{
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          flexWrap: 'wrap',
-          alignItems: 'center',
+      <DashboardSearchField
+        value={query}
+        onChange={value => {
+          setQuery(value)
+          if (value.trim()) setTab('all')
         }}
-      >
-        <label style={{ flex: '1 1 280px', position: 'relative', display: 'block' }}>
-          <span className="sr-only">Search orders</span>
-          <input
-            type="search"
-            value={query}
-            onChange={e => {
-              setQuery(e.target.value)
-              if (e.target.value.trim()) setTab('all')
-            }}
-            placeholder="Search order number, item, buyer, seller…"
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+        placeholder="Search order number, item, buyer, seller…"
+        label="Search orders"
+        onClear={() => setQuery('')}
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {tabs.map(t => {
@@ -315,11 +220,12 @@ export default function OrdersAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading orders…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim()
-              ? `No orders found for “${query.trim()}”.`
-              : 'No marketplace orders yet.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title={query.trim() ? `No orders found for “${query.trim()}”` : 'No marketplace orders yet'}
+            hint={query.trim() ? 'Try a different search term.' : undefined}
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(item => {
@@ -356,18 +262,11 @@ export default function OrdersAdminPage() {
                     {img ? (
                       <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
                     ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: 'var(--text-4)',
-                          fontSize: 12,
-                        }}
-                      >
-                        No img
-                      </div>
+                      <DashboardThumbFallback
+                        icon={SECTION.icon}
+                        color={SECTION.color}
+                        bg={SECTION.bg}
+                      />
                     )}
                   </div>
 

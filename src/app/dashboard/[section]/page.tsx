@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { VeroIcon } from '@/app/components/landing/icons'
+import { IconBadge } from '@/app/components/landing/icons'
 import { getDashboardSection } from '@/lib/dashboard-sections'
+import { DashboardBackLink } from '@/app/dashboard/DashboardChrome'
 
 type Props = {
   params: Promise<{ section: string }>
@@ -14,20 +14,7 @@ export default async function DashboardSectionPage({ params }: Props) {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
       <div
         style={{
@@ -39,21 +26,7 @@ export default async function DashboardSectionPage({ params }: Props) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              background: data.bg,
-              color: data.color,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <VeroIcon name={data.icon} size={28} color={data.color} />
-          </div>
+          <IconBadge name={data.icon} size={28} bg={data.bg} color={data.color} />
           <h1
             style={{
               fontSize: 'clamp(24px, 3vw, 32px)',

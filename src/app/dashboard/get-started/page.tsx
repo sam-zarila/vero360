@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import Link from 'next/link'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   GET_STARTED_ROLE_META,
@@ -13,6 +12,10 @@ import {
   type GetStartedVideosMap,
 } from '@/lib/get-started-videos'
 import { IconBadge } from '@/app/components/landing/icons'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
 import { usePanelSession } from '../PanelSessionProvider'
 
@@ -186,28 +189,12 @@ export default function GetStartedVideosAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, letterSpacing: '-0.4px', margin: '0 0 8px' }}>
-        Get started videos
-      </h1>
-      <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.7, marginBottom: 24, maxWidth: 640 }}>
-        Upload an MP4 (up to 200MB) or paste a YouTube / Vimeo link. Until a video is set, the public
-        page keeps the “coming soon” placeholder.
-      </p>
+      <DashboardPageHeader
+        sectionId="get-started"
+        description="Upload an MP4 (up to 200MB) or paste a YouTube / Vimeo link. Until a video is set, the public page keeps the “coming soon” placeholder."
+      />
 
       {error && (
         <p style={{ color: '#B91C1C', background: '#FEF2F2', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>

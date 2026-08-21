@@ -10,7 +10,6 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   formatDateTime,
@@ -21,6 +20,12 @@ import {
   type JobPost,
   type JobRegion,
 } from '@/lib/jobs'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
 
 type Tab = 'all' | 'active' | 'inactive' | 'malawi' | 'international'
@@ -296,44 +301,32 @@ export default function JobsAdminPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <Link href="/dashboard" style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}>
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 14,
-          margin: '10px 0 18px',
-        }}
-      >
-        <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 700 }}>Jobs</h1>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-            Post, edit, activate, and delete listings shown in the Vero360 app (
-            <code>GET /vero/jobs</code>).
-          </p>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => void syncExternal()}
-            disabled={busyId === 'sync' || loading}
-            style={btnGhost}
-          >
-            {busyId === 'sync' ? 'Syncing…' : 'Sync external'}
-          </button>
-          <button type="button" onClick={() => void load()} disabled={loading} style={btnGhost}>
-            {loading ? 'Refreshing…' : 'Refresh'}
-          </button>
-          <button type="button" onClick={openCreate} style={btnPrimary}>
-            + Post job
-          </button>
-        </div>
-      </div>
+      <DashboardPageHeader
+        sectionId="jobs"
+        description="Post, edit, activate, and delete listings shown in the Vero360 app."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => void syncExternal()}
+              disabled={busyId === 'sync' || loading}
+              style={btnGhost}
+            >
+              {busyId === 'sync' ? 'Syncing…' : 'Sync external'}
+            </button>
+            <DashboardRefreshButton
+              onClick={() => void load()}
+              disabled={loading}
+              label={loading ? 'Refreshing…' : 'Refresh'}
+            />
+            <button type="button" onClick={openCreate} style={btnPrimary}>
+              + Post job
+            </button>
+          </>
+        }
+      />
 
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="ok">{notice}</Banner> : null}
@@ -487,11 +480,12 @@ export default function JobsAdminPage() {
         ))}
       </div>
 
-      <input
+      <DashboardSearchField
         value={query}
-        onChange={e => setQuery(e.target.value)}
+        onChange={setQuery}
         placeholder="Search title, company, location…"
-        style={{ ...input, maxWidth: 420, marginBottom: 16 }}
+        label="Search jobs"
+        onClear={() => setQuery('')}
       />
 
       <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 12px' }}>

@@ -34,43 +34,34 @@ export async function POST(request: Request) {
 
   try {
     const contentType = request.headers.get('content-type') || ''
-    if (contentType.includes('multipart/form-data')) {
-      const form = await request.formData()
-      const title = String(form.get('title') ?? '')
-      const description = String(form.get('description') ?? '')
-      const postedAtRaw = String(form.get('postedAt') ?? '').trim()
-      const active = String(form.get('active') ?? 'true') !== 'false'
-      const file = form.get('image')
-      const imageUrlField = String(form.get('imageUrl') ?? '').trim()
-
-      let imageUrl = imageUrlField || null
-      if (file instanceof File && file.size > 0) {
-        imageUrl = await uploadAnnouncementImage(file)
-      }
-
-      const item = await createAnnouncement({
-        title,
-        description,
-        imageUrl,
-        postedAt: postedAtRaw || null,
-        active,
-      })
-      return NextResponse.json({ success: true, item }, { status: 201 })
+    if (!contentType.includes('multipart/form-data')) {
+      return NextResponse.json(
+        { error: 'Upload a photo file — image links are not allowed' },
+        { status: 400 },
+      )
     }
 
-    const body = (await request.json()) as {
-      title?: string
-      description?: string
-      imageUrl?: string | null
-      postedAt?: string | null
-      active?: boolean
+    const form = await request.formData()
+    const title = String(form.get('title') ?? '')
+    const description = String(form.get('description') ?? '')
+    const postedAtRaw = String(form.get('postedAt') ?? '').trim()
+    const active = String(form.get('active') ?? 'true') !== 'false'
+    const file = form.get('image')
+
+    if (!(file instanceof File) || file.size <= 0) {
+      return NextResponse.json(
+        { error: 'A photo upload is required' },
+        { status: 400 },
+      )
     }
+
+    const imageUrl = await uploadAnnouncementImage(file)
     const item = await createAnnouncement({
-      title: body.title || '',
-      description: body.description || '',
-      imageUrl: body.imageUrl,
-      postedAt: body.postedAt,
-      active: body.active,
+      title,
+      description,
+      imageUrl,
+      postedAt: postedAtRaw || null,
+      active,
     })
     return NextResponse.json({ success: true, item }, { status: 201 })
   } catch (err) {

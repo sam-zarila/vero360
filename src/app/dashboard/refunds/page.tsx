@@ -2,7 +2,6 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import {
   formatDateTime,
   formatMwk,
@@ -13,7 +12,17 @@ import {
   type RefundRequest,
   type RefundStatus,
 } from '@/lib/refunds'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP.refunds
 
 type Tab = 'all' | 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -136,64 +145,13 @@ export default function RefundsAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--text-3)',
-          marginBottom: 18,
-        }}
-      >
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 14,
-          marginBottom: 18,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 28,
-              fontWeight: 800,
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Refunds
-          </h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 14 }}>
-            Marketplace refund requests from the app (Firestore{' '}
-            <code>refund_requests</code>). Track pending and mark completed after
-            PayChangu processing.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontSize: 13,
-            fontWeight: 700,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="refunds"
+        description="Review and complete marketplace refunds. Track pending requests and mark completed after PayChangu processing."
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {error && (
         <div
@@ -230,62 +188,16 @@ export default function RefundsAdminPage() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <label style={{ position: 'relative', flex: '1 1 260px' }}>
-          <span className="sr-only">Search refunds</span>
-          <input
-            value={query}
-            onChange={e => {
-              setQuery(e.target.value)
-              if (e.target.value.trim()) setTab('all')
-            }}
-            placeholder="Search order #, item, reason, tx ref…"
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <DashboardSearchField
+        value={query}
+        onChange={value => {
+          setQuery(value)
+          if (value.trim()) setTab('all')
+        }}
+        placeholder="Search order #, item, reason, tx ref…"
+        label="Search refunds"
+        onClear={() => setQuery('')}
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {tabs.map(t => {
@@ -324,11 +236,20 @@ export default function RefundsAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading refunds…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim() || tab !== 'all'
-              ? 'No refunds match your filters.'
-              : 'No refund requests yet. When buyers or sellers request refunds in the app, they appear here.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title={
+              query.trim() || tab !== 'all'
+                ? 'No refunds match your filters'
+                : 'No refund requests yet'
+            }
+            hint={
+              query.trim() || tab !== 'all'
+                ? 'Try clearing search or changing status.'
+                : 'When buyers or sellers request refunds in the app, they appear here.'
+            }
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(item => {

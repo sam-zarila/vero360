@@ -2,8 +2,17 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
+import { VeroIcon } from '@/app/components/landing/icons'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+  DashboardThumbFallback,
+} from '@/app/dashboard/DashboardChrome'
 import {
   ACCOMMODATION_TYPES,
   BOOKING_PAYMENT_STATUSES,
@@ -21,6 +30,8 @@ import {
   type StayListing,
 } from '@/lib/stay'
 import { useConfirmDelete } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP.stay
 
 type MainTab = 'listings' | 'bookings'
 type TypeFilter = 'all' | (typeof ACCOMMODATION_TYPES)[number]
@@ -117,7 +128,7 @@ export default function StayAdminPage() {
     if (
       !(await confirmDelete(
         item.name,
-        'This deletes the accommodation (same as app DELETE /accommodations/:id).',
+        'Permanently remove this accommodation listing and its room details? This cannot be undone.',
       ))
     ) {
       return
@@ -211,63 +222,13 @@ export default function StayAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--text-3)',
-          marginBottom: 18,
-        }}
-      >
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 14,
-          marginBottom: 18,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 28,
-              fontWeight: 800,
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Stay
-          </h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 14 }}>
-            Same Nest APIs as the app: <code>/accommodations/all</code> + Firestore room
-            overlays, and <code>/bookings/admin/all</code> (guest + host bookings).
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontSize: 13,
-            fontWeight: 700,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="stay"
+        description="Manage accommodations, host contacts, and guest bookings in one place."
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {error && (
         <div
@@ -336,65 +297,17 @@ export default function StayAdminPage() {
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <label style={{ position: 'relative', flex: '1 1 260px' }}>
-          <span className="sr-only">
-            {mainTab === 'listings' ? 'Search listings' : 'Search bookings'}
-          </span>
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={
-              mainTab === 'listings'
-                ? 'Search name, location, host…'
-                : 'Search booking #, guest, property…'
-            }
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <DashboardSearchField
+        value={query}
+        onChange={setQuery}
+        placeholder={
+          mainTab === 'listings'
+            ? 'Search name, location, host…'
+            : 'Search booking #, guest, property…'
+        }
+        label={mainTab === 'listings' ? 'Search listings' : 'Search bookings'}
+        onClear={() => setQuery('')}
+      />
 
       {mainTab === 'listings' ? (
         <>
@@ -485,11 +398,20 @@ export default function StayAdminPage() {
           <p style={{ color: 'var(--text-3)' }}>Loading stay data…</p>
         ) : mainTab === 'listings' ? (
           filteredListings.length === 0 ? (
-            <p style={{ color: 'var(--text-3)' }}>
-              {query.trim() || typeFilter !== 'all' || availabilityFilter !== 'all'
-                ? 'No listings match your filters.'
-                : 'No accommodations listed yet.'}
-            </p>
+            <DashboardEmptyState
+              icon={SECTION.icon}
+              color={SECTION.color}
+              title={
+                query.trim() || typeFilter !== 'all' || availabilityFilter !== 'all'
+                  ? 'No listings match your filters'
+                  : 'No accommodations listed yet'
+              }
+              hint={
+                query.trim() || typeFilter !== 'all' || availabilityFilter !== 'all'
+                  ? 'Try clearing search or changing type / availability.'
+                  : 'New host listings from the app will show up here.'
+              }
+            />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {filteredListings.map(item => {
@@ -530,18 +452,11 @@ export default function StayAdminPage() {
                       {img ? (
                         <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
                       ) : (
-                        <div
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            display: 'grid',
-                            placeItems: 'center',
-                            color: 'var(--text-4)',
-                            fontSize: 12,
-                          }}
-                        >
-                          No img
-                        </div>
+                        <DashboardThumbFallback
+                          icon={SECTION.icon}
+                          color={SECTION.color}
+                          bg={SECTION.bg}
+                        />
                       )}
                     </div>
 
@@ -610,6 +525,10 @@ export default function StayAdminPage() {
                         disabled={busyId === item.id}
                         onClick={() => void removeListing(item)}
                         style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
                           padding: '9px 12px',
                           borderRadius: 10,
                           border: '1px solid #FECACA',
@@ -621,6 +540,7 @@ export default function StayAdminPage() {
                           opacity: busyId === item.id ? 0.7 : 1,
                         }}
                       >
+                        <VeroIcon name="trash" size={14} strokeWidth={2.35} color="currentColor" />
                         {busyId === item.id ? 'Removing…' : 'Delete'}
                       </button>
                     </div>
@@ -630,11 +550,20 @@ export default function StayAdminPage() {
             </div>
           )
         ) : filteredBookings.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim() || paymentFilter !== 'all'
-              ? 'No bookings match your filters.'
-              : 'No accommodation bookings yet.'}
-          </p>
+          <DashboardEmptyState
+            icon="calendar"
+            color={SECTION.color}
+            title={
+              query.trim() || paymentFilter !== 'all'
+                ? 'No bookings match your filters'
+                : 'No accommodation bookings yet'
+            }
+            hint={
+              query.trim() || paymentFilter !== 'all'
+                ? 'Try clearing search or changing the payment filter.'
+                : 'Guest and host bookings from the app appear here.'
+            }
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filteredBookings.map(item => {
@@ -668,18 +597,12 @@ export default function StayAdminPage() {
                     {img ? (
                       <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
                     ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: 'var(--text-4)',
-                          fontSize: 12,
-                        }}
-                      >
-                        No img
-                      </div>
+                      <DashboardThumbFallback
+                        icon={SECTION.icon}
+                        color={SECTION.color}
+                        bg={SECTION.bg}
+                        size={24}
+                      />
                     )}
                   </div>
 

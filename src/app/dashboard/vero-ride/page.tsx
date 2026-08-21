@@ -9,7 +9,17 @@ import {
   type DriverStatus,
   type FleetDriver,
 } from '@/lib/drivers'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
+
+const SECTION = DASHBOARD_SECTION_MAP['vero-ride']
 
 type Tab = 'all' | DriverStatus | 'VEHICLE_PENDING'
 
@@ -90,22 +100,14 @@ export default function VeroRideDriversPage() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
-      <div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 26,
-            fontWeight: 800,
-            color: 'var(--text)',
-            fontFamily: 'var(--font-display), sans-serif',
-          }}
-        >
-          Vero Ride — Drivers
-        </h1>
-        <p style={{ margin: '6px 0 0', color: 'var(--muted)' }}>
-          Review driver identity and vehicle documents before they go online.
-        </p>
-      </div>
+      <DashboardBackLink />
+
+      <DashboardPageHeader
+        sectionId="vero-ride"
+        title="Vero Ride — Drivers"
+        description="Review driver identity and vehicle documents before they go online."
+        actions={<DashboardRefreshButton onClick={load} disabled={loading} />}
+      />
 
       <div
         style={{
@@ -162,35 +164,13 @@ export default function VeroRideDriversPage() {
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search name, email, license, ID…"
-          style={{
-            flex: 1,
-            minWidth: 220,
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: '10px 12px',
-            background: 'var(--surface)',
-          }}
-        />
-        <button
-          type="button"
-          onClick={load}
-          style={{
-            border: '1px solid var(--border)',
-            background: 'var(--surface)',
-            borderRadius: 10,
-            padding: '10px 14px',
-            cursor: 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardSearchField
+        value={query}
+        onChange={setQuery}
+        placeholder="Search name, email, license, ID…"
+        label="Search drivers"
+        onClear={() => setQuery('')}
+      />
 
       {error ? (
         <div
@@ -209,7 +189,11 @@ export default function VeroRideDriversPage() {
       {loading ? (
         <p style={{ color: 'var(--muted)' }}>Loading drivers…</p>
       ) : filtered.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>No drivers in this view.</p>
+        <DashboardEmptyState
+          icon={SECTION.icon}
+          color={SECTION.color}
+          title="No drivers in this view"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {filtered.map(driver => {

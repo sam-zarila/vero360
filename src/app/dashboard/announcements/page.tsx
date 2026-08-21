@@ -2,13 +2,17 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   formatAnnouncementPostedAt,
   resolveAnnouncementImage,
   type Announcement,
 } from '@/lib/announcements'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
 
 function toLocalInputValue(iso?: string | null) {
@@ -30,7 +34,8 @@ type FormState = {
   description: string
   postedAt: string
   active: boolean
-  imageUrl: string
+  /** Existing uploaded image when editing; never set from a pasted link. */
+  existingImageUrl: string
   imageFile: File | null
 }
 
@@ -39,7 +44,7 @@ const emptyForm = (): FormState => ({
   description: '',
   postedAt: toLocalInputValue(),
   active: true,
-  imageUrl: '',
+  existingImageUrl: '',
   imageFile: null,
 })
 
@@ -55,8 +60,8 @@ export default function AnnouncementsAdminPage() {
 
   const previewUrl = useMemo(() => {
     if (form.imageFile) return URL.createObjectURL(form.imageFile)
-    return resolveAnnouncementImage(form.imageUrl) || ''
-  }, [form.imageFile, form.imageUrl])
+    return resolveAnnouncementImage(form.existingImageUrl) || ''
+  }, [form.imageFile, form.existingImageUrl])
 
   useEffect(() => {
     if (!form.imageFile || !previewUrl.startsWith('blob:')) return
@@ -94,7 +99,7 @@ export default function AnnouncementsAdminPage() {
       description: item.description,
       postedAt: toLocalInputValue(item.postedAt),
       active: item.active,
-      imageUrl: item.imageUrl || '',
+      existingImageUrl: item.imageUrl || '',
       imageFile: null,
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -102,6 +107,14 @@ export default function AnnouncementsAdminPage() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (!editingId && !form.imageFile) {
+      setError('Upload a photo — image links are not allowed')
+      return
+    }
+    if (editingId && !form.imageFile && !form.existingImageUrl) {
+      setError('Upload a photo for this announcement')
+      return
+    }
     setSaving(true)
     setError('')
     setNotice('')
@@ -112,7 +125,6 @@ export default function AnnouncementsAdminPage() {
       body.set('active', form.active ? 'true' : 'false')
       const postedIso = fromLocalInputValue(form.postedAt)
       if (postedIso) body.set('postedAt', postedIso)
-      if (form.imageUrl.trim()) body.set('imageUrl', form.imageUrl.trim())
       if (form.imageFile) body.set('image', form.imageFile)
 
       const url = editingId
@@ -170,29 +182,13 @@ export default function AnnouncementsAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, letterSpacing: '-0.4px', marginBottom: 6 }}>
-          Announcements
-        </h1>
-        <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0 }}>
-          Post website announcements with a picture, description, and posted date. They appear on the homepage after the stats bar.
-        </p>
-      </div>
+      <DashboardPageHeader
+        sectionId="announcements"
+        description="Post website announcements with a picture, description, and posted date. They appear on the homepage after the stats bar."
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {(error || notice) && (
         <div
@@ -313,21 +309,21 @@ export default function AnnouncementsAdminPage() {
         </div>
 
         <div style={{ display: 'grid', gap: 10 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>Picture</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
+            Photo {editingId ? '(upload a new file to replace)' : '(required)'}
+          </span>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            required={!editingId}
             onChange={e => {
               const file = e.target.files?.[0] || null
               setForm(f => ({ ...f, imageFile: file }))
             }}
           />
-          <input
-            value={form.imageUrl}
-            onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value, imageFile: null }))}
-            placeholder="Or paste an image URL"
-            style={inputStyle}
-          />
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-3)' }}>
+            Upload a JPEG, PNG, WebP, or GIF (max 8MB). Image links are not accepted.
+          </p>
           {previewUrl ? (
             <div
               style={{
@@ -378,20 +374,6 @@ export default function AnnouncementsAdminPage() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Published</h2>
-          <button
-            type="button"
-            onClick={() => void load()}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 100,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontWeight: 600,
-              fontSize: 13,
-            }}
-          >
-            Refresh
-          </button>
         </div>
 
         {loading ? (

@@ -18,6 +18,7 @@ import {
 import { auth } from '@/lib/firebase'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import { adminRoleLabel, type PanelAdmin } from '@/lib/admins'
+import { DashboardBackLink, DashboardPageHeader } from '@/app/dashboard/DashboardChrome'
 
 export default function SettingsPage() {
   const [authReady, setAuthReady] = useState(false)
@@ -150,14 +151,12 @@ export default function SettingsPage() {
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
-      <Link href="/dashboard" style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}>
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <h1 style={{ margin: '10px 0 6px', fontSize: 26, fontWeight: 700 }}>Settings</h1>
-      <p style={{ margin: '0 0 18px', color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-        Update your admin display name and password.
-      </p>
+      <DashboardPageHeader
+        sectionId="settings"
+        description="Update your admin display name and password."
+      />
 
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="ok">{notice}</Banner> : null}

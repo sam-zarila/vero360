@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import Link from 'next/link'
 import VeroChatMessageRow from '@/app/components/VeroChatMessageRow'
 import VeroChatReplyBar from '@/app/components/VeroChatReplyBar'
+import { DashboardBackLink, DashboardPageHeader } from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
 import {
   closeSession,
@@ -181,36 +181,9 @@ export default function HelpCenterInbox() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div style={{ marginBottom: 20 }}>
-        <h1
-          style={{
-            fontSize: 'clamp(24px, 3vw, 32px)',
-            fontWeight: 900,
-            letterSpacing: '-0.4px',
-            marginBottom: 6,
-          }}
-        >
-          Help Center
-        </h1>
-        <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0 }}>
-          Live Vero360 Help Center chats from the website.
-        </p>
-      </div>
+      <DashboardPageHeader sectionId="verochat" />
 
       <div
         className="help-inbox"

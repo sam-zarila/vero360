@@ -112,14 +112,16 @@ export async function getAnnouncement(id: string): Promise<Announcement | null> 
 export async function createAnnouncement(input: {
   title: string
   description: string
-  imageUrl?: string | null
+  imageUrl: string
   postedAt?: string | null
   active?: boolean
 }): Promise<Announcement> {
   const title = str(input.title)
   const description = str(input.description)
+  const imageUrl = str(input.imageUrl)
   if (!title) throw new Error('Title is required')
   if (!description) throw new Error('Description is required')
+  if (!imageUrl) throw new Error('A photo upload is required')
 
   const postedDate = input.postedAt ? new Date(input.postedAt) : new Date()
   if (Number.isNaN(postedDate.getTime())) throw new Error('Invalid posted date')
@@ -128,7 +130,7 @@ export async function createAnnouncement(input: {
   const payload = {
     title,
     description,
-    imageUrl: str(input.imageUrl) || null,
+    imageUrl,
     postedAt: postedDate,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
@@ -139,7 +141,7 @@ export async function createAnnouncement(input: {
     id: ref.id,
     title,
     description,
-    imageUrl: str(input.imageUrl) || null,
+    imageUrl,
     postedAt: postedDate.toISOString(),
     createdAt: postedDate.toISOString(),
     updatedAt: postedDate.toISOString(),
@@ -175,7 +177,9 @@ export async function updateAnnouncement(
     patch.description = description
   }
   if (input.imageUrl !== undefined) {
-    patch.imageUrl = str(input.imageUrl) || null
+    const next = str(input.imageUrl)
+    if (!next) throw new Error('A photo upload is required')
+    patch.imageUrl = next
   }
   if (input.postedAt !== undefined) {
     if (!input.postedAt) throw new Error('Invalid posted date')

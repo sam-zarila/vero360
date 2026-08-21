@@ -4,6 +4,7 @@ import { enrichStayListings } from '@/lib/stay-rooms'
 import { parseStayListings } from '@/lib/stay'
 import {
   apiErrorMessage,
+  getVeroAuthHeader,
   readJsonSafe,
   veroEndpoint,
 } from '@/lib/vero-api'
@@ -12,8 +13,12 @@ export async function GET(request: Request) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
   try {
+    const headers: HeadersInit = { Accept: 'application/json' }
+    const auth = getVeroAuthHeader(request)
+    if (auth) headers.Authorization = auth
+
     const res = await fetch(veroEndpoint('accommodations', 'all'), {
-      headers: { Accept: 'application/json' },
+      headers,
       cache: 'no-store',
     })
     const body = await readJsonSafe(res)

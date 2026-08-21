@@ -2,7 +2,6 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   MARKETPLACE_CATEGORIES,
@@ -15,7 +14,18 @@ import {
   type MarketplaceCategory,
   type MarketplaceListing,
 } from '@/lib/marketplace'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+  DashboardThumbFallback,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP.marketplace
 
 type CategoryTab = 'all' | MarketplaceCategory
 
@@ -124,63 +134,13 @@ export default function MarketplaceAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--text-3)',
-          marginBottom: 18,
-        }}
-      >
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 14,
-          marginBottom: 18,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 28,
-              fontWeight: 800,
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Marketplace
-          </h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 14 }}>
-            All app listings from Firestore (same as the mobile MarketplaceService), by category.
-            Delete removes inappropriate items from the catalog.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontSize: 13,
-            fontWeight: 700,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="marketplace"
+        description="Browse, filter, and remove catalog listings. Delete items that violate policy."
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {error && (
         <div
@@ -217,62 +177,16 @@ export default function MarketplaceAdminPage() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <label style={{ position: 'relative', flex: '1 1 260px' }}>
-          <span className="sr-only">Search listings</span>
-          <input
-            value={query}
-            onChange={e => {
-              setQuery(e.target.value)
-              if (e.target.value.trim()) setCategory('all')
-            }}
-            placeholder="Search name, location, seller…"
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <DashboardSearchField
+        value={query}
+        onChange={value => {
+          setQuery(value)
+          if (value.trim()) setCategory('all')
+        }}
+        placeholder="Search name, location, seller…"
+        label="Search listings"
+        onClear={() => setQuery('')}
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {tabs.map(t => {
@@ -311,11 +225,20 @@ export default function MarketplaceAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading marketplace…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim() || category !== 'all'
-              ? 'No listings match your filters.'
-              : 'No marketplace listings yet.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title={
+              query.trim() || category !== 'all'
+                ? 'No listings match your filters'
+                : 'No marketplace listings yet'
+            }
+            hint={
+              query.trim() || category !== 'all'
+                ? 'Try clearing search or changing category.'
+                : 'New seller listings from the app will appear here.'
+            }
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(item => {
@@ -351,18 +274,11 @@ export default function MarketplaceAdminPage() {
                     {img ? (
                       <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
                     ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: 'var(--text-4)',
-                          fontSize: 12,
-                        }}
-                      >
-                        No img
-                      </div>
+                      <DashboardThumbFallback
+                        icon={SECTION.icon}
+                        color={SECTION.color}
+                        bg={SECTION.bg}
+                      />
                     )}
                   </div>
 

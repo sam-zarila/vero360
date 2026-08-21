@@ -20,42 +20,58 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
   try {
     const contentType = request.headers.get('content-type') || ''
-    if (contentType.includes('multipart/form-data')) {
-      const form = await request.formData()
-      const patch: {
+
+    // JSON allowed only for visibility toggles (no imageUrl changes).
+    if (contentType.includes('application/json')) {
+      const body = (await request.json()) as {
         title?: string
         description?: string
         imageUrl?: string | null
         postedAt?: string | null
         active?: boolean
-      } = {}
-
-      if (form.has('title')) patch.title = String(form.get('title') ?? '')
-      if (form.has('description')) patch.description = String(form.get('description') ?? '')
-      if (form.has('postedAt')) {
-        const postedAt = String(form.get('postedAt') ?? '').trim()
-        patch.postedAt = postedAt || null
       }
-      if (form.has('active')) patch.active = String(form.get('active')) !== 'false'
-      if (form.has('imageUrl')) patch.imageUrl = String(form.get('imageUrl') ?? '').trim() || null
-
-      const file = form.get('image')
-      if (file instanceof File && file.size > 0) {
-        patch.imageUrl = await uploadAnnouncementImage(file)
+      if (body.imageUrl !== undefined) {
+        return NextResponse.json(
+          { error: 'Upload a photo file — image links are not allowed' },
+          { status: 400 },
+        )
       }
-
-      const item = await updateAnnouncement(id, patch)
+      const item = await updateAnnouncement(id, {
+        title: body.title,
+        description: body.description,
+        postedAt: body.postedAt,
+        active: body.active,
+      })
       return NextResponse.json({ success: true, item })
     }
 
-    const body = (await request.json()) as {
+    if (!contentType.includes('multipart/form-data')) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    }
+
+    const form = await request.formData()
+    const patch: {
       title?: string
       description?: string
-      imageUrl?: string | null
+      imageUrl?: string
       postedAt?: string | null
       active?: boolean
+    } = {}
+
+    if (form.has('title')) patch.title = String(form.get('title') ?? '')
+    if (form.has('description')) patch.description = String(form.get('description') ?? '')
+    if (form.has('postedAt')) {
+      const postedAt = String(form.get('postedAt') ?? '').trim()
+      patch.postedAt = postedAt || null
     }
-    const item = await updateAnnouncement(id, body)
+    if (form.has('active')) patch.active = String(form.get('active')) !== 'false'
+
+    const file = form.get('image')
+    if (file instanceof File && file.size > 0) {
+      patch.imageUrl = await uploadAnnouncementImage(file)
+    }
+
+    const item = await updateAnnouncement(id, patch)
     return NextResponse.json({ success: true, item })
   } catch (err) {
     const status =

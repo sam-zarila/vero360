@@ -127,9 +127,9 @@ export default function DashboardCards() {
 
             <div
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
+                width: 52,
+                height: 52,
+                borderRadius: 15,
                 background: card.bg,
                 color: card.color,
                 display: 'flex',
@@ -138,7 +138,7 @@ export default function DashboardCards() {
                 position: 'relative',
               }}
             >
-              <VeroIcon name={card.icon} size={24} color={card.color} />
+              <VeroIcon name={card.icon} size={26} color={card.color} strokeWidth={2.35} />
               {showBadge && (
                 <span
                   style={{

@@ -21,6 +21,11 @@ import {
   type AdminRole,
   type PanelAdmin,
 } from '@/lib/admins'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 
 type Counts = {
@@ -251,64 +256,52 @@ export default function AdminsPage() {
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto' }}>
-      <Link href="/dashboard" style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}>
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          gap: 14,
-          margin: '10px 0 18px',
-        }}
-      >
-        <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 700 }}>Admins</h1>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-            Classify panel users as <strong>super admin</strong> or <strong>admin</strong>.
-            You can have many super admins. Super admins manage accounts; normal admins
-            cannot see Finance or Admins.
-          </p>
-          {me ? (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6B7280' }}>
-              Signed in as {me.email} ({adminRoleLabel(me.role)})
-            </p>
-          ) : bootstrap ? (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#B45309' }}>
-              No admins yet — create the first <strong>super admin</strong> below, then sign in at{' '}
-              <Link href="/panel">/panel</Link>.
-            </p>
-          ) : needsSignIn ? (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#047857' }}>
-              Super admin exists. <Link href="/panel">Sign in at /panel</Link> to manage accounts.
-            </p>
-          ) : (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#B45309' }}>
-              Sign in at <Link href="/panel">/panel</Link> as a super admin to manage accounts.
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => void load()} disabled={loading} style={btnGhost}>
-            {loading ? 'Refreshing…' : 'Refresh'}
-          </button>
-          {canManage ? (
-            <button
-              type="button"
-              onClick={() => setFormOpen(o => !o)}
-              style={btnPrimary}
-            >
-              {formOpen ? 'Close form' : '+ Create admin'}
-            </button>
-          ) : needsSignIn ? (
-            <Link href="/panel" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-block' }}>
-              Sign in at /panel
-            </Link>
-          ) : null}
-        </div>
-      </div>
+      <DashboardPageHeader
+        sectionId="admins"
+        description="Classify panel users as super admin or admin. You can have many super admins. Super admins manage accounts; normal admins cannot see Finance or Admins."
+        actions={
+          <>
+            <DashboardRefreshButton
+              onClick={() => void load()}
+              disabled={loading}
+              label={loading ? 'Refreshing…' : 'Refresh'}
+            />
+            {canManage ? (
+              <button
+                type="button"
+                onClick={() => setFormOpen(o => !o)}
+                style={btnPrimary}
+              >
+                {formOpen ? 'Close form' : '+ Create admin'}
+              </button>
+            ) : needsSignIn ? (
+              <Link href="/panel" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-block' }}>
+                Sign in at /panel
+              </Link>
+            ) : null}
+          </>
+        }
+      />
+      {me ? (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#6B7280' }}>
+          Signed in as {me.email} ({adminRoleLabel(me.role)})
+        </p>
+      ) : bootstrap ? (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#B45309' }}>
+          No admins yet — create the first <strong>super admin</strong> below, then sign in at{' '}
+          <Link href="/panel">/panel</Link>.
+        </p>
+      ) : needsSignIn ? (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#047857' }}>
+          Super admin exists. <Link href="/panel">Sign in at /panel</Link> to manage accounts.
+        </p>
+      ) : (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#B45309' }}>
+          Sign in at <Link href="/panel">/panel</Link> as a super admin to manage accounts.
+        </p>
+      )}
 
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="ok">{notice}</Banner> : null}
