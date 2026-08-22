@@ -5,6 +5,7 @@ export type DashboardSectionId =
   | 'vero-courier'
   | 'food'
   | 'jobs'
+  | 'tenders'
   | 'stay'
   | 'promotion'
   | 'latest-arrivals'
@@ -62,6 +63,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'briefcase',
     color: '#2563EB',
     bg: '#EFF6FF',
+  },
+  {
+    id: 'tenders',
+    title: 'Tenders',
+    desc: 'Malawi procurement notices and RFQs',
+    icon: 'file-text',
+    color: '#0F766E',
+    bg: '#F0FDFA',
   },
   {
     id: 'stay',
@@ -202,6 +211,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/vero-courier', label: 'Vero Courier', icon: 'truck', badgeKey: 'courier' },
       { href: '/dashboard/food', label: 'Food', icon: 'food' },
       { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
+      { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },
       { href: '/dashboard/stay', label: 'Stay', icon: 'bed' },
       { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'cart' },
       { href: '/dashboard/orders', label: 'Orders', icon: 'package', badgeKey: 'orders' },

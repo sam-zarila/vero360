@@ -40,6 +40,7 @@ export type VeroIconName =
   | 'settings'
   | 'refresh'
   | 'trash'
+  | 'file-text'
 
 type Props = {
   name: VeroIconName
@@ -301,6 +302,13 @@ function IconPath({ name }: { name: VeroIconName }): ReactNode {
       return (
         <>
           <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+        </>
+      )
+    case 'file-text':
+      return (
+        <>
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+          <path d="M14 2v6h6M8 13h8M8 17h8M8 9h2" />
         </>
       )
     default:
