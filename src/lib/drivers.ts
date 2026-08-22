@@ -217,15 +217,46 @@ export function taxiStatusLabel(status: TaxiStatus): string {
   }
 }
 
-export function isExpired(dateStr: string | null): boolean {
+export function isMissingDate(dateStr: string | null): boolean {
   if (!dateStr) return true
+  const yearMatch = /^(\d{4})-/.exec(dateStr)
+  if (yearMatch && Number(yearMatch[1]) <= 1901) return true
   const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return true
+  return Number.isNaN(d.getTime()) || d.getUTCFullYear() <= 1901
+}
+
+export function isExpired(dateStr: string | null): boolean {
+  if (isMissingDate(dateStr)) return true
+  const d = new Date(dateStr as string)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const day = new Date(d)
   day.setHours(0, 0, 0, 0)
   return day < today
+}
+
+/** Calendar date only (DOB / expiry). Hides backend placeholder dates. */
+export function formatDateOnly(value?: string | null): string {
+  if (!value) return '—'
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (match) {
+    const year = Number(match[1])
+    if (year <= 1901) return '—'
+    const d = new Date(Date.UTC(year, Number(match[2]) - 1, Number(match[3])))
+    return d.toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    })
+  }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime()) || d.getUTCFullYear() <= 1901) return '—'
+  return d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 export { formatDateTime }

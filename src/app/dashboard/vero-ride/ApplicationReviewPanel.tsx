@@ -3,8 +3,7 @@
 import {
   driverStatusLabel,
   driverStatusTone,
-  formatDateTime,
-  isExpired,
+  formatDateOnly,
   taxiStatusLabel,
   type FleetDriver,
   type FleetTaxi,
@@ -178,20 +177,7 @@ export function ApplicationReviewPanel({
             marginBottom: 14,
           }}
         >
-          <Field label="License number" value={driver.licenseNumber || '—'} />
-          <Field
-            label="License expiry"
-            value={formatDateTime(driver.licenseExpiry)}
-            warn={
-              isExpired(driver.licenseExpiry)
-                ? driver.licenseExpiry
-                  ? 'expired'
-                  : 'required'
-                : undefined
-            }
-          />
-          <Field label="National ID" value={driver.nationalId || '—'} />
-          <Field label="Date of birth" value={formatDateTime(driver.dateOfBirth)} />
+          <Field label="Date of birth" value={formatDateOnly(driver.dateOfBirth)} />
         </div>
         <div
           style={{
@@ -314,7 +300,7 @@ function VehicleBlock({
         }}
       >
         <div style={{ fontWeight: 700 }}>
-          {taxi.make} {taxi.model} ({taxi.year}) · {taxi.licensePlate}
+          {taxi.model || 'Vehicle'} · {taxi.licensePlate}
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
           {taxiStatusLabel(taxi.status)}
@@ -330,28 +316,6 @@ function VehicleBlock({
       >
         <Field label="Color" value={taxi.color || '—'} />
         <Field label="Seats" value={String(taxi.seats)} />
-        <Field
-          label="Insurance expiry"
-          value={formatDateTime(taxi.insuranceExpiry)}
-          warn={
-            isExpired(taxi.insuranceExpiry)
-              ? taxi.insuranceExpiry
-                ? 'expired'
-                : 'required'
-              : undefined
-          }
-        />
-        <Field
-          label="COF expiry"
-          value={formatDateTime(taxi.cofExpiry)}
-          warn={
-            isExpired(taxi.cofExpiry)
-              ? taxi.cofExpiry
-                ? 'expired'
-                : 'required'
-              : undefined
-          }
-        />
       </div>
       <div
         style={{
@@ -363,18 +327,17 @@ function VehicleBlock({
       >
         <DocThumb label="Vehicle" url={taxi.imageUrl} required onPreview={onPreview} />
         <DocThumb
-          label="Registration"
-          url={taxi.registrationImageUrl}
-          required
-          onPreview={onPreview}
-        />
-        <DocThumb
           label="Insurance"
           url={taxi.insuranceImageUrl}
           required
           onPreview={onPreview}
         />
-        <DocThumb label="COF" url={taxi.cofImageUrl} required onPreview={onPreview} />
+        <DocThumb
+          label="COF"
+          url={taxi.cofImageUrl}
+          required
+          onPreview={onPreview}
+        />
       </div>
       {pending ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
