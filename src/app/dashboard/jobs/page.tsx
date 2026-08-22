@@ -97,7 +97,7 @@ export default function JobsAdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [busyId, setBusyId] = useState<number | 'new' | 'sync' | null>(null)
+  const [busyId, setBusyId] = useState<number | 'new' | 'sync' | 'sync-malawi' | null>(null)
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -291,6 +291,36 @@ export default function JobsAdminPage() {
     }
   }
 
+  const syncMalawi = async () => {
+    setBusyId('sync-malawi')
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch('/api/admin/jobs/sync-malawi', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Malawi sync failed')
+      const parts = (data.sources || [])
+        .map(
+          (s: { source: string; ok: boolean; fetched: number; error?: string }) =>
+            s.ok ? `${s.source}: ${s.fetched}` : `${s.source}: failed`,
+        )
+        .join(' · ')
+      setNotice(
+        `Malawi sync done — fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, skipped ${data.skipped ?? 0}${
+          parts ? ` (${parts})` : ''
+        }. Sources: onlinejobmw.com, jobsearchmalawi.com, mwayi.mw.`,
+      )
+      if (Array.isArray(data.errors) && data.errors.length) {
+        setError(data.errors.slice(0, 3).join(' · '))
+      }
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Malawi sync failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const tabs: Array<{ id: Tab; label: string; count: number }> = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'active', label: 'Active', count: counts.active },
@@ -305,16 +335,24 @@ export default function JobsAdminPage() {
 
       <DashboardPageHeader
         sectionId="jobs"
-        description="Post, edit, activate, and delete listings shown in the Vero360 app."
+        description="Post, edit, and sync listings for the Vero360 app."
         actions={
           <>
             <button
               type="button"
-              onClick={() => void syncExternal()}
-              disabled={busyId === 'sync' || loading}
+              onClick={() => void syncMalawi()}
+              disabled={busyId === 'sync-malawi' || busyId === 'sync' || loading}
               style={btnGhost}
             >
-              {busyId === 'sync' ? 'Syncing…' : 'Sync external'}
+              {busyId === 'sync-malawi' ? 'Syncing Malawi…' : 'Sync Malawi'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void syncExternal()}
+              disabled={busyId === 'sync' || busyId === 'sync-malawi' || loading}
+              style={btnGhost}
+            >
+              {busyId === 'sync' ? 'Syncing…' : 'Sync international'}
             </button>
             <DashboardRefreshButton
               onClick={() => void load()}

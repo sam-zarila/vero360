@@ -31,6 +31,9 @@ export type JobInput = {
   company?: string | null
   location?: string | null
   isRemote?: boolean
+  /** Provider id when importing (onlinejobmw / jobsearchmalawi / mwayi / remotive / …). */
+  source?: string
+  externalId?: string | null
 }
 
 function str(value: unknown): string {
@@ -108,6 +111,12 @@ export function sourceLabel(source: JobSource) {
       return 'Remotive'
     case 'jooble':
       return 'Jooble'
+    case 'onlinejobmw':
+      return 'OnlineJobMW'
+    case 'jobsearchmalawi':
+      return 'JobSearch Malawi'
+    case 'mwayi':
+      return 'Mwayi'
     default:
       return source || 'Unknown'
   }
@@ -175,6 +184,15 @@ export function toJobApiBody(input: Partial<JobInput>, opts?: { partial?: boolea
     if (v) body.location = v
   }
   if (input.isRemote !== undefined) body.isRemote = Boolean(input.isRemote)
+
+  if (input.source !== undefined) {
+    const v = str(input.source)
+    if (v) body.source = v
+  }
+  if (input.externalId !== undefined) {
+    const v = str(input.externalId)
+    if (v) body.externalId = v
+  }
 
   return body
 }

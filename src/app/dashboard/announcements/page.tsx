@@ -57,6 +57,21 @@ export default function AnnouncementsAdminPage() {
   const [notice, setNotice] = useState('')
   const [form, setForm] = useState<FormState>(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!viewerUrl) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setViewerUrl(null)
+    }
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [viewerUrl])
 
   const previewUrl = useMemo(() => {
     if (form.imageFile) return URL.createObjectURL(form.imageFile)
@@ -399,35 +414,45 @@ export default function AnnouncementsAdminPage() {
                   }}
                   className="announce-row"
                 >
-                  <div
-                    style={{
-                      width: 112,
-                      height: 84,
-                      borderRadius: 10,
-                      overflow: 'hidden',
-                      background: '#fff',
-                      border: '1px solid var(--border)',
-                      position: 'relative',
-                    }}
-                  >
-                    {img ? (
+                  {img ? (
+                    <button
+                      type="button"
+                      onClick={() => setViewerUrl(img)}
+                      aria-label={`View image for ${item.title}`}
+                      style={{
+                        all: 'unset',
+                        width: 112,
+                        height: 84,
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                        background: '#fff',
+                        border: '1px solid var(--border)',
+                        position: 'relative',
+                        cursor: 'zoom-in',
+                        display: 'block',
+                      }}
+                    >
                       <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
-                    ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: 'var(--text-4)',
-                          fontSize: 12,
-                          fontWeight: 600,
-                        }}
-                      >
-                        No image
-                      </div>
-                    )}
-                  </div>
+                    </button>
+                  ) : (
+                    <div
+                      style={{
+                        width: 112,
+                        height: 84,
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                        background: '#fff',
+                        border: '1px solid var(--border)',
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: 'var(--text-4)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      No image
+                    </div>
+                  )}
 
                   <div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
@@ -485,6 +510,60 @@ export default function AnnouncementsAdminPage() {
           </div>
         )}
       </section>
+
+      {viewerUrl ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Announcement image"
+          onClick={() => setViewerUrl(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 90,
+            background: 'rgba(0, 0, 0, 0.92)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 16,
+            cursor: 'zoom-out',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setViewerUrl(null)}
+            aria-label="Close image"
+            style={{
+              position: 'fixed',
+              top: 16,
+              right: 16,
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.25)',
+              background: 'rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 22,
+              cursor: 'pointer',
+              zIndex: 1,
+            }}
+          >
+            ×
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={viewerUrl}
+            alt=""
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: 'min(96vw, 1200px)',
+              maxHeight: '90vh',
+              objectFit: 'contain',
+              borderRadius: 8,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
+            }}
+          />
+        </div>
+      ) : null}
 
       <style>{`
         @media (max-width: 720px) {
