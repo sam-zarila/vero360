@@ -83,7 +83,7 @@ export default function VeroRideDriversPage() {
     }
     if (!q) return list
     return list.filter(d => {
-      const hay = `${d.name} ${d.email} ${d.phone} ${d.licenseNumber} ${d.nationalId} ${d.id}`
+      const hay = `${d.name} ${d.email} ${d.phone} ${d.id}`
         .toLowerCase()
       return hay.includes(q)
     })
@@ -232,7 +232,7 @@ export default function VeroRideDriversPage() {
                       {driver.email || '—'} · {driver.phone || '—'}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-                      License {driver.licenseNumber || '—'} · Submitted{' '}
+                      Submitted{' '}
                       {formatDateTime(driver.submittedAt || driver.createdAt)}
                     </div>
                   </div>
