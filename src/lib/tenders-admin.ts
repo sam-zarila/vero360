@@ -76,6 +76,20 @@ export async function listTenders(opts?: {
   return items
 }
 
+/** Public feed for the mobile app / site — active tenders only. */
+export async function listPublicTenders(limit = 100): Promise<Tender[]> {
+  noStore()
+  try {
+    return await listTenders({ activeOnly: true, limit })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (!/not configured|parse private key/i.test(message)) {
+      console.warn('listPublicTenders:', message)
+    }
+    return []
+  }
+}
+
 export async function getTender(id: string): Promise<Tender | null> {
   noStore()
   const doc = await getAdminDb().collection(TENDERS_COLLECTION).doc(id).get()
