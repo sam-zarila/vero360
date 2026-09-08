@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/panel-client-auth'
 import {
   MARKETING_PROGRESS_START_DATE,
@@ -26,7 +25,6 @@ import { MarketingSubNav } from '../MarketingSubNav'
 type KpiMode = 'demo' | 'live'
 
 export default function MarketingKpiPage() {
-  const router = useRouter()
   const { isMarketer, isFullAdmin, loading: sessionLoading } = usePanelSession()
 
   const demoAvailable = isMarketingKpiDemoAvailable()
@@ -42,10 +40,10 @@ export default function MarketingKpiPage() {
     if (!demoAvailable && mode === 'demo') setMode('live')
   }, [demoAvailable, mode])
 
+  // Marketers stay on Demo while it exists (their own tasks only).
   useEffect(() => {
-    if (sessionLoading) return
-    if (isMarketer) router.replace('/dashboard/marketing/tasks')
-  }, [sessionLoading, isMarketer, router])
+    if (isMarketer && demoAvailable && mode !== 'demo') setMode('demo')
+  }, [isMarketer, demoAvailable, mode])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -63,38 +61,54 @@ export default function MarketingKpiPage() {
   }, [])
 
   useEffect(() => {
-    if (sessionLoading || isMarketer) return
+    if (sessionLoading) return
+    // Marketers always load their own tasks (API-scoped). Admins load for Live;
+    // admin Demo uses sample data and skips the fetch.
+    if (isMarketer) {
+      void load()
+      return
+    }
+    if (!isFullAdmin) {
+      setLoading(false)
+      return
+    }
     if (mode === 'live') void load()
     else setLoading(false)
-  }, [load, sessionLoading, isMarketer, mode])
+  }, [load, sessionLoading, isMarketer, isFullAdmin, mode])
 
   const isDemo = mode === 'demo' && demoAvailable
-  const sourceTasks = useMemo(
-    () => (isDemo ? buildDemoMarketingTasks(dayCount) : items),
-    [isDemo, dayCount, items],
+  const sourceTasks = useMemo(() => {
+    if (isMarketer) return items
+    if (isDemo) return buildDemoMarketingTasks(dayCount)
+    return items
+  }, [isMarketer, isDemo, dayCount, items])
+
+  const progressOpts = useMemo(
+    () => (isDemo ? { demo: true as const } : undefined),
+    [isDemo],
   )
-  const progressOpts = useMemo(() => (isDemo ? { demo: true } : undefined), [isDemo])
   const board = useMemo(
     () => buildMarketerKpiBoard(sourceTasks, dayCount, progressOpts),
     [sourceTasks, dayCount, progressOpts],
   )
-  const teamProgress = useMemo(
+  const personalProgress = useMemo(
     () => buildMarketingProgress(sourceTasks, dayCount, progressOpts),
     [sourceTasks, dayCount, progressOpts],
   )
+  const teamProgress = personalProgress
 
   const teamRatingColor =
     teamProgress.rating === 'good' ? '#047857' : teamProgress.rating === 'ok' ? '#B45309' : '#B91C1C'
   const teamRatingBg =
     teamProgress.rating === 'good' ? '#ECFDF5' : teamProgress.rating === 'ok' ? '#FFFBEB' : '#FEF2F2'
 
-  if (sessionLoading || isMarketer) {
+  if (sessionLoading) {
     return (
       <div style={{ padding: 24, color: 'var(--text-3)', fontWeight: 600 }}>Loading…</div>
     )
   }
 
-  if (!isFullAdmin) {
+  if (!isFullAdmin && !isMarketer) {
     return (
       <div>
         <DashboardBackLink label="Back to dashboard" />
@@ -102,24 +116,37 @@ export default function MarketingKpiPage() {
           icon="layers"
           color="#C2410C"
           title="Admins only"
-          hint="KPI tracker is available to admins and super admins."
+          hint="KPI tracker is available to admins, super admins, and marketers."
         />
       </div>
     )
   }
 
+  const title = isMarketer
+    ? isDemo
+      ? 'My Demo KPI'
+      : 'My KPI'
+    : 'Marketing KPI tracker'
+
+  const description = isMarketer
+    ? isDemo
+      ? `Demo scoring on your posted tasks only — not official until ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
+      : `Live scoring from ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
+    : isDemo
+      ? `Demo preview with sample marketers. Demo vanishes on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
+      : `Live marketer scoring from ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
+
+  const showLiveEmpty = mode === 'live' && !liveActive
+  const needsLoad = isMarketer || mode === 'live'
+
   return (
     <div>
-      <DashboardBackLink label="Back to dashboard" />
+      {!isMarketer ? <DashboardBackLink label="Back to dashboard" /> : null}
 
       <DashboardPageHeader
         sectionId="marketing"
-        title="Marketing KPI tracker"
-        description={
-          isDemo
-            ? `Demo preview with sample marketers. Demo vanishes on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
-            : `Live marketer scoring from ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
-        }
+        title={title}
+        description={description}
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
@@ -134,7 +161,7 @@ export default function MarketingKpiPage() {
                 <option value={30}>30 days</option>
               </select>
             </label>
-            {mode === 'live' ? (
+            {needsLoad ? (
               <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
             ) : null}
           </div>
@@ -143,29 +170,31 @@ export default function MarketingKpiPage() {
 
       <MarketingSubNav />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 8,
-          marginBottom: 16,
-          alignItems: 'center',
-        }}
-      >
-        {demoAvailable ? (
-          <ModeTab active={mode === 'demo'} onClick={() => setMode('demo')}>
-            Demo
+      {!isMarketer ? (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 8,
+            marginBottom: 16,
+            alignItems: 'center',
+          }}
+        >
+          {demoAvailable ? (
+            <ModeTab active={mode === 'demo'} onClick={() => setMode('demo')}>
+              Demo
+            </ModeTab>
+          ) : null}
+          <ModeTab active={mode === 'live'} onClick={() => setMode('live')}>
+            Live
           </ModeTab>
-        ) : null}
-        <ModeTab active={mode === 'live'} onClick={() => setMode('live')}>
-          Live
-        </ModeTab>
-        {demoAvailable ? (
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)' }}>
-            Demo ends {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}
-          </span>
-        ) : null}
-      </div>
+          {demoAvailable ? (
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)' }}>
+              Demo ends {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {isDemo ? (
         <div
@@ -180,12 +209,21 @@ export default function MarketingKpiPage() {
             fontWeight: 600,
           }}
         >
-          Showing sample data only — not real marketers. Switches to Live on{' '}
-          {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.
+          {isMarketer ? (
+            <>
+              This is a <strong>demo</strong> — only your own tasks are scored here. Not official
+              until {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.
+            </>
+          ) : (
+            <>
+              This is a <strong>demo</strong> — sample marketers only, not real data. Switches to
+              Live on {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.
+            </>
+          )}
         </div>
       ) : null}
 
-      {error && mode === 'live' ? (
+      {error && needsLoad ? (
         <div
           style={{
             marginBottom: 16,
@@ -201,13 +239,89 @@ export default function MarketingKpiPage() {
         </div>
       ) : null}
 
-      {mode === 'live' && !liveActive ? (
+      {showLiveEmpty ? (
         <DashboardEmptyState
           icon="layers"
           color="#C2410C"
           title="Live tracking starts soon"
           hint={`Real KPI scoring begins on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}. Use Demo until then.`}
         />
+      ) : loading && needsLoad ? (
+        <div style={{ padding: 24, color: 'var(--text-3)', fontWeight: 600 }}>Loading KPIs…</div>
+      ) : isMarketer ? (
+        board.length === 0 && sourceTasks.length === 0 ? (
+          <DashboardEmptyState
+            icon="layers"
+            color="#C2410C"
+            title={isDemo ? 'No demo activity yet' : 'No activity yet'}
+            hint="Log your marketing tasks to see your score here."
+          />
+        ) : (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
+              <Metric
+                label={`Posted (${personalProgress.trackedDays}d)`}
+                value={String(personalProgress.totalPosted)}
+              />
+              <Metric label="Avg / day" value={String(personalProgress.avgPerDay)} />
+              <Metric
+                label={isDemo ? 'Demo score' : 'Score'}
+                value={String(personalProgress.score)}
+                accent={teamRatingColor}
+              />
+            </div>
+            <section style={{ ...card, marginBottom: 18 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 12,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+                    {isDemo ? 'Your demo activity' : 'Your posting activity'}
+                  </h2>
+                  <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
+                    Only your tasks · last {dayCount} days
+                    {isDemo ? ' · Demo' : ''}
+                  </p>
+                </div>
+                <div
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 12,
+                    background: teamRatingBg,
+                    color: teamRatingColor,
+                    fontWeight: 800,
+                    fontSize: 13,
+                  }}
+                >
+                  {isDemo ? `Demo · ${personalProgress.ratingLabel}` : personalProgress.ratingLabel}
+                </div>
+              </div>
+              <ProgressBars days={personalProgress.days} />
+            </section>
+            {board.map(row => (
+              <MarketerKpiCard
+                key={row.marketerUid}
+                row={row}
+                dayCount={dayCount}
+                demo={isDemo}
+              />
+            ))}
+          </>
+        )
       ) : (
         <>
           <div
@@ -264,9 +378,7 @@ export default function MarketingKpiPage() {
             <ProgressBars days={teamProgress.days} />
           </section>
 
-          {mode === 'live' && loading ? (
-            <div style={{ padding: 24, color: 'var(--text-3)', fontWeight: 600 }}>Loading KPIs…</div>
-          ) : board.length === 0 ? (
+          {board.length === 0 ? (
             <DashboardEmptyState
               icon="layers"
               color="#C2410C"
@@ -315,7 +427,15 @@ function ModeTab({
   )
 }
 
-function MarketerKpiCard({ row, dayCount }: { row: MarketerKpiRow; dayCount: number }) {
+function MarketerKpiCard({
+  row,
+  dayCount,
+  demo,
+}: {
+  row: MarketerKpiRow
+  dayCount: number
+  demo?: boolean
+}) {
   const { progress } = row
   const ratingColor =
     progress.rating === 'good' ? '#047857' : progress.rating === 'ok' ? '#B45309' : '#B91C1C'
@@ -338,6 +458,7 @@ function MarketerKpiCard({ row, dayCount }: { row: MarketerKpiRow; dayCount: num
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{row.marketerName}</h3>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
             {row.marketerEmail || row.marketerUid}
+            {demo ? ' · Demo' : ''}
           </p>
         </div>
         <div
@@ -350,7 +471,7 @@ function MarketerKpiCard({ row, dayCount }: { row: MarketerKpiRow; dayCount: num
             fontSize: 13,
           }}
         >
-          Score {progress.score}
+          {demo ? 'Demo score' : 'Score'} {progress.score}
         </div>
       </div>
 
@@ -374,7 +495,7 @@ function MarketerKpiCard({ row, dayCount }: { row: MarketerKpiRow; dayCount: num
       </div>
 
       <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: ratingColor }}>
-        {progress.ratingLabel}
+        {demo ? `Demo · ${progress.ratingLabel}` : progress.ratingLabel}
       </p>
       <ProgressBars days={progress.days} compact />
     </section>

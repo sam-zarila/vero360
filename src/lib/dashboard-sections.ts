@@ -1,4 +1,5 @@
 import type { VeroIconName } from '@/app/components/landing/icons'
+import { isMarketingKpiDemoAvailable } from '@/lib/marketing-tasks'
 
 export type DashboardSectionId =
   | 'vero-ride'
@@ -278,6 +279,13 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       {
         href: '/dashboard/marketing/progress',
         label: 'My progress',
+        icon: 'layers',
+        marketerAllowed: true,
+        marketerOnly: true,
+      },
+      {
+        href: '/dashboard/marketing/kpi',
+        label: isMarketingKpiDemoAvailable() ? 'Demo KPI' : 'My KPI',
         icon: 'layers',
         marketerAllowed: true,
         marketerOnly: true,

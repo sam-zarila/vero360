@@ -2,16 +2,24 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { isMarketingKpiDemoAvailable } from '@/lib/marketing-tasks'
 import { usePanelSession } from '../PanelSessionProvider'
 
 export function MarketingSubNav() {
   const pathname = usePathname()
   const { isMarketer } = usePanelSession()
+  const demoAvailable = isMarketingKpiDemoAvailable()
 
   const links = [
     { href: '/dashboard/marketing/tasks', label: 'Tasks' },
     ...(isMarketer
-      ? [{ href: '/dashboard/marketing/progress', label: 'My progress' }]
+      ? [
+          { href: '/dashboard/marketing/progress', label: 'My progress' },
+          {
+            href: '/dashboard/marketing/kpi',
+            label: demoAvailable ? 'Demo KPI' : 'My KPI',
+          },
+        ]
       : [{ href: '/dashboard/marketing/kpi', label: 'KPI tracker' }]),
   ]
 

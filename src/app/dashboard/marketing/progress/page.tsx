@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { adminFetch } from '@/lib/panel-client-auth'
+import Link from 'next/link'
 import {
   MARKETING_PROGRESS_START_DATE,
   buildMarketingProgress,
   formatMarketingDate,
+  isMarketingKpiDemoAvailable,
   type MarketingTask,
 } from '@/lib/marketing-tasks'
 import {
@@ -80,12 +82,26 @@ export default function MarketingProgressPage() {
       ) : null}
 
       {!progress.trackingStarted ? (
-        <DashboardEmptyState
-          icon="layers"
-          color="#C2410C"
-          title="Tracking starts soon"
-          hint={`Progress scoring begins on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}. You can still log tasks now.`}
-        />
+        <div>
+          <DashboardEmptyState
+            icon="layers"
+            color="#C2410C"
+            title="Live tracking starts soon"
+            hint={`Official progress scoring begins on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}. You can still log tasks now.`}
+          />
+          {isMarketer && isMarketingKpiDemoAvailable() ? (
+            <p style={{ marginTop: 14, fontSize: 14, color: 'var(--text-2)' }}>
+              Preview your score now on{' '}
+              <Link
+                href="/dashboard/marketing/kpi"
+                style={{ color: '#C2410C', fontWeight: 700 }}
+              >
+                Demo KPI
+              </Link>{' '}
+              (your tasks only).
+            </p>
+          ) : null}
+        </div>
       ) : loading ? (
         <div style={{ padding: 24, color: 'var(--text-3)', fontWeight: 600 }}>Loading progress…</div>
       ) : (
