@@ -51,8 +51,9 @@ function media(url: string | null | undefined) {
 function marketplaceHref(item: MarketplaceListing) {
   if (item.firestoreDocId) return `/marketplace/${item.firestoreDocId}`
   if (item.sqlId) return `/marketplace/${item.sqlId}`
-  const fromKey = item.key.replace(/^api:/, '')
-  return fromKey ? `/marketplace/${fromKey}` : null
+  const fromKey = item.key.replace(/^api:/, '').trim()
+  if (fromKey) return `/marketplace/${fromKey}`
+  return null
 }
 
 function foodHref(item: FoodItem) {
@@ -125,7 +126,9 @@ export async function listPublicMarketplace(limit = 500): Promise<PublicCatalogC
       price: item.price > 0 ? item.price : null,
       location: item.location && item.location !== '—' ? item.location : null,
       meta: item.category || null,
-      href: marketplaceHref(item),
+      href:
+        marketplaceHref(item) ||
+        `/marketplace/${item.firestoreDocId || item.sqlId || item.key.replace(/^api:/, '')}`,
       externalUrl: null,
     }))
   } catch (err) {

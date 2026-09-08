@@ -1,24 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
-import { formatMwk } from '@/lib/vero-api'
 import DownloadAppModal from './DownloadAppModal'
+import { CatalogCardGrid } from './CatalogCardGrid'
 import { IconBadge, type VeroIconName } from './icons'
-
-type CatalogCard = {
-  id: string
-  title: string
-  image: string | null
-  price: number | null
-  location: string | null
-  meta: string | null
-  href: string | null
-  externalUrl: string | null
-}
+import {
+  mapTenderItems,
+  type CatalogCard,
+} from '@/lib/catalog-cards'
 
 type StripConfig = {
   id: string
+  browsePath: string
   icon: VeroIconName
   title: string
   subtitle: string
@@ -31,6 +25,7 @@ const PREVIEW_COUNT = 12
 const STRIPS: StripConfig[] = [
   {
     id: 'marketplace',
+    browsePath: '/browse/marketplace',
     icon: 'cart',
     title: 'Marketplace',
     subtitle: 'Shop products from verified merchants',
@@ -39,6 +34,7 @@ const STRIPS: StripConfig[] = [
   },
   {
     id: 'food',
+    browsePath: '/browse/food',
     icon: 'food',
     title: 'Food',
     subtitle: 'Order from restaurants near you',
@@ -47,6 +43,7 @@ const STRIPS: StripConfig[] = [
   },
   {
     id: 'stay',
+    browsePath: '/browse/stays',
     icon: 'bed',
     title: 'Stay',
     subtitle: 'Hotels, lodges, and short stays',
@@ -55,6 +52,7 @@ const STRIPS: StripConfig[] = [
   },
   {
     id: 'jobs',
+    browsePath: '/browse/jobs',
     icon: 'briefcase',
     title: 'Jobs',
     subtitle: 'Find work across Malawi and beyond',
@@ -63,6 +61,7 @@ const STRIPS: StripConfig[] = [
   },
   {
     id: 'tenders',
+    browsePath: '/browse/tenders',
     icon: 'layers',
     title: 'Tenders',
     subtitle: 'Open opportunities and RFPs',
@@ -71,40 +70,9 @@ const STRIPS: StripConfig[] = [
   },
 ]
 
-function mapTenderItems(raw: unknown[]): CatalogCard[] {
-  return raw.map((row, i) => {
-    const r = row as Record<string, unknown>
-    return {
-      id: String(r.id ?? i),
-      title: String(r.title || 'Tender'),
-      image: null,
-      price: null,
-      location: r.location ? String(r.location) : null,
-      meta: r.buyer ? String(r.buyer) : null,
-      href: null,
-      externalUrl: (r.tenderUrl || r.documentUrl
-        ? String(r.tenderUrl || r.documentUrl)
-        : null) as string | null,
-    }
-  })
-}
-
-function listingHref(card: CatalogCard): string | null {
-  if (!card.href) return null
-  const qs = new URLSearchParams()
-  if (card.title) qs.set('name', card.title)
-  if (card.location) qs.set('loc', card.location)
-  if (card.price != null && card.price > 0) qs.set('price', String(Math.round(card.price)))
-  if (card.image) qs.set('img', card.image)
-  if (card.meta) qs.set('merchant', card.meta)
-  const q = qs.toString()
-  return q ? `${card.href}?${q}` : card.href
-}
-
 export default function ServicesSection() {
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [itemsByStrip, setItemsByStrip] = useState<Record<string, CatalogCard[]>>({})
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -183,8 +151,8 @@ export default function ServicesSection() {
               margin: '0 auto',
             }}
           >
-            Marketplace, food, stays, jobs, and tenders from the same catalogs as the app. Tap
-            any listing to open it — then continue in Vero360.
+            Marketplace, food, stays, jobs, and tenders from the same catalogs as the app. Tap a
+            product for details, or view more to see the full list.
           </p>
         </div>
 
@@ -235,8 +203,7 @@ export default function ServicesSection() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
           {STRIPS.map(strip => {
             const items = itemsByStrip[strip.id] || []
-            const isExpanded = Boolean(expanded[strip.id])
-            const visible = isExpanded ? items : items.slice(0, PREVIEW_COUNT)
+            const visible = items.slice(0, PREVIEW_COUNT)
             const hasMore = items.length > PREVIEW_COUNT
 
             return (
@@ -274,9 +241,9 @@ export default function ServicesSection() {
                       </p>
                     </div>
                   </div>
-                  <button type="button" onClick={openApp} style={ghostBtn}>
-                    Open in app
-                  </button>
+                  <Link href={strip.browsePath} style={ghostBtnLink}>
+                    {strip.viewMoreLabel}
+                  </Link>
                 </div>
 
                 {loading ? (
@@ -288,42 +255,24 @@ export default function ServicesSection() {
                     <p style={{ margin: 0, fontSize: 14, color: 'var(--text-2)' }}>
                       No listings to preview yet. Open the app to browse {strip.title.toLowerCase()}.
                     </p>
-                    <button type="button" onClick={openApp} style={{ ...ghostBtn, marginTop: 12 }}>
+                    <button type="button" onClick={openApp} style={{ ...primaryBtn, marginTop: 12 }}>
                       Open app
                     </button>
                   </div>
                 ) : (
                   <>
-                    <div
-                      className={isExpanded ? 'catalog-grid' : 'catalog-scroll'}
-                      style={isExpanded ? gridRow : scrollRow}
-                    >
-                      {visible.map(card => (
-                        <CatalogItem
-                          key={`${strip.id}-${card.id}`}
-                          card={card}
-                          onActivate={() => onCardActivate(card)}
-                        />
-                      ))}
+                    <CatalogCardGrid
+                      items={visible}
+                      layout="scroll"
+                      onActivate={onCardActivate}
+                    />
+                    <div style={{ marginTop: 14, textAlign: 'center' }}>
+                      <Link href={strip.browsePath} style={primaryBtnLink}>
+                        {hasMore
+                          ? `${strip.viewMoreLabel} (${items.length - PREVIEW_COUNT} more)`
+                          : `See all ${strip.title.toLowerCase()}`}
+                      </Link>
                     </div>
-                    {hasMore ? (
-                      <div style={{ marginTop: 14, textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpanded(prev => ({
-                              ...prev,
-                              [strip.id]: !prev[strip.id],
-                            }))
-                          }
-                          style={primaryBtn}
-                        >
-                          {isExpanded
-                            ? `Show less`
-                            : `${strip.viewMoreLabel} (${items.length - PREVIEW_COUNT} more)`}
-                        </button>
-                      </div>
-                    ) : null}
                   </>
                 )}
               </div>
@@ -333,23 +282,6 @@ export default function ServicesSection() {
       </div>
 
       <DownloadAppModal open={downloadOpen} onClose={() => setDownloadOpen(false)} />
-
-      <style>{`
-        .catalog-scroll {
-          scrollbar-width: thin;
-        }
-        .catalog-scroll::-webkit-scrollbar { height: 6px; }
-        .catalog-scroll::-webkit-scrollbar-thumb {
-          background: #FDBA74; border-radius: 999px;
-        }
-        .catalog-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .catalog-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
-        @media (max-width: 700px) {
-          .catalog-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          }
-        }
-      `}</style>
     </section>
   )
 }
@@ -390,111 +322,6 @@ function QuickChip({
   )
 }
 
-function CatalogItem({
-  card,
-  onActivate,
-}: {
-  card: CatalogCard
-  onActivate: () => void
-}) {
-  const priceLabel =
-    card.price != null && card.price > 0 ? formatMwk(card.price) : null
-  const href = useMemo(() => listingHref(card), [card])
-
-  const content = (
-    <>
-      <div
-        style={{
-          height: 140,
-          background: 'linear-gradient(160deg, #FFF7ED, #FFEDD5)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {card.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={card.image}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : (
-          <div
-            style={{
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#C2410C',
-              fontWeight: 800,
-              fontSize: 13,
-              padding: 12,
-              textAlign: 'center',
-            }}
-          >
-            {card.meta || 'Vero360'}
-          </div>
-        )}
-      </div>
-      <div style={{ padding: '12px 14px 14px' }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 800,
-            lineHeight: 1.35,
-            marginBottom: 6,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
-          {card.title}
-        </div>
-        {priceLabel ? (
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#C2410C', marginBottom: 4 }}>
-            {priceLabel}
-          </div>
-        ) : null}
-        <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.4 }}>
-          {[card.meta, card.location].filter(Boolean).join(' · ') || 'Open in Vero360'}
-        </div>
-      </div>
-    </>
-  )
-
-  const shell: CSSProperties = {
-    flex: '0 0 210px',
-    width: '100%',
-    maxWidth: 210,
-    background: '#fff',
-    border: '1px solid var(--border)',
-    borderRadius: 16,
-    overflow: 'hidden',
-    textDecoration: 'none',
-    color: 'inherit',
-    cursor: 'pointer',
-    display: 'block',
-    padding: 0,
-    fontFamily: 'inherit',
-    textAlign: 'left',
-  }
-
-  if (href) {
-    return (
-      <Link href={href} prefetch className="catalog-card" style={shell}>
-        {content}
-      </Link>
-    )
-  }
-
-  return (
-    <button type="button" className="catalog-card" style={shell} onClick={onActivate}>
-      {content}
-    </button>
-  )
-}
-
 const primaryBtn: CSSProperties = {
   border: 'none',
   background: 'var(--primary)',
@@ -508,7 +335,13 @@ const primaryBtn: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-const ghostBtn: CSSProperties = {
+const primaryBtnLink: CSSProperties = {
+  ...primaryBtn,
+  display: 'inline-block',
+  textDecoration: 'none',
+}
+
+const ghostBtnLink: CSSProperties = {
   border: '1.5px solid var(--border-2)',
   background: '#fff',
   color: 'var(--text-2)',
@@ -516,9 +349,9 @@ const ghostBtn: CSSProperties = {
   padding: '10px 14px',
   fontWeight: 700,
   fontSize: 13,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
+  textDecoration: 'none',
   whiteSpace: 'nowrap',
+  display: 'inline-block',
 }
 
 const emptyBox: CSSProperties = {
@@ -526,18 +359,4 @@ const emptyBox: CSSProperties = {
   borderRadius: 16,
   border: '1px dashed var(--border)',
   background: '#fff',
-}
-
-const scrollRow: CSSProperties = {
-  display: 'flex',
-  gap: 14,
-  overflowX: 'auto',
-  paddingBottom: 8,
-  WebkitOverflowScrolling: 'touch',
-}
-
-const gridRow: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-  gap: 14,
 }
