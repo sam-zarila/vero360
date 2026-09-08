@@ -18,9 +18,9 @@ export default function Page() {
       <HeroSection />
       <TrustBar />
       <AnnouncementsSection />
-      <HowItWorks /> 
       <ServicesSection />
-      <TestimonialsSection />
+      <HowItWorks /> 
+     <TestimonialsSection />
       <ContactSection />
       <AboutUsSection />
       <CTASection />
