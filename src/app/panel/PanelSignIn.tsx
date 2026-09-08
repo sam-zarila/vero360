@@ -158,7 +158,7 @@ export default function PanelSignIn() {
             Admin sign in
           </h1>
           <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.6 }}>
-            Only admins can sign in. First time locally?{' '}
+            Only admins can sign in.{' '}
             <Link href="/dashboard/admins" style={{ color: 'var(--primary)', fontWeight: 600 }}>
               
             </Link>
