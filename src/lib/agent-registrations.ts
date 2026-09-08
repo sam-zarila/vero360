@@ -18,6 +18,8 @@ export type AgentRegistration = {
   phone: string
   role: UserRole
   businessName: string | null
+  businessAddress: string | null
+  merchantService: string | null
   isVerified: boolean
   geo: AgentGeo
   registeredAt: string | null
@@ -28,14 +30,32 @@ export type AgentRegistration = {
   updatedAt: string | null
 }
 
+export const MERCHANT_SERVICES = [
+  { key: 'marketplace', label: 'Marketplace' },
+  { key: 'food', label: 'Food & Restaurants' },
+  { key: 'accommodation', label: 'Accommodation' },
+] as const
+
+export type MerchantServiceKey = (typeof MERCHANT_SERVICES)[number]['key']
+
 export type CreateAgentRegistrationInput = {
   name: string
-  email: string
-  phone: string
+  /** Real email — optional if phone is provided (phone-only uses synthetic auth email like the app). */
+  email?: string | null
+  phone?: string | null
   role: UserRole | string
-  businessName?: string | null
-  isVerified?: boolean
+  /** Required unless generateTempPassword is true. */
   password?: string | null
+  /** When true, server creates a one-time temp password (user not present). */
+  generateTempPassword?: boolean
+  /** Ticket from /auth/otp/verify — required before account create. */
+  verificationTicket?: string | null
+  /** email | phone — channel used for OTP. */
+  preferredVerification?: string | null
+  businessName?: string | null
+  businessAddress?: string | null
+  merchantService?: string | null
+  isVerified?: boolean
   geo?: {
     lat?: number | null
     lng?: number | null
@@ -50,6 +70,21 @@ export type AgentRegistrationCounts = {
   driver: number
   verified: number
   unverified: number
+}
+
+export function formatPhoneE164(raw: string): string {
+  const trimmed = raw.trim()
+  const digits = trimmed.replace(/\D/g, '')
+  if (!digits) return trimmed
+  if (digits.startsWith('265') && digits.length === 12) return `+${digits}`
+  if (digits.startsWith('0') && digits.length === 10) return `+265${digits.slice(1)}`
+  if (trimmed.startsWith('+')) return trimmed
+  return `+${digits}`
+}
+
+export function syntheticEmailForPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  return `${digits}@phone.vero360.app`
 }
 
 function str(value: unknown): string {
@@ -116,6 +151,8 @@ export function parseAgentRegistration(
     phone: str(data.phone) || str(data.phoneNumber),
     role: normalizeAgentUserRole(data.role),
     businessName: str(data.businessName) || null,
+    businessAddress: str(data.businessAddress) || null,
+    merchantService: str(data.merchantService) || str(data.serviceType) || null,
     isVerified: data.isVerified === true || data.verified === true,
     geo: parseAgentGeo(data.geo),
     registeredAt: ts(data.registeredAt) || ts(data.createdAt),

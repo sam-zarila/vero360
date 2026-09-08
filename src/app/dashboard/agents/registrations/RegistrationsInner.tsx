@@ -183,6 +183,7 @@ export default function AdminAgentRegistrationsInner() {
                   'Email',
                   'Phone',
                   'Role',
+                  'Service / business',
                   'Registered',
                   'Verified',
                   'Location',
@@ -201,6 +202,20 @@ export default function AdminAgentRegistrationsInner() {
                   <td style={td}>{item.email || '—'}</td>
                   <td style={td}>{item.phone || '—'}</td>
                   <td style={{ ...td, textTransform: 'capitalize' }}>{item.role}</td>
+                  <td style={td}>
+                    {item.role === 'merchant' ? (
+                      <>
+                        <div style={{ textTransform: 'capitalize' }}>
+                          {item.merchantService || '—'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                          {item.businessName || '—'}
+                        </div>
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td style={td}>{formatAgentRegisteredDate(item.registeredAt)}</td>
                   <td style={td}>{item.isVerified ? 'Yes' : 'No'}</td>
                   <td style={td}>{formatAgentGeo(item.geo)}</td>

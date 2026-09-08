@@ -58,8 +58,10 @@ export async function POST(request: Request) {
         success: true,
         registration: result.registration,
         userId: result.userId,
+        authEmail: result.authEmail,
         tempPassword: result.tempPassword,
-        message: 'User registered successfully',
+        usedTempPassword: result.usedTempPassword,
+        message: 'Account created (as in app signup)',
       },
       { status: 201 },
     )

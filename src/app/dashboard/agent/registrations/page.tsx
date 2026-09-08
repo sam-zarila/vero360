@@ -205,7 +205,10 @@ export default function AgentMyRegistrationsPage() {
                 {item.businessName ? (
                   <div>
                     <strong>Business</strong>
-                    <div>{item.businessName}</div>
+                    <div>
+                      {item.businessName}
+                      {item.merchantService ? ` · ${item.merchantService}` : ''}
+                    </div>
                   </div>
                 ) : null}
               </div>
