@@ -115,25 +115,7 @@ async function fetchMarketplaceProductById(id: string) {
   const headers = { Accept: 'application/json' }
   const sqlId = Number(id)
 
-  if (Number.isFinite(sqlId) && sqlId > 0) {
-    try {
-      const res = await fetch(veroEndpoint('marketplace', sqlId), {
-        headers,
-        cache: 'no-store',
-      })
-      if (res.ok) {
-        const body = await readJsonSafe(res)
-        const row = listingRows(body)[0]
-        if (row) {
-          const parsed = parseFirestoreMarketplaceListing('api', row)
-          if (parsed) return parsed
-        }
-      }
-    } catch {
-      // fall through to Firestore
-    }
-  }
-
+  // Prefer Firestore (fast path) before Nest — landing clicks feel snappier.
   try {
     const db = getAdminDb()
     let doc = await db.collection('marketplace_items').doc(id).get()
@@ -152,8 +134,29 @@ async function fetchMarketplaceProductById(id: string) {
       )
     }
   } catch (err) {
-    console.warn('Public marketplace fetch failed:', err)
+    console.warn('Public marketplace Firestore fetch failed:', err)
   }
+
+  if (Number.isFinite(sqlId) && sqlId > 0) {
+    try {
+      const res = await fetch(veroEndpoint('marketplace', sqlId), {
+        headers,
+        cache: 'no-store',
+        signal: AbortSignal.timeout(4000),
+      })
+      if (res.ok) {
+        const body = await readJsonSafe(res)
+        const row = listingRows(body)[0]
+        if (row) {
+          const parsed = parseFirestoreMarketplaceListing('api', row)
+          if (parsed) return parsed
+        }
+      }
+    } catch {
+      // ignore Nest timeout / errors
+    }
+  }
+
   return null
 }
 

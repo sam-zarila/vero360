@@ -7,10 +7,10 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const rawLimit = Number(searchParams.get('limit') || 100)
+    const rawLimit = Number(searchParams.get('limit') || 500)
     const limit = Number.isFinite(rawLimit)
-      ? Math.min(Math.max(Math.floor(rawLimit), 1), 200)
-      : 100
+      ? Math.min(Math.max(Math.floor(rawLimit), 1), 500)
+      : 500
     const items = await listPublicTenders(limit)
     return NextResponse.json({ success: true, items })
   } catch (err) {

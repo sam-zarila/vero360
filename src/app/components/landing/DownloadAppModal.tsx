@@ -87,7 +87,7 @@ export default function DownloadAppModal({ open, onClose }: Props) {
         {launched ? (
           <>
             <p style={{ fontSize: 15, color: 'var(--text-3)', marginBottom: 20, lineHeight: 1.6 }}>
-              Vero360 is live. Get the app on the App Store and Google Play.
+              Get Vero360 on Google Play. Open listings in the app with one tap.
             </p>
             <StoreDownloadLinks />
           </>

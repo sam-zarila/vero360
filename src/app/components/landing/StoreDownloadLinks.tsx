@@ -31,6 +31,8 @@ export default function StoreDownloadLinks({
   locked,
 }: Props) {
   const downloadsLocked = locked ?? !isAppStoreLaunched()
+  const showIos = Boolean(appStoreLinks.ios && appStoreLinks.ios !== '#')
+  const showAndroid = Boolean(appStoreLinks.android && appStoreLinks.android !== '#')
 
   const renderStoreRow = (
     key: 'ios' | 'android',
@@ -38,6 +40,7 @@ export default function StoreDownloadLinks({
     badgeAlt: string,
     topLabel: string,
     storeLabel: string,
+    href: string,
   ) => {
     const content = (
       <>
@@ -88,7 +91,7 @@ export default function StoreDownloadLinks({
     return (
       <a
         key={key}
-        href={appStoreLinks[key]}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         className="store-download-link"
@@ -97,6 +100,10 @@ export default function StoreDownloadLinks({
         {content}
       </a>
     )
+  }
+
+  if (!downloadsLocked && !showIos && !showAndroid) {
+    return null
   }
 
   return (
@@ -112,20 +119,26 @@ export default function StoreDownloadLinks({
         ...style,
       }}
     >
-      {renderStoreRow(
-        'ios',
-        storeBadgeImages.appStore,
-        'App Store',
-        'Download on the',
-        'App Store',
-      )}
-      {renderStoreRow(
-        'android',
-        storeBadgeImages.googlePlay,
-        'Google Play',
-        'Get it on',
-        'Google Play',
-      )}
+      {showAndroid || downloadsLocked
+        ? renderStoreRow(
+            'android',
+            storeBadgeImages.googlePlay,
+            'Google Play',
+            'Get it on',
+            'Google Play',
+            appStoreLinks.android || '#',
+          )
+        : null}
+      {showIos
+        ? renderStoreRow(
+            'ios',
+            storeBadgeImages.appStore,
+            'App Store',
+            'Download on the',
+            'App Store',
+            appStoreLinks.ios,
+          )
+        : null}
 
       <style>{`
         .store-download-link:hover:not(.store-download-link-locked) {

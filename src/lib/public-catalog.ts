@@ -38,9 +38,9 @@ export type PublicCatalogCard = {
   externalUrl: string | null
 }
 
-function clampLimit(raw: number | undefined, fallback = 8) {
+function clampLimit(raw: number | undefined, fallback = 500) {
   if (!Number.isFinite(raw as number)) return fallback
-  return Math.min(Math.max(Math.floor(raw as number), 1), 24)
+  return Math.min(Math.max(Math.floor(raw as number), 1), 500)
 }
 
 function media(url: string | null | undefined) {
@@ -59,13 +59,14 @@ function foodHref(item: FoodItem) {
   return item.rawId ? `/food/${item.rawId}` : null
 }
 
-async function loadMarketplaceRaw(): Promise<MarketplaceListing[]> {
+async function loadMarketplaceRaw(limit = 500): Promise<MarketplaceListing[]> {
+  const take = clampLimit(limit)
   let firestoreItems: MarketplaceListing[] = []
   try {
     const snap = await getAdminDb()
       .collection(MARKETPLACE_ITEMS_COLLECTION)
       .orderBy('createdAt', 'desc')
-      .limit(80)
+      .limit(take)
       .get()
     firestoreItems = snap.docs
       .map(doc =>
@@ -76,7 +77,7 @@ async function loadMarketplaceRaw(): Promise<MarketplaceListing[]> {
     try {
       const snap = await getAdminDb()
         .collection(MARKETPLACE_ITEMS_COLLECTION)
-        .limit(80)
+        .limit(take)
         .get()
       firestoreItems = snap.docs
         .map(doc =>
@@ -109,10 +110,10 @@ async function loadMarketplaceRaw(): Promise<MarketplaceListing[]> {
 }
 
 /** Main marketplace browse — excludes food (food strip owns those). */
-export async function listPublicMarketplace(limit = 8): Promise<PublicCatalogCard[]> {
+export async function listPublicMarketplace(limit = 500): Promise<PublicCatalogCard[]> {
   const take = clampLimit(limit)
   try {
-    const items = (await loadMarketplaceRaw())
+    const items = (await loadMarketplaceRaw(take))
       .filter(i => i.isActive !== false)
       .filter(i => String(i.category).toLowerCase() !== 'food')
       .slice(0, take)
@@ -133,7 +134,7 @@ export async function listPublicMarketplace(limit = 8): Promise<PublicCatalogCar
   }
 }
 
-export async function listPublicFood(limit = 8): Promise<PublicCatalogCard[]> {
+export async function listPublicFood(limit = 500): Promise<PublicCatalogCard[]> {
   const take = clampLimit(limit)
   try {
     const apiUrl = new URL(veroEndpoint('marketplace'))
@@ -147,10 +148,10 @@ export async function listPublicFood(limit = 8): Promise<PublicCatalogCard[]> {
       getAdminDb()
         .collection('marketplace_items')
         .where('category', '==', 'food')
-        .limit(60)
+        .limit(take)
         .get()
         .catch(() => null),
-      getAdminDb().collection('food_menu_items').limit(60).get().catch(() => null),
+      getAdminDb().collection('food_menu_items').limit(take).get().catch(() => null),
     ])
 
     let apiItems: FoodItem[] = []
@@ -196,7 +197,7 @@ export async function listPublicFood(limit = 8): Promise<PublicCatalogCard[]> {
   }
 }
 
-export async function listPublicStays(limit = 8): Promise<PublicCatalogCard[]> {
+export async function listPublicStays(limit = 500): Promise<PublicCatalogCard[]> {
   const take = clampLimit(limit)
   try {
     const res = await fetch(veroEndpoint('accommodations', 'all'), {
@@ -235,7 +236,7 @@ export async function listPublicStays(limit = 8): Promise<PublicCatalogCard[]> {
   }
 }
 
-export async function listPublicJobs(limit = 8): Promise<PublicCatalogCard[]> {
+export async function listPublicJobs(limit = 500): Promise<PublicCatalogCard[]> {
   const take = clampLimit(limit)
   try {
     const qs = new URLSearchParams({ activeOnly: 'true' })
@@ -269,7 +270,7 @@ export async function listPublicJobs(limit = 8): Promise<PublicCatalogCard[]> {
   }
 }
 
-export async function listPublicTenderCards(limit = 8): Promise<PublicCatalogCard[]> {
+export async function listPublicTenderCards(limit = 500): Promise<PublicCatalogCard[]> {
   const take = clampLimit(limit)
   try {
     const items: Tender[] = await listPublicTenders(take)

@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
-import { appStoreLinks } from '@/app/components/landing/veroServices'
+import { PLAY_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
 import type { ListingModel } from '@/lib/open-listing-types'
 import { listingPriceLabel } from '@/lib/open-listing-utils'
 
@@ -68,32 +68,6 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
     }
     return out
   }, [image, gallery])
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('apptry') === '1') return
-
-    const ua = navigator.userAgent || ''
-    if (/Vero360|Flutter/i.test(ua)) return
-
-    const isAndroid = /Android/i.test(ua)
-    const isIOS = /iPhone|iPad|iPod/i.test(ua)
-    if (!isAndroid && !isIOS) return
-
-    if (isAndroid) {
-      const fallback = new URL(window.location.href)
-      fallback.searchParams.set('apptry', '1')
-      window.location.replace(
-        `intent://marketplace${id ? `/${id}` : ''}` +
-          '#Intent;scheme=vero360;package=com.vero265.app;S.browser_fallback_url=' +
-          encodeURIComponent(fallback.toString()) +
-          ';end',
-      )
-      return
-    }
-
-    window.location.href = appHref
-  }, [appHref, id])
 
   const sellerAvatar =
     sellerImage &&
@@ -301,12 +275,26 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
           >
             Open in Vero360 app
           </a>
-          <a
-            href={appStoreLinks.android}
-            style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
-          >
-            Get the app
-          </a>
+          {appStoreLinks.android || PLAY_STORE_URL ? (
+            <a
+              href={appStoreLinks.android || PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
+            >
+              Get on Google Play
+            </a>
+          ) : null}
+          {appStoreLinks.ios ? (
+            <a
+              href={appStoreLinks.ios}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
+            >
+              Get on the App Store
+            </a>
+          ) : null}
           <p
             style={{
               fontSize: 13,
@@ -315,7 +303,7 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
               lineHeight: 1.45,
             }}
           >
-            Have Vero360? This product opens in the app. If you don’t, you can view it here.
+            Have Vero360? Open this product in the app. If you don’t, download it on Google Play.
           </p>
         </div>
       </section>

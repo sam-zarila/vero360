@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { formatMwk } from '@/lib/vero-api'
 import DownloadAppModal from './DownloadAppModal'
@@ -22,11 +22,11 @@ type StripConfig = {
   icon: VeroIconName
   title: string
   subtitle: string
-  viewLabel: string
-  endpoint: string | null
-  /** When set, "View all" opens the app modal instead of a catalog list page. */
-  openApp?: boolean
+  viewMoreLabel: string
+  endpoint: string
 }
+
+const PREVIEW_COUNT = 12
 
 const STRIPS: StripConfig[] = [
   {
@@ -34,45 +34,40 @@ const STRIPS: StripConfig[] = [
     icon: 'cart',
     title: 'Marketplace',
     subtitle: 'Shop products from verified merchants',
-    viewLabel: 'View products',
-    endpoint: '/api/public/marketplace?limit=8',
-    openApp: true,
+    viewMoreLabel: 'View more products',
+    endpoint: '/api/public/marketplace?limit=500',
   },
   {
     id: 'food',
     icon: 'food',
     title: 'Food',
     subtitle: 'Order from restaurants near you',
-    viewLabel: 'View meals',
-    endpoint: '/api/public/food?limit=8',
-    openApp: true,
+    viewMoreLabel: 'View more meals',
+    endpoint: '/api/public/food?limit=500',
   },
   {
     id: 'stay',
     icon: 'bed',
     title: 'Stay',
     subtitle: 'Hotels, lodges, and short stays',
-    viewLabel: 'View stays',
-    endpoint: '/api/public/stays?limit=8',
-    openApp: true,
+    viewMoreLabel: 'View more stays',
+    endpoint: '/api/public/stays?limit=500',
   },
   {
     id: 'jobs',
     icon: 'briefcase',
     title: 'Jobs',
     subtitle: 'Find work across Malawi and beyond',
-    viewLabel: 'View jobs',
-    endpoint: '/api/public/jobs?limit=8',
-    openApp: true,
+    viewMoreLabel: 'View more jobs',
+    endpoint: '/api/public/jobs?limit=500',
   },
   {
     id: 'tenders',
     icon: 'layers',
     title: 'Tenders',
     subtitle: 'Open opportunities and RFPs',
-    viewLabel: 'View tenders',
-    endpoint: '/api/tenders?limit=8',
-    openApp: true,
+    viewMoreLabel: 'View more tenders',
+    endpoint: '/api/tenders?limit=500',
   },
 ]
 
@@ -94,9 +89,22 @@ function mapTenderItems(raw: unknown[]): CatalogCard[] {
   })
 }
 
+function listingHref(card: CatalogCard): string | null {
+  if (!card.href) return null
+  const qs = new URLSearchParams()
+  if (card.title) qs.set('name', card.title)
+  if (card.location) qs.set('loc', card.location)
+  if (card.price != null && card.price > 0) qs.set('price', String(Math.round(card.price)))
+  if (card.image) qs.set('img', card.image)
+  if (card.meta) qs.set('merchant', card.meta)
+  const q = qs.toString()
+  return q ? `${card.href}?${q}` : card.href
+}
+
 export default function ServicesSection() {
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [itemsByStrip, setItemsByStrip] = useState<Record<string, CatalogCard[]>>({})
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -106,10 +114,6 @@ export default function ServicesSection() {
       const next: Record<string, CatalogCard[]> = {}
       await Promise.all(
         STRIPS.map(async strip => {
-          if (!strip.endpoint) {
-            next[strip.id] = []
-            return
-          }
           try {
             const res = await fetch(strip.endpoint, { cache: 'no-store' })
             const data = await res.json().catch(() => ({}))
@@ -137,10 +141,6 @@ export default function ServicesSection() {
   }
 
   function onCardActivate(card: CatalogCard) {
-    if (card.href) {
-      window.location.href = card.href
-      return
-    }
     if (card.externalUrl) {
       window.open(card.externalUrl, '_blank', 'noopener,noreferrer')
       return
@@ -198,12 +198,7 @@ export default function ServicesSection() {
           }}
         >
           <QuickChip icon="car" label="Vero Ride" onClick={openApp} />
-          <QuickChip
-            icon="truck"
-            label="Courier · Lilongwe"
-            onClick={openApp}
-            accent
-          />
+          <QuickChip icon="truck" label="Courier · Lilongwe" onClick={openApp} accent />
           <QuickChip icon="bike" label="Vero Bike" onClick={openApp} />
         </div>
 
@@ -240,6 +235,10 @@ export default function ServicesSection() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
           {STRIPS.map(strip => {
             const items = itemsByStrip[strip.id] || []
+            const isExpanded = Boolean(expanded[strip.id])
+            const visible = isExpanded ? items : items.slice(0, PREVIEW_COUNT)
+            const hasMore = items.length > PREVIEW_COUNT
+
             return (
               <div key={strip.id}>
                 <div
@@ -255,14 +254,28 @@ export default function ServicesSection() {
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <IconBadge name={strip.icon} size={20} />
                     <div>
-                      <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{strip.title}</h3>
+                      <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>
+                        {strip.title}
+                        {!loading && items.length > 0 ? (
+                          <span
+                            style={{
+                              marginLeft: 8,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: 'var(--text-3)',
+                            }}
+                          >
+                            ({items.length})
+                          </span>
+                        ) : null}
+                      </h3>
                       <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
                         {strip.subtitle}
                       </p>
                     </div>
                   </div>
                   <button type="button" onClick={openApp} style={ghostBtn}>
-                    {strip.viewLabel} in app
+                    Open in app
                   </button>
                 </div>
 
@@ -280,15 +293,38 @@ export default function ServicesSection() {
                     </button>
                   </div>
                 ) : (
-                  <div className="catalog-scroll" style={scrollRow}>
-                    {items.map(card => (
-                      <CatalogItem
-                        key={`${strip.id}-${card.id}`}
-                        card={card}
-                        onActivate={() => onCardActivate(card)}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div
+                      className={isExpanded ? 'catalog-grid' : 'catalog-scroll'}
+                      style={isExpanded ? gridRow : scrollRow}
+                    >
+                      {visible.map(card => (
+                        <CatalogItem
+                          key={`${strip.id}-${card.id}`}
+                          card={card}
+                          onActivate={() => onCardActivate(card)}
+                        />
+                      ))}
+                    </div>
+                    {hasMore ? (
+                      <div style={{ marginTop: 14, textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpanded(prev => ({
+                              ...prev,
+                              [strip.id]: !prev[strip.id],
+                            }))
+                          }
+                          style={primaryBtn}
+                        >
+                          {isExpanded
+                            ? `Show less`
+                            : `${strip.viewMoreLabel} (${items.length - PREVIEW_COUNT} more)`}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </div>
             )
@@ -308,6 +344,11 @@ export default function ServicesSection() {
         }
         .catalog-card { transition: transform 0.2s, box-shadow 0.2s; }
         .catalog-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+        @media (max-width: 700px) {
+          .catalog-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
       `}</style>
     </section>
   )
@@ -358,6 +399,8 @@ function CatalogItem({
 }) {
   const priceLabel =
     card.price != null && card.price > 0 ? formatMwk(card.price) : null
+  const href = useMemo(() => listingHref(card), [card])
+
   const content = (
     <>
       <div
@@ -422,7 +465,8 @@ function CatalogItem({
 
   const shell: CSSProperties = {
     flex: '0 0 210px',
-    width: 210,
+    width: '100%',
+    maxWidth: 210,
     background: '#fff',
     border: '1px solid var(--border)',
     borderRadius: 16,
@@ -436,9 +480,9 @@ function CatalogItem({
     textAlign: 'left',
   }
 
-  if (card.href) {
+  if (href) {
     return (
-      <Link href={card.href} className="catalog-card" style={shell}>
+      <Link href={href} prefetch className="catalog-card" style={shell}>
         {content}
       </Link>
     )
@@ -490,4 +534,10 @@ const scrollRow: CSSProperties = {
   overflowX: 'auto',
   paddingBottom: 8,
   WebkitOverflowScrolling: 'touch',
+}
+
+const gridRow: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+  gap: 14,
 }

@@ -1,8 +1,8 @@
 /** Flip to true when App Store / Google Play downloads should go live. */
-export const APP_STORE_LAUNCHED = false
+export const APP_STORE_LAUNCHED = true
 
-export const APP_LAUNCH_LABEL = 'September 2026'
-export const APP_LAUNCH_HEADLINE = 'Launching later this September'
+export const APP_LAUNCH_LABEL = 'Available now'
+export const APP_LAUNCH_HEADLINE = 'Get Vero360 on Google Play'
 
 /** Countdown runs through the end of September 2026 (local time). */
 export const APP_LAUNCH_COUNTDOWN_AT = new Date(2026, 8, 30, 23, 59, 59, 999)

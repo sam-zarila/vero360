@@ -10,11 +10,19 @@ export const exploreServices: { icon: VeroIconName; name: string; desc: string }
   { icon: 'bed', name: 'Accommodation', desc: 'Hotels, lodges & short stays' },
 ]
 
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.vero.vero360'
+/** Matches Android applicationId in Vero360App. */
+export const ANDROID_PACKAGE_ID = 'com.vero265.app'
+export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_ID}`
+
+/**
+ * App Store URL — leave empty until the iOS listing is live.
+ * Empty/hash hides the App Store button so we never show “not available”.
+ */
+export const APP_STORE_URL = ''
 
 export const appStoreLinks = {
-  ios: '#',
-  android: isAppStoreLaunched() ? PLAY_STORE_URL : '#',
+  ios: isAppStoreLaunched() && APP_STORE_URL ? APP_STORE_URL : '',
+  android: isAppStoreLaunched() ? PLAY_STORE_URL : '',
 }
 
 export const storeBadgeImages = {
