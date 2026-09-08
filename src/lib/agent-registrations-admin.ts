@@ -119,7 +119,8 @@ export async function createAgentRegistration(
   const businessName = String(input.businessName || '').trim()
   const businessAddress = String(input.businessAddress || '').trim()
   const merchantService = normalizeMerchantService(input.merchantService)
-  const isVerified = input.isVerified === true
+  // Contact OTP verification counts as verified identity for agent onboarding.
+  const isVerified = input.isVerified === true || Boolean(verificationTicket)
 
   const geo = {
     lat:

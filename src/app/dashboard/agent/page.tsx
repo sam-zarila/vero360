@@ -41,7 +41,7 @@ export default function AgentPortalHome() {
     try {
       const [regsRes, driversRes] = await Promise.all([
         adminFetch('/api/admin/agent-registrations', { cache: 'no-store' }),
-        adminFetch('/api/admin/drivers', { cache: 'no-store' }),
+        adminFetch('/api/admin/agent-drivers', { cache: 'no-store' }),
       ])
       const regs = await regsRes.json()
       const drivers = await driversRes.json()

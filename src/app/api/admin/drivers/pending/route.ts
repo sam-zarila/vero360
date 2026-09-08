@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
+import { isAgentRole } from '@/lib/admins'
 import { parseDriversResponse } from '@/lib/drivers'
 import { nestAdminFetch } from '@/lib/nest-admin'
 
@@ -15,9 +16,13 @@ export type DriverPendingItem = {
 
 /** Lightweight poll endpoint for admin driver verification badges / notifications. */
 export async function GET(request: Request) {
-  const denied = await denyUnlessPanelAdmin(request)
-  if (denied) return denied
   try {
+    const actor = await requirePanelAdmin(request)
+    // Full pending queue is admin-only; agents use /api/admin/agent-drivers.
+    if (isAgentRole(actor.admin.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const { res, body, error } = await nestAdminFetch(
       ['admin', 'drivers?skip=0&take=200'],
       undefined,
@@ -77,6 +82,8 @@ export async function GET(request: Request) {
       latest: items[0] ?? null,
     })
   } catch (err) {
+    const auth = authErrorResponse(err)
+    if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
     console.error('Admin drivers pending GET error:', err)
     return NextResponse.json({ error: 'Could not reach drivers API' }, { status: 502 })
   }

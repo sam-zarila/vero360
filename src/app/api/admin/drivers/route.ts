@@ -1,11 +1,26 @@
 import { NextResponse } from 'next/server'
 import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
+import { isAgentRole, isFullAdminRole } from '@/lib/admins'
 import { parseDriversResponse } from '@/lib/drivers'
 import { nestAdminFetch } from '@/lib/nest-admin'
 
 export async function GET(request: Request) {
   try {
-    await requirePanelAdmin(request)
+    const actor = await requirePanelAdmin(request)
+    // Agents must use /api/admin/agent-drivers (scoped to their registrations).
+    if (isAgentRole(actor.admin.role)) {
+      return NextResponse.json(
+        {
+          error:
+            'Agents can only view drivers they registered. Use the agent drivers list.',
+        },
+        { status: 403 },
+      )
+    }
+    if (!isFullAdminRole(actor.admin.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const url = new URL(request.url)
     const skip = url.searchParams.get('skip') || '0'
     const take = url.searchParams.get('take') || '200'

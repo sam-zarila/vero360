@@ -21,7 +21,6 @@ type FormState = {
   businessName: string
   businessAddress: string
   merchantService: string
-  isVerified: boolean
   geoLat: string
   geoLng: string
   geoLabel: string
@@ -37,7 +36,6 @@ const emptyForm = (): FormState => ({
   businessName: '',
   businessAddress: '',
   merchantService: 'marketplace',
-  isVerified: false,
   geoLat: '',
   geoLng: '',
   geoLabel: '',
@@ -97,14 +95,48 @@ export default function AgentOnboardPage() {
     setGeoBusy(true)
     setError('')
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      async pos => {
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
         setForm(f => ({
           ...f,
-          geoLat: String(pos.coords.latitude),
-          geoLng: String(pos.coords.longitude),
-          geoLabel: f.geoLabel || 'Current location',
+          geoLat: String(lat),
+          geoLng: String(lng),
+          geoLabel: f.geoLabel || 'Resolving address…',
         }))
-        setGeoBusy(false)
+        try {
+          const res = await adminFetch(
+            `/api/admin/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+            { cache: 'no-store' },
+          )
+          const data = await res.json()
+          if (res.ok && data.label) {
+            setForm(f => ({
+              ...f,
+              geoLat: String(lat),
+              geoLng: String(lng),
+              geoLabel: String(data.label),
+            }))
+          } else {
+            setForm(f => ({
+              ...f,
+              geoLat: String(lat),
+              geoLng: String(lng),
+              geoLabel: f.geoLabel === 'Resolving address…' ? '' : f.geoLabel,
+            }))
+            setError(data.error || 'Could not resolve street name — enter location manually')
+          }
+        } catch {
+          setForm(f => ({
+            ...f,
+            geoLat: String(lat),
+            geoLng: String(lng),
+            geoLabel: f.geoLabel === 'Resolving address…' ? '' : f.geoLabel,
+          }))
+          setError('Could not resolve street name — enter location manually')
+        } finally {
+          setGeoBusy(false)
+        }
       },
       () => {
         setError('Could not read location — enter it manually')
@@ -212,7 +244,6 @@ export default function AgentOnboardPage() {
           businessName: form.role === 'merchant' ? form.businessName : null,
           businessAddress: form.role === 'merchant' ? form.businessAddress : null,
           merchantService: form.role === 'merchant' ? form.merchantService : null,
-          isVerified: form.isVerified || Boolean(verificationTicket),
           geo: {
             lat: form.geoLat ? Number(form.geoLat) : null,
             lng: form.geoLng ? Number(form.geoLng) : null,
@@ -380,11 +411,11 @@ export default function AgentOnboardPage() {
             </>
           ) : null}
 
-          <Field label="Location label">
+          <Field label="Location / street">
             <input
               value={form.geoLabel}
               onChange={e => setForm(f => ({ ...f, geoLabel: e.target.value }))}
-              placeholder="Lilongwe Area 14"
+              placeholder="Street, area, city"
               style={input}
             />
           </Field>
@@ -592,14 +623,6 @@ export default function AgentOnboardPage() {
             alignItems: 'center',
           }}
         >
-          <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontWeight: 600 }}>
-            <input
-              type="checkbox"
-              checked={form.isVerified}
-              onChange={e => setForm(f => ({ ...f, isVerified: e.target.checked }))}
-            />
-            Mark as verified
-          </label>
           <button type="button" onClick={() => void captureGeo()} style={btnGhost} disabled={geoBusy}>
             {geoBusy ? 'Getting location…' : 'Use my location'}
           </button>

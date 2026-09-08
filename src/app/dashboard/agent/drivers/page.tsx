@@ -50,7 +50,7 @@ export default function AgentDriversPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await adminFetch('/api/admin/drivers', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/agent-drivers', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load drivers')
       setItems(data.drivers || [])
@@ -93,7 +93,7 @@ export default function AgentDriversPage() {
       <DashboardPageHeader
         sectionId="agents"
         title="Verify drivers"
-        description="Review Vero Ride driver applications and approve documents."
+        description="Review drivers you registered. Admins review the full pending queue under Vero Ride."
         actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
       />
 
@@ -153,7 +153,7 @@ export default function AgentDriversPage() {
           icon="car"
           color="#047857"
           title="No drivers in this view"
-          hint="Pending applications will show up here for verification."
+          hint="Drivers you onboard will appear here after they submit ride documents in the app."
         />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
