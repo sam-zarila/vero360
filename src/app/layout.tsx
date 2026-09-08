@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import VeroChat from "@/app/components/VeroChat";
 import "./globals.css";
+
+const GA_MEASUREMENT_ID = "G-G9KMEJ6XQZ";
 
 const inter = Inter({
   variable: "--font-body",
@@ -34,6 +37,18 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <VeroChat />
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
       </body>
     </html>
   );
