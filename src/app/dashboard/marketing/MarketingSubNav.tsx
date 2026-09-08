@@ -4,15 +4,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { usePanelSession } from '../PanelSessionProvider'
 
-const LINKS = [
-  { href: '/dashboard/marketing', label: 'Overview', adminOnly: false },
-  { href: '/dashboard/marketing/tasks', label: 'Tasks', adminOnly: false },
-  { href: '/dashboard/marketing/kpi', label: 'KPI tracker', adminOnly: true },
-] as const
-
 export function MarketingSubNav() {
   const pathname = usePathname()
   const { isMarketer } = usePanelSession()
+
+  const links = [
+    { href: '/dashboard/marketing/tasks', label: 'Tasks' },
+    ...(isMarketer
+      ? [{ href: '/dashboard/marketing/progress', label: 'My progress' }]
+      : [{ href: '/dashboard/marketing/kpi', label: 'KPI tracker' }]),
+  ]
 
   return (
     <nav
@@ -24,14 +25,11 @@ export function MarketingSubNav() {
         marginBottom: 18,
       }}
     >
-      {LINKS.filter(link => !link.adminOnly || !isMarketer).map(link => {
+      {links.map(link => {
         const active =
-          link.href === '/dashboard/marketing'
-            ? pathname === '/dashboard/marketing'
-            : pathname === link.href ||
-              pathname.startsWith(`${link.href}/`) ||
-              (link.href === '/dashboard/marketing/tasks' &&
-                pathname === '/dashboard/marketing-tasks')
+          pathname === link.href ||
+          pathname.startsWith(`${link.href}/`) ||
+          (link.href === '/dashboard/marketing/tasks' && pathname === '/dashboard/marketing-tasks')
 
         return (
           <Link

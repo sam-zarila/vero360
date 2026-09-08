@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/panel-client-auth'
 import {
+  MARKETING_PROGRESS_START_DATE,
   buildMarketerKpiBoard,
   buildMarketingProgress,
+  formatMarketingDate,
   type MarketingTask,
   type MarketerKpiRow,
 } from '@/lib/marketing-tasks'
@@ -87,7 +89,7 @@ export default function MarketingKpiPage() {
       <DashboardPageHeader
         sectionId="marketing"
         title="Marketing KPI tracker"
-        description="See how every marketer is working — daily posting, consistency, and scores."
+        description={`See how every marketer is working. Scoring starts ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`}
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
@@ -125,6 +127,15 @@ export default function MarketingKpiPage() {
         </div>
       ) : null}
 
+      {!teamProgress.trackingStarted ? (
+        <DashboardEmptyState
+          icon="layers"
+          color="#C2410C"
+          title="Tracking starts soon"
+          hint={`KPI scoring begins on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`}
+        />
+      ) : (
+        <>
       <div
         style={{
           display: 'grid',
@@ -134,7 +145,7 @@ export default function MarketingKpiPage() {
         }}
       >
         <Metric label="Marketers" value={String(board.length)} />
-        <Metric label={`Posted (${dayCount}d)`} value={String(teamProgress.totalPosted)} />
+        <Metric label={`Posted (${teamProgress.trackedDays}d)`} value={String(teamProgress.totalPosted)} />
         <Metric label="Team avg / day" value={String(teamProgress.avgPerDay)} />
         <Metric label="Team score" value={String(teamProgress.score)} accent={teamRatingColor} />
       </div>
@@ -188,6 +199,8 @@ export default function MarketingKpiPage() {
           ))}
         </div>
       )}
+        </>
+      )}
     </div>
   )
 }
@@ -239,8 +252,8 @@ function MarketerKpiCard({ row, dayCount }: { row: MarketerKpiRow; dayCount: num
           marginBottom: 14,
         }}
       >
-        <MiniStat label={`Posted (${dayCount}d)`} value={String(progress.totalPosted)} />
-        <MiniStat label="Active days" value={`${progress.activeDays}/${dayCount}`} />
+        <MiniStat label={`Posted (${progress.trackedDays}d)`} value={String(progress.totalPosted)} />
+        <MiniStat label="Active days" value={`${progress.activeDays}/${progress.trackedDays || dayCount}`} />
         <MiniStat label="Avg / day" value={String(progress.avgPerDay)} />
         <MiniStat label="Tasks" value={String(row.taskCount)} />
         <MiniStat label="Completed" value={String(row.completedCount)} />

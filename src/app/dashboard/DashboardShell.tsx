@@ -31,12 +31,16 @@ function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard/marketing/tasks') {
     return pathname === href || pathname.startsWith(`${href}/`) || pathname === '/dashboard/marketing-tasks'
   }
+  if (href === '/dashboard/marketing/progress') {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
   if (href === '/dashboard/marketing/kpi') {
     return pathname === href || pathname.startsWith(`${href}/`)
   }
   if (href === '/dashboard/marketing') {
     if (pathname === '/dashboard/marketing') return true
     if (pathname.startsWith('/dashboard/marketing/tasks')) return false
+    if (pathname.startsWith('/dashboard/marketing/progress')) return false
     if (pathname.startsWith('/dashboard/marketing/kpi')) return false
     if (pathname === '/dashboard/marketing-tasks') return false
     return pathname.startsWith('/dashboard/marketing/')
@@ -141,6 +145,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       ...group,
       items: group.items.filter(item => {
         if (isMarketer) return Boolean(item.marketerAllowed)
+        if (item.marketerOnly) return false
         if (item.superAdminOnly && !isSuperAdmin) return false
         return true
       }),

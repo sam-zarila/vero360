@@ -110,7 +110,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'marketing',
     title: 'Marketing',
-    desc: 'Tasks, posting tracker, and marketer KPIs',
+    desc: 'Marketing tasks and marketer KPIs',
     icon: 'megaphone',
     color: '#C2410C',
     bg: '#FFF7ED',
@@ -228,8 +228,10 @@ export type DashboardNavItem = {
   icon: VeroIconName
   badgeKey?: DashboardNavBadgeKey
   superAdminOnly?: boolean
-  /** Visible to marketers (otherwise marketers only see Marketing + settings). */
+  /** Visible to marketers (otherwise marketers only see Marketing tasks + My progress + settings). */
   marketerAllowed?: boolean
+  /** Hidden from full admins — marketer-only nav item. */
+  marketerOnly?: boolean
 }
 
 export type DashboardNavGroup = {
@@ -259,8 +261,14 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
       { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
       { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
-      { href: '/dashboard/marketing', label: 'Marketing', icon: 'megaphone', marketerAllowed: true },
       { href: '/dashboard/marketing/tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
+      {
+        href: '/dashboard/marketing/progress',
+        label: 'My progress',
+        icon: 'layers',
+        marketerAllowed: true,
+        marketerOnly: true,
+      },
       { href: '/dashboard/marketing/kpi', label: 'Marketing KPI', icon: 'layers' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
       { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },

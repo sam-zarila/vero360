@@ -195,15 +195,22 @@ export type MarketingProgressSummary = {
   days: MarketingProgressDay[]
   totalPosted: number
   activeDays: number
+  trackedDays: number
   avgPerDay: number
   score: number
   rating: 'good' | 'ok' | 'poor'
   ratingLabel: string
+  /** Progress scoring begins on this calendar day (inclusive). */
+  trackingStarted: boolean
+  trackingStartDate: string
 }
 
+/** Official start of marketing progress / KPI scoring. */
+export const MARKETING_PROGRESS_START_DATE = '2026-09-14'
+
 /**
- * Daily posting activity for the last `dayCount` days (by datePosted).
- * High bars / green = working well; low / red = poor performance.
+ * Daily posting activity ending today, for up to `dayCount` days,
+ * never earlier than MARKETING_PROGRESS_START_DATE.
  */
 export function buildMarketingProgress(
   tasks: MarketingTask[],
@@ -212,6 +219,9 @@ export function buildMarketingProgress(
   const today = new Date()
   today.setHours(12, 0, 0, 0)
 
+  const start = new Date(`${MARKETING_PROGRESS_START_DATE}T12:00:00`)
+  const trackingStarted = today.getTime() >= start.getTime()
+
   const counts = new Map<string, number>()
   for (const t of tasks) {
     const raw = t.datePosted || t.dateAssigned || t.createdAt
@@ -219,6 +229,7 @@ export function buildMarketingProgress(
     const d = new Date(raw)
     if (Number.isNaN(d.getTime())) continue
     d.setHours(12, 0, 0, 0)
+    if (d.getTime() < start.getTime()) continue
     const key = toDateInputValue(d.toISOString())
     if (!key) continue
     counts.set(key, (counts.get(key) || 0) + 1)
@@ -228,9 +239,35 @@ export function buildMarketingProgress(
   let totalPosted = 0
   let activeDays = 0
 
-  for (let i = dayCount - 1; i >= 0; i -= 1) {
+  if (!trackingStarted) {
+    return {
+      days: [],
+      totalPosted: 0,
+      activeDays: 0,
+      trackedDays: 0,
+      avgPerDay: 0,
+      score: 0,
+      rating: 'ok',
+      ratingLabel: `Tracking starts ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}`,
+      trackingStarted: false,
+      trackingStartDate: MARKETING_PROGRESS_START_DATE,
+    }
+  }
+
+  // Window: last dayCount days, clipped to start date.
+  const earliest = new Date(today)
+  earliest.setDate(today.getDate() - (dayCount - 1))
+  const windowStart = earliest.getTime() < start.getTime() ? new Date(start) : earliest
+
+  const trackedDays = Math.max(
+    0,
+    Math.round((today.getTime() - windowStart.getTime()) / 86400000) + 1,
+  )
+
+  for (let i = trackedDays - 1; i >= 0; i -= 1) {
     const d = new Date(today)
     d.setDate(today.getDate() - i)
+    if (d.getTime() < start.getTime()) continue
     const key = toDateInputValue(d.toISOString())
     const count = counts.get(key) || 0
     totalPosted += count
@@ -245,9 +282,9 @@ export function buildMarketingProgress(
     })
   }
 
-  const avgPerDay = dayCount > 0 ? totalPosted / dayCount : 0
-  // Score 0–100: reward consistent posting (active days) + volume.
-  const consistency = (activeDays / dayCount) * 55
+  const denom = days.length || 1
+  const avgPerDay = totalPosted / denom
+  const consistency = (activeDays / denom) * 55
   const volume = Math.min(avgPerDay / 1.5, 1) * 45
   const score = Math.round(Math.min(100, consistency + volume))
 
@@ -265,10 +302,13 @@ export function buildMarketingProgress(
     days,
     totalPosted,
     activeDays,
+    trackedDays: days.length,
     avgPerDay: Math.round(avgPerDay * 10) / 10,
     score,
     rating,
     ratingLabel,
+    trackingStarted: true,
+    trackingStartDate: MARKETING_PROGRESS_START_DATE,
   }
 }
 
