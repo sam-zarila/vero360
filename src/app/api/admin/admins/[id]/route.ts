@@ -70,7 +70,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
         )
       }
       // Many super admins are allowed; only block demoting the last active one.
-      if (current.role === 'super_admin' && role === 'admin') {
+      if (current.role === 'super_admin' && role !== 'super_admin') {
         const supers = await db
           .collection(ADMINS_COLLECTION)
           .where('role', '==', 'super_admin')
@@ -139,7 +139,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
           ? 'Admin suspended — cannot sign in to the panel.'
           : action === 'activate'
             ? 'Admin activated — can sign in again.'
-            : `Role updated to ${admin.role === 'super_admin' ? 'super admin' : 'admin'}.`,
+            : `Role updated to ${
+                admin.role === 'super_admin'
+                  ? 'super admin'
+                  : admin.role === 'marketer'
+                    ? 'marketer'
+                    : 'admin'
+              }.`,
     })
   } catch (err) {
     const auth = authErrorResponse(err)

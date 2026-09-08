@@ -2,7 +2,7 @@ import { formatDateTime } from '@/lib/vero-api'
 
 export const ADMINS_COLLECTION = 'admins'
 
-export type AdminRole = 'super_admin' | 'admin'
+export type AdminRole = 'super_admin' | 'admin' | 'marketer'
 export type AdminStatus = 'active' | 'suspended'
 
 export type PanelAdmin = {
@@ -54,7 +54,16 @@ function ts(value: unknown): string | null {
 export function normalizeAdminRole(raw: unknown): AdminRole {
   const v = str(raw).toLowerCase().replace(/[\s-]+/g, '_')
   if (v === 'super_admin' || v === 'superadmin' || v === 'super') return 'super_admin'
+  if (v === 'marketer' || v === 'marketing' || v === 'intern') return 'marketer'
   return 'admin'
+}
+
+export function isFullAdminRole(role: AdminRole | null | undefined): boolean {
+  return role === 'super_admin' || role === 'admin'
+}
+
+export function isMarketerRole(role: AdminRole | null | undefined): boolean {
+  return role === 'marketer'
 }
 
 export function normalizeAdminStatus(raw: unknown): AdminStatus {
@@ -81,13 +90,19 @@ export function parsePanelAdmin(
 }
 
 export function adminRoleLabel(role: AdminRole) {
-  return role === 'super_admin' ? 'Super admin' : 'Admin'
+  if (role === 'super_admin') return 'Super admin'
+  if (role === 'marketer') return 'Marketer'
+  return 'Admin'
 }
 
 export function adminRoleTone(role: AdminRole) {
-  return role === 'super_admin'
-    ? { bg: '#F5F3FF', color: '#6D28D9', border: '#DDD6FE' }
-    : { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' }
+  if (role === 'super_admin') {
+    return { bg: '#F5F3FF', color: '#6D28D9', border: '#DDD6FE' }
+  }
+  if (role === 'marketer') {
+    return { bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' }
+  }
+  return { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' }
 }
 
 export function adminStatusTone(status: AdminStatus) {
@@ -101,6 +116,7 @@ export function countAdmins(admins: PanelAdmin[]) {
     all: admins.length,
     super_admin: admins.filter(a => a.role === 'super_admin').length,
     admin: admins.filter(a => a.role === 'admin').length,
+    marketer: admins.filter(a => a.role === 'marketer').length,
     active: admins.filter(a => a.status === 'active').length,
     suspended: admins.filter(a => a.status === 'suspended').length,
   }

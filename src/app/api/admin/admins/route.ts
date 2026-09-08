@@ -153,7 +153,7 @@ export async function POST(request: Request) {
         bootstrap,
         message: bootstrap
           ? 'First super admin created. Sign in at /panel with this email and password.'
-          : `${role === 'super_admin' ? 'Super admin' : 'Admin'} created.`,
+          : `${role === 'super_admin' ? 'Super admin' : role === 'marketer' ? 'Marketer' : 'Admin'} created.`,
       },
       { status: 201 },
     )

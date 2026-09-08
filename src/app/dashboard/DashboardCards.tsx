@@ -26,7 +26,7 @@ export default function DashboardCards() {
   const reportsOpen = useMerchantReportsOpenBadge()
   const digitalNew = useDigitalPaymentsNewBadge()
   const homepageAdNew = useHomepageAdPaymentsNewBadge()
-  const { isSuperAdmin } = usePanelSession()
+  const { isSuperAdmin, isMarketer } = usePanelSession()
 
   return (
     <div
@@ -37,7 +37,10 @@ export default function DashboardCards() {
         gap: 18,
       }}
     >
-      {DASHBOARD_SECTIONS.filter(card => !card.superAdminOnly || isSuperAdmin).map(card => {
+      {DASHBOARD_SECTIONS.filter(card => {
+        if (isMarketer) return card.id === 'marketing-tasks'
+        return !card.superAdminOnly || isSuperAdmin
+      }).map(card => {
         const isHelp = card.id === 'verochat'
         const isCourier = card.id === 'vero-courier'
         const isDrivers = card.id === 'vero-ride'

@@ -32,6 +32,7 @@ type Counts = {
   all: number
   super_admin: number
   admin: number
+  marketer: number
   active: number
   suspended: number
 }
@@ -40,6 +41,7 @@ const EMPTY_COUNTS: Counts = {
   all: 0,
   super_admin: 0,
   admin: 0,
+  marketer: 0,
   active: 0,
   suspended: 0,
 }
@@ -104,6 +106,7 @@ export default function AdminsPage() {
     return admins.filter(a => {
       if (tab === 'super_admin' && a.role !== 'super_admin') return false
       if (tab === 'admin' && a.role !== 'admin') return false
+      if (tab === 'marketer' && a.role !== 'marketer') return false
       if (tab === 'suspended' && a.status !== 'suspended') return false
       if (!q) return true
       return (
@@ -149,6 +152,8 @@ export default function AdminsPage() {
               ? Math.max(c.super_admin, 1)
               : c.super_admin,
           admin: data.admin.role === 'admin' ? Math.max(c.admin, 1) : c.admin,
+          marketer:
+            data.admin.role === 'marketer' ? Math.max(c.marketer, 1) : c.marketer,
           active: Math.max(c.active, 1),
         }))
         setBootstrap(false)
@@ -251,6 +256,7 @@ export default function AdminsPage() {
     { id: 'all', label: 'All', count: counts.all },
     { id: 'super_admin', label: 'Super admins', count: counts.super_admin },
     { id: 'admin', label: 'Admins', count: counts.admin },
+    { id: 'marketer', label: 'Marketers', count: counts.marketer },
     { id: 'suspended', label: 'Suspended', count: counts.suspended },
   ]
 
@@ -260,7 +266,7 @@ export default function AdminsPage() {
 
       <DashboardPageHeader
         sectionId="admins"
-        description="Classify panel users as super admin or admin. You can have many super admins. Super admins manage accounts; normal admins cannot see Finance or Admins."
+        description="Classify panel users as super admin, admin, or marketer. Marketers only access the Marketing task tracker. Super admins manage accounts; normal admins cannot see Finance or Admins."
         actions={
           <>
             <DashboardRefreshButton
@@ -274,7 +280,7 @@ export default function AdminsPage() {
                 onClick={() => setFormOpen(o => !o)}
                 style={btnPrimary}
               >
-                {formOpen ? 'Close form' : '+ Create admin'}
+                {formOpen ? 'Close form' : '+ Create account'}
               </button>
             ) : needsSignIn ? (
               <Link href="/panel" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-block' }}>
@@ -309,7 +315,7 @@ export default function AdminsPage() {
       {formOpen && canManage ? (
         <form onSubmit={createAdmin} style={{ ...card, marginBottom: 18 }}>
           <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>
-            {bootstrap ? 'Create first super admin' : 'Create admin'}
+            {bootstrap ? 'Create first super admin' : 'Create panel account'}
           </h2>
           <div
             style={{
@@ -353,13 +359,17 @@ export default function AdminsPage() {
               <Field label="Role">
                 <select
                   value={role}
-                  onChange={e =>
-                    setRole(e.target.value === 'super_admin' ? 'super_admin' : 'admin')
-                  }
+                  onChange={e => {
+                    const v = e.target.value
+                    if (v === 'super_admin' || v === 'marketer' || v === 'admin') {
+                      setRole(v)
+                    }
+                  }}
                   style={input}
                 >
                   <option value="admin">Admin</option>
                   <option value="super_admin">Super admin</option>
+                  <option value="marketer">Marketer</option>
                 </select>
               </Field>
             ) : null}
@@ -369,7 +379,11 @@ export default function AdminsPage() {
             disabled={busyId === 'create'}
             style={{ ...btnPrimary, marginTop: 14 }}
           >
-            {busyId === 'create' ? 'Creating…' : bootstrap ? 'Create super admin' : 'Create admin'}
+            {busyId === 'create'
+              ? 'Creating…'
+              : bootstrap
+                ? 'Create super admin'
+                : 'Create account'}
           </button>
         </form>
       ) : null}
@@ -465,7 +479,7 @@ export default function AdminsPage() {
                         Activate
                       </button>
                     )}
-                    {a.role === 'admin' ? (
+                    {a.role !== 'super_admin' ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -474,7 +488,8 @@ export default function AdminsPage() {
                       >
                         Make super admin
                       </button>
-                    ) : (
+                    ) : null}
+                    {a.role !== 'admin' ? (
                       <button
                         type="button"
                         disabled={busy || isMe}
@@ -483,7 +498,17 @@ export default function AdminsPage() {
                       >
                         Make admin
                       </button>
-                    )}
+                    ) : null}
+                    {a.role !== 'marketer' ? (
+                      <button
+                        type="button"
+                        disabled={busy || isMe}
+                        onClick={() => void runAction(a, 'set_role', 'marketer')}
+                        style={btnGhost}
+                      >
+                        Make marketer
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       disabled={busy || isMe}

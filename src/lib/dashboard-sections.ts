@@ -10,6 +10,7 @@ export type DashboardSectionId =
   | 'promotion'
   | 'homepage-ads'
   | 'digital-services'
+  | 'marketing-tasks'
   | 'latest-arrivals'
   | 'announcements'
   | 'marketplace'
@@ -105,6 +106,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'sparkles',
     color: '#7C3AED',
     bg: '#F5F3FF',
+  },
+  {
+    id: 'marketing-tasks',
+    title: 'Marketing tasks',
+    desc: 'Assign and track marketer content tasks',
+    icon: 'megaphone',
+    color: '#C2410C',
+    bg: '#FFF7ED',
   },
   {
     id: 'latest-arrivals',
@@ -219,6 +228,8 @@ export type DashboardNavItem = {
   icon: VeroIconName
   badgeKey?: DashboardNavBadgeKey
   superAdminOnly?: boolean
+  /** Visible to marketers (otherwise marketers only see marketing-tasks + settings). */
+  marketerAllowed?: boolean
 }
 
 export type DashboardNavGroup = {
@@ -248,6 +259,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
       { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
       { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
+      { href: '/dashboard/marketing-tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
       { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
     ],
@@ -265,7 +277,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
       { href: '/dashboard/get-started', label: 'Get started videos', icon: 'video' },
-      { href: '/dashboard/settings', label: 'Settings', icon: 'settings' },
+      { href: '/dashboard/settings', label: 'Settings', icon: 'settings', marketerAllowed: true },
     ],
   },
 ]

@@ -11,7 +11,9 @@ import { DASHBOARD_NAV_GROUPS } from '@/lib/dashboard-sections'
 import { AdminAlertsProvider, useAdminAlerts, useHelpCenterUnreadBadge } from './AdminAlertsProvider'
 import { ConfirmDialogProvider } from './ConfirmDialog'
 import {
+  isMarketerAllowedPath,
   isSuperAdminOnlyPath,
+  MARKETER_HOME,
   PanelSessionProvider,
   usePanelSession,
 } from './PanelSessionProvider'
@@ -40,7 +42,12 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 function DashboardAuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { isSuperAdmin, loading: sessionLoading, authenticated } = usePanelSession()
+  const {
+    isSuperAdmin,
+    isMarketer,
+    loading: sessionLoading,
+    authenticated,
+  } = usePanelSession()
 
   useEffect(() => {
     if (sessionLoading) return
@@ -52,10 +59,14 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
       router.replace(`/panel${next}`)
       return
     }
-    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
-      router.replace('/dashboard')
+    if (isMarketer && !isMarketerAllowedPath(pathname)) {
+      router.replace(MARKETER_HOME)
+      return
     }
-  }, [sessionLoading, isSuperAdmin, pathname, router, authenticated])
+    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
+      router.replace(isMarketer ? MARKETER_HOME : '/dashboard')
+    }
+  }, [sessionLoading, isSuperAdmin, isMarketer, pathname, router, authenticated])
 
   if (sessionLoading || !authenticated) {
     return (
@@ -91,7 +102,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const unread = useHelpCenterUnreadBadge()
-  const { isSuperAdmin } = usePanelSession()
+  const { isSuperAdmin, isMarketer } = usePanelSession()
   const {
     courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
     drivers: { pending: driversPending, toast: driversToast, clearToast: clearDriversToast },
@@ -115,9 +126,13 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const navGroups = useMemo(() => {
     return DASHBOARD_NAV_GROUPS.map(group => ({
       ...group,
-      items: group.items.filter(item => !item.superAdminOnly || isSuperAdmin),
+      items: group.items.filter(item => {
+        if (isMarketer) return Boolean(item.marketerAllowed)
+        if (item.superAdminOnly && !isSuperAdmin) return false
+        return true
+      }),
     })).filter(group => group.items.length > 0)
-  }, [isSuperAdmin])
+  }, [isSuperAdmin, isMarketer])
 
   useEffect(() => {
     if (!courierToast) return

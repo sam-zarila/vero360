@@ -20,6 +20,8 @@ type PanelSession = {
   role: AdminRole | null
   isSuperAdmin: boolean
   isAdmin: boolean
+  isMarketer: boolean
+  isFullAdmin: boolean
   authenticated: boolean
   refresh: () => Promise<void>
 }
@@ -30,6 +32,8 @@ const PanelSessionContext = createContext<PanelSession>({
   role: null,
   isSuperAdmin: false,
   isAdmin: false,
+  isMarketer: false,
+  isFullAdmin: false,
   authenticated: false,
   refresh: async () => {},
 })
@@ -78,6 +82,8 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
       role,
       isSuperAdmin: role === 'super_admin',
       isAdmin: role === 'admin',
+      isMarketer: role === 'marketer',
+      isFullAdmin: role === 'super_admin' || role === 'admin',
       authenticated: !!me,
       refresh,
     }
@@ -95,8 +101,21 @@ export function usePanelSession() {
 /** Paths only super admins may open. */
 export const SUPER_ADMIN_ONLY_PATHS = ['/dashboard/finance', '/dashboard/admins'] as const
 
+export const MARKETER_HOME = '/dashboard/marketing-tasks'
+
+export const MARKETER_ALLOWED_PATHS = [
+  '/dashboard/marketing-tasks',
+  '/dashboard/settings',
+] as const
+
 export function isSuperAdminOnlyPath(pathname: string) {
   return SUPER_ADMIN_ONLY_PATHS.some(
+    p => pathname === p || pathname.startsWith(`${p}/`),
+  )
+}
+
+export function isMarketerAllowedPath(pathname: string) {
+  return MARKETER_ALLOWED_PATHS.some(
     p => pathname === p || pathname.startsWith(`${p}/`),
   )
 }
