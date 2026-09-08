@@ -81,7 +81,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
       status: body.status,
       dateCompleted: body.dateCompleted,
       notes: body.notes,
-      dateAssigned: body.dateAssigned,
+      datePosted: body.datePosted ?? body.dateAssigned,
+      dateAssigned: body.dateAssigned ?? body.datePosted,
     }
 
     if (isAdmin) {

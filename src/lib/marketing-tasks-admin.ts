@@ -54,9 +54,15 @@ export function parseMarketingTask(
   id: string,
   data: DocumentData | Record<string, unknown>,
 ): MarketingTask {
+  const datePosted =
+    dateOnlyToIso(data.datePosted) ||
+    dateOnlyToIso(data.dateAssigned) ||
+    tsToIso(data.createdAt)
+
   return {
     id,
-    dateAssigned: dateOnlyToIso(data.dateAssigned) || tsToIso(data.createdAt),
+    datePosted,
+    dateAssigned: dateOnlyToIso(data.dateAssigned) || datePosted,
     marketerUid: str(data.marketerUid),
     marketerName: str(data.marketerName) || 'Marketer',
     marketerEmail: str(data.marketerEmail).toLowerCase(),
@@ -111,13 +117,13 @@ export async function listMarketingTasks(opts?: {
 
   const items = snap.docs.map(d => parseMarketingTask(d.id, d.data()))
   items.sort((a, b) => {
-    const at = a.dateAssigned
-      ? new Date(a.dateAssigned).getTime()
+    const at = a.datePosted
+      ? new Date(a.datePosted).getTime()
       : a.createdAt
         ? new Date(a.createdAt).getTime()
         : 0
-    const bt = b.dateAssigned
-      ? new Date(b.dateAssigned).getTime()
+    const bt = b.datePosted
+      ? new Date(b.datePosted).getTime()
       : b.createdAt
         ? new Date(b.createdAt).getTime()
         : 0
@@ -149,9 +155,15 @@ export async function createMarketingTask(
       ? dateOnlyToIso(input.dateCompleted) || new Date().toISOString()
       : dateOnlyToIso(input.dateCompleted)
 
+  const posted =
+    dateOnlyToIso(input.datePosted) ||
+    dateOnlyToIso(input.dateAssigned) ||
+    null
+
   const ref = getAdminDb().collection(MARKETING_TASKS_COLLECTION).doc()
   await ref.set({
-    dateAssigned: dateOnlyToIso(input.dateAssigned) || FieldValue.serverTimestamp(),
+    datePosted: posted || FieldValue.serverTimestamp(),
+    dateAssigned: posted || FieldValue.serverTimestamp(),
     marketerUid,
     marketerName: str(input.marketerName) || 'Marketer',
     marketerEmail: str(input.marketerEmail).toLowerCase(),
@@ -197,8 +209,11 @@ export async function updateMarketingTask(
   if (patch.category !== undefined) updates.category = str(patch.category) || 'Other'
   if (patch.platform !== undefined) updates.platform = str(patch.platform) || 'Other'
   if (patch.notes !== undefined) updates.notes = str(patch.notes)
-  if (patch.dateAssigned !== undefined) {
-    updates.dateAssigned = dateOnlyToIso(patch.dateAssigned)
+  if (patch.datePosted !== undefined || patch.dateAssigned !== undefined) {
+    const posted =
+      dateOnlyToIso(patch.datePosted) || dateOnlyToIso(patch.dateAssigned)
+    updates.datePosted = posted
+    updates.dateAssigned = posted
   }
   if (patch.dueDate !== undefined) updates.dueDate = dateOnlyToIso(patch.dueDate)
 

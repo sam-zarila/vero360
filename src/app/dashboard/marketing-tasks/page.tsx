@@ -15,6 +15,7 @@ import {
   MARKETING_TASK_CATEGORIES,
   MARKETING_TASK_PLATFORMS,
   MARKETING_TASK_STATUSES,
+  buildMarketingProgress,
   formatMarketingDate,
   marketingTaskStatusLabel,
   marketingTaskStatusTone,
@@ -46,7 +47,7 @@ const emptyCounts: MarketingTaskCounts = {
 }
 
 type FormState = {
-  dateAssigned: string
+  datePosted: string
   marketerUid: string
   taskTitle: string
   category: string
@@ -60,7 +61,7 @@ type FormState = {
 function emptyForm(defaults?: Partial<FormState>): FormState {
   const today = toDateInputValue(new Date().toISOString())
   return {
-    dateAssigned: today,
+    datePosted: today,
     marketerUid: '',
     taskTitle: '',
     category: 'Post',
@@ -75,7 +76,7 @@ function emptyForm(defaults?: Partial<FormState>): FormState {
 
 function formFromTask(t: MarketingTask): FormState {
   return {
-    dateAssigned: toDateInputValue(t.dateAssigned),
+    datePosted: toDateInputValue(t.datePosted || t.dateAssigned),
     marketerUid: t.marketerUid,
     taskTitle: t.taskTitle,
     category: t.category || 'Other',
@@ -199,7 +200,8 @@ export default function MarketingTasksPage() {
     try {
       const selected = marketers.find(m => m.id === form.marketerUid)
       const payload = {
-        dateAssigned: form.dateAssigned || null,
+        datePosted: form.datePosted || null,
+        dateAssigned: form.datePosted || null,
         marketerUid: isMarketer ? me?.id : form.marketerUid,
         marketerName: isMarketer
           ? me?.displayName
@@ -208,9 +210,13 @@ export default function MarketingTasksPage() {
         taskTitle: form.taskTitle.trim(),
         category: form.category,
         platform: form.platform,
-        dueDate: form.dueDate || null,
+        dueDate: isMarketer ? null : form.dueDate || null,
         status: form.status,
-        dateCompleted: form.dateCompleted || null,
+        dateCompleted: isMarketer
+          ? form.status === 'completed'
+            ? form.datePosted || toDateInputValue(new Date().toISOString())
+            : null
+          : form.dateCompleted || null,
         notes: form.notes,
       }
 
@@ -296,7 +302,7 @@ export default function MarketingTasksPage() {
           status,
           dateCompleted:
             status === 'completed'
-              ? toDateInputValue(new Date().toISOString())
+              ? toDateInputValue(t.datePosted || t.dateAssigned || new Date().toISOString())
               : null,
         }),
       })
@@ -311,6 +317,8 @@ export default function MarketingTasksPage() {
     }
   }
 
+  const progress = useMemo(() => buildMarketingProgress(items, 14), [items])
+
   const statusTabs: Array<{ id: typeof statusFilter; label: string; count: number }> = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'not_started', label: 'Not Started', count: counts.not_started },
@@ -320,16 +328,23 @@ export default function MarketingTasksPage() {
     { id: 'overdue', label: 'Overdue', count: counts.overdue },
   ]
 
+  const maxBar = Math.max(3, ...progress.days.map(d => d.count))
+  const ratingColor =
+    progress.rating === 'good' ? '#047857' : progress.rating === 'ok' ? '#B45309' : '#B91C1C'
+  const ratingBg =
+    progress.rating === 'good' ? '#ECFDF5' : progress.rating === 'ok' ? '#FFFBEB' : '#FEF2F2'
+
   return (
     <div>
       {!isMarketer ? <DashboardBackLink label="Back to dashboard" /> : null}
 
       <DashboardPageHeader
         sectionId="marketing-tasks"
+        title="Marketing portal"
         description={
           isMarketer
-            ? 'Track and record your marketing content tasks.'
-            : 'Assign content tasks to marketers and track progress across platforms.'
+            ? 'Record content you posted and track your daily progress.'
+            : 'Assign content tasks to marketers and track posting progress.'
         }
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -368,13 +383,142 @@ export default function MarketingTasksPage() {
         <Metric label="All tasks" value={String(counts.all)} />
         <Metric label="In progress" value={String(counts.in_progress)} />
         <Metric label="Completed" value={String(counts.completed)} />
-        <Metric label="Overdue" value={String(counts.overdue)} />
+        <Metric label="Posted (14d)" value={String(progress.totalPosted)} />
       </div>
+
+      {/* My progress graph */}
+      <section style={{ ...card, marginBottom: 18 }}>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 16,
+            alignItems: 'flex-start',
+          }}
+        >
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+              {isMarketer ? 'My progress' : 'Posting progress'}
+            </h2>
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
+              Activity by date posted · last 14 days
+            </p>
+          </div>
+          <div
+            style={{
+              padding: '8px 14px',
+              borderRadius: 12,
+              background: ratingBg,
+              color: ratingColor,
+              fontWeight: 800,
+              fontSize: 13,
+            }}
+          >
+            Score {progress.score} · {progress.ratingLabel}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 6,
+            height: 160,
+            padding: '8px 4px 0',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          {progress.days.map(day => {
+            const heightPct = Math.max(day.count === 0 ? 6 : (day.count / maxBar) * 100, 6)
+            const barColor =
+              day.tone === 'good' ? '#16A34A' : day.tone === 'ok' ? '#F59E0B' : '#EF4444'
+            return (
+              <div
+                key={day.key}
+                title={`${day.label}: ${day.count} posted`}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  height: '100%',
+                  gap: 6,
+                }}
+              >
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)' }}>
+                  {day.count || ''}
+                </span>
+                <div
+                  style={{
+                    width: '100%',
+                    maxWidth: 28,
+                    height: `${heightPct}%`,
+                    minHeight: day.count === 0 ? 8 : 16,
+                    borderRadius: '8px 8px 4px 4px',
+                    background: barColor,
+                    opacity: day.count === 0 ? 0.35 : 1,
+                    transition: 'height 0.25s ease',
+                  }}
+                />
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          {progress.days.map(day => (
+            <div
+              key={`${day.key}-lbl`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                textAlign: 'center',
+                fontSize: 9,
+                color: 'var(--text-3)',
+                fontWeight: 600,
+                lineHeight: 1.2,
+              }}
+            >
+              {day.label}
+            </div>
+          ))}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 14,
+            marginTop: 14,
+            fontSize: 12,
+            color: 'var(--text-3)',
+            fontWeight: 600,
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: '#16A34A' }} />
+            Good (2+ posts)
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: '#F59E0B' }} />
+            Okay (1 post)
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: '#EF4444' }} />
+            Poor (none)
+          </span>
+          <span style={{ marginLeft: 'auto' }}>
+            {progress.activeDays}/14 active days · avg {progress.avgPerDay}/day
+          </span>
+        </div>
+      </section>
 
       {formOpen ? (
         <form onSubmit={e => void save(e)} style={{ ...card, marginBottom: 18 }}>
           <h2 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 800 }}>
-            {editingId ? 'Edit task' : isMarketer ? 'Record a task' : 'Assign a task'}
+            {editingId ? 'Edit task' : isMarketer ? 'Add my task' : 'Assign a task'}
           </h2>
           <div
             style={{
@@ -383,11 +527,12 @@ export default function MarketingTasksPage() {
               gap: 12,
             }}
           >
-            <Field label="Date assigned">
+            <Field label="Date posted *">
               <input
                 type="date"
-                value={form.dateAssigned}
-                onChange={e => setForm(f => ({ ...f, dateAssigned: e.target.value }))}
+                required
+                value={form.datePosted}
+                onChange={e => setForm(f => ({ ...f, datePosted: e.target.value }))}
                 style={input}
               />
             </Field>
@@ -451,14 +596,6 @@ export default function MarketingTasksPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Due date">
-              <input
-                type="date"
-                value={form.dueDate}
-                onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-                style={input}
-              />
-            </Field>
             <Field label="Status">
               <select
                 value={form.status}
@@ -466,12 +603,6 @@ export default function MarketingTasksPage() {
                   setForm(f => ({
                     ...f,
                     status: e.target.value as MarketingTaskStatus,
-                    dateCompleted:
-                      e.target.value === 'completed' && !f.dateCompleted
-                        ? toDateInputValue(new Date().toISOString())
-                        : e.target.value !== 'completed'
-                          ? ''
-                          : f.dateCompleted,
                   }))
                 }
                 style={input}
@@ -483,14 +614,26 @@ export default function MarketingTasksPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Date completed">
-              <input
-                type="date"
-                value={form.dateCompleted}
-                onChange={e => setForm(f => ({ ...f, dateCompleted: e.target.value }))}
-                style={input}
-              />
-            </Field>
+            {!isMarketer ? (
+              <>
+                <Field label="Due date">
+                  <input
+                    type="date"
+                    value={form.dueDate}
+                    onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
+                    style={input}
+                  />
+                </Field>
+                <Field label="Date completed">
+                  <input
+                    type="date"
+                    value={form.dateCompleted}
+                    onChange={e => setForm(f => ({ ...f, dateCompleted: e.target.value }))}
+                    style={input}
+                  />
+                </Field>
+              </>
+            ) : null}
           </div>
           <Field label="Notes">
             <textarea
@@ -598,22 +741,34 @@ export default function MarketingTasksPage() {
           />
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMarketer ? 720 : 980 }}>
               <thead>
                 <tr>
-                  {[
-                    'Date Assigned',
-                    'Marketer',
-                    'Task / Content Piece',
-                    'Category',
-                    'Platform',
-                    'Due Date',
-                    'Status',
-                    'Date Completed',
-                    'Approved By',
-                    'Notes',
-                    'Actions',
-                  ].map(h => (
+                  {(isMarketer
+                    ? [
+                        'Date Posted',
+                        'Task / Content Piece',
+                        'Category',
+                        'Platform',
+                        'Status',
+                        'Approved By',
+                        'Notes',
+                        'Actions',
+                      ]
+                    : [
+                        'Date Posted',
+                        'Marketer',
+                        'Task / Content Piece',
+                        'Category',
+                        'Platform',
+                        'Due Date',
+                        'Status',
+                        'Date Completed',
+                        'Approved By',
+                        'Notes',
+                        'Actions',
+                      ]
+                  ).map(h => (
                     <th key={h} style={th}>
                       {h}
                     </th>
@@ -625,15 +780,19 @@ export default function MarketingTasksPage() {
                   const tone = marketingTaskStatusTone(t.status)
                   return (
                     <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={td}>{formatMarketingDate(t.dateAssigned)}</td>
-                      <td style={td}>
-                        <div style={{ fontWeight: 700 }}>{t.marketerName}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t.marketerEmail}</div>
-                      </td>
+                      <td style={td}>{formatMarketingDate(t.datePosted || t.dateAssigned)}</td>
+                      {!isMarketer ? (
+                        <td style={td}>
+                          <div style={{ fontWeight: 700 }}>{t.marketerName}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t.marketerEmail}</div>
+                        </td>
+                      ) : null}
                       <td style={{ ...td, fontWeight: 650, maxWidth: 220 }}>{t.taskTitle}</td>
                       <td style={td}>{t.category}</td>
                       <td style={td}>{t.platform}</td>
-                      <td style={td}>{formatMarketingDate(t.dueDate)}</td>
+                      {!isMarketer ? (
+                        <td style={td}>{formatMarketingDate(t.dueDate)}</td>
+                      ) : null}
                       <td style={td}>
                         <span
                           style={{
@@ -646,7 +805,9 @@ export default function MarketingTasksPage() {
                           {marketingTaskStatusLabel(t.status)}
                         </span>
                       </td>
-                      <td style={td}>{formatMarketingDate(t.dateCompleted)}</td>
+                      {!isMarketer ? (
+                        <td style={td}>{formatMarketingDate(t.dateCompleted)}</td>
+                      ) : null}
                       <td style={td}>{t.approvedBy || '—'}</td>
                       <td style={{ ...td, maxWidth: 180, color: 'var(--text-2)' }}>
                         {t.notes || '—'}

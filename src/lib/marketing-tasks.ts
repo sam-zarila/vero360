@@ -10,6 +10,8 @@ export type MarketingTaskStatus =
 
 export type MarketingTask = {
   id: string
+  /** When the content/task was posted (primary date for marketers). */
+  datePosted: string | null
   dateAssigned: string | null
   marketerUid: string
   marketerName: string
@@ -38,6 +40,7 @@ export type MarketingTaskCounts = {
 }
 
 export type CreateMarketingTaskInput = {
+  datePosted?: string | null
   dateAssigned?: string | null
   marketerUid: string
   marketerName?: string
@@ -179,3 +182,93 @@ export function formatMarketingDate(iso: string | null | undefined): string {
     year: 'numeric',
   })
 }
+
+export type MarketingProgressDay = {
+  key: string
+  label: string
+  count: number
+  /** green = good activity, amber = ok, red = poor/no posts */
+  tone: 'good' | 'ok' | 'poor'
+}
+
+export type MarketingProgressSummary = {
+  days: MarketingProgressDay[]
+  totalPosted: number
+  activeDays: number
+  avgPerDay: number
+  score: number
+  rating: 'good' | 'ok' | 'poor'
+  ratingLabel: string
+}
+
+/**
+ * Daily posting activity for the last `dayCount` days (by datePosted).
+ * High bars / green = working well; low / red = poor performance.
+ */
+export function buildMarketingProgress(
+  tasks: MarketingTask[],
+  dayCount = 14,
+): MarketingProgressSummary {
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+
+  const counts = new Map<string, number>()
+  for (const t of tasks) {
+    const raw = t.datePosted || t.dateAssigned || t.createdAt
+    if (!raw) continue
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) continue
+    d.setHours(12, 0, 0, 0)
+    const key = toDateInputValue(d.toISOString())
+    if (!key) continue
+    counts.set(key, (counts.get(key) || 0) + 1)
+  }
+
+  const days: MarketingProgressDay[] = []
+  let totalPosted = 0
+  let activeDays = 0
+
+  for (let i = dayCount - 1; i >= 0; i -= 1) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    const key = toDateInputValue(d.toISOString())
+    const count = counts.get(key) || 0
+    totalPosted += count
+    if (count > 0) activeDays += 1
+    const tone: MarketingProgressDay['tone'] =
+      count >= 2 ? 'good' : count === 1 ? 'ok' : 'poor'
+    days.push({
+      key,
+      label: d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }),
+      count,
+      tone,
+    })
+  }
+
+  const avgPerDay = dayCount > 0 ? totalPosted / dayCount : 0
+  // Score 0–100: reward consistent posting (active days) + volume.
+  const consistency = (activeDays / dayCount) * 55
+  const volume = Math.min(avgPerDay / 1.5, 1) * 45
+  const score = Math.round(Math.min(100, consistency + volume))
+
+  let rating: MarketingProgressSummary['rating'] = 'poor'
+  let ratingLabel = 'Poor performance — post more consistently'
+  if (score >= 65) {
+    rating = 'good'
+    ratingLabel = 'Working well — strong posting activity'
+  } else if (score >= 35) {
+    rating = 'ok'
+    ratingLabel = 'Okay — keep posting to improve'
+  }
+
+  return {
+    days,
+    totalPosted,
+    activeDays,
+    avgPerDay: Math.round(avgPerDay * 10) / 10,
+    score,
+    rating,
+    ratingLabel,
+  }
+}
+
