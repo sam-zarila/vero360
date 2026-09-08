@@ -10,7 +10,7 @@ export type DashboardSectionId =
   | 'promotion'
   | 'homepage-ads'
   | 'digital-services'
-  | 'marketing-tasks'
+  | 'marketing'
   | 'latest-arrivals'
   | 'announcements'
   | 'marketplace'
@@ -108,9 +108,9 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#F5F3FF',
   },
   {
-    id: 'marketing-tasks',
-    title: 'Marketing portal',
-    desc: 'Marketer task tracker and posting progress',
+    id: 'marketing',
+    title: 'Marketing',
+    desc: 'Tasks, posting tracker, and marketer KPIs',
     icon: 'megaphone',
     color: '#C2410C',
     bg: '#FFF7ED',
@@ -228,7 +228,7 @@ export type DashboardNavItem = {
   icon: VeroIconName
   badgeKey?: DashboardNavBadgeKey
   superAdminOnly?: boolean
-  /** Visible to marketers (otherwise marketers only see marketing-tasks + settings). */
+  /** Visible to marketers (otherwise marketers only see Marketing + settings). */
   marketerAllowed?: boolean
 }
 
@@ -259,7 +259,9 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
       { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
       { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
-      { href: '/dashboard/marketing-tasks', label: 'Marketing portal', icon: 'megaphone', marketerAllowed: true },
+      { href: '/dashboard/marketing', label: 'Marketing', icon: 'megaphone', marketerAllowed: true },
+      { href: '/dashboard/marketing/tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
+      { href: '/dashboard/marketing/kpi', label: 'Marketing KPI', icon: 'layers' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
       { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
     ],
@@ -294,6 +296,20 @@ export function getDashboardSection(id: string) {
       icon: 'settings' as const,
       color: '#475569',
       bg: '#F8FAFC',
+    }
+  }
+
+  if (id === 'marketing-kpi' || id === 'marketing-tasks') {
+    return {
+      id: 'marketing' as const,
+      title: id === 'marketing-kpi' ? 'Marketing KPI' : 'Marketing tasks',
+      desc:
+        id === 'marketing-kpi'
+          ? 'See how every marketer is performing.'
+          : 'Assign and track marketer content tasks.',
+      icon: id === 'marketing-kpi' ? ('layers' as const) : ('megaphone' as const),
+      color: '#C2410C',
+      bg: '#FFF7ED',
     }
   }
 

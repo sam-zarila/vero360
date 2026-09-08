@@ -101,9 +101,11 @@ export function usePanelSession() {
 /** Paths only super admins may open. */
 export const SUPER_ADMIN_ONLY_PATHS = ['/dashboard/finance', '/dashboard/admins'] as const
 
-export const MARKETER_HOME = '/dashboard/marketing-tasks'
+export const MARKETER_HOME = '/dashboard/marketing/tasks'
 
 export const MARKETER_ALLOWED_PATHS = [
+  '/dashboard/marketing',
+  '/dashboard/marketing/tasks',
   '/dashboard/marketing-tasks',
   '/dashboard/settings',
 ] as const
@@ -115,6 +117,9 @@ export function isSuperAdminOnlyPath(pathname: string) {
 }
 
 export function isMarketerAllowedPath(pathname: string) {
+  if (pathname === '/dashboard/marketing/kpi' || pathname.startsWith('/dashboard/marketing/kpi/')) {
+    return false
+  }
   return MARKETER_ALLOWED_PATHS.some(
     p => pathname === p || pathname.startsWith(`${p}/`),
   )

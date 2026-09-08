@@ -90,9 +90,11 @@ export default function PanelSignIn() {
       if (data?.me?.role === 'marketer') {
         const next = new URLSearchParams(window.location.search).get('next') || ''
         const safe =
-          next.startsWith('/dashboard/marketing-tasks') || next.startsWith('/dashboard/settings')
+          next.startsWith('/dashboard/marketing') ||
+          next.startsWith('/dashboard/marketing-tasks') ||
+          next.startsWith('/dashboard/settings')
             ? next
-            : '/dashboard/marketing-tasks'
+            : '/dashboard/marketing/tasks'
         window.location.href = safe
         return
       }

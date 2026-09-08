@@ -38,7 +38,7 @@ export default function DashboardCards() {
       }}
     >
       {DASHBOARD_SECTIONS.filter(card => {
-        if (isMarketer) return card.id === 'marketing-tasks'
+        if (isMarketer) return card.id === 'marketing'
         return !card.superAdminOnly || isSuperAdmin
       }).map(card => {
         const isHelp = card.id === 'verochat'

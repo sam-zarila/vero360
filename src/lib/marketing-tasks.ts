@@ -272,3 +272,44 @@ export function buildMarketingProgress(
   }
 }
 
+export type MarketerKpiRow = {
+  marketerUid: string
+  marketerName: string
+  marketerEmail: string
+  taskCount: number
+  completedCount: number
+  inProgressCount: number
+  progress: MarketingProgressSummary
+}
+
+/** Per-marketer KPI board for admin team tracker. */
+export function buildMarketerKpiBoard(
+  tasks: MarketingTask[],
+  dayCount = 14,
+): MarketerKpiRow[] {
+  const byUid = new Map<string, MarketingTask[]>()
+  for (const t of tasks) {
+    const uid = t.marketerUid || 'unknown'
+    const list = byUid.get(uid)
+    if (list) list.push(t)
+    else byUid.set(uid, [t])
+  }
+
+  const rows: MarketerKpiRow[] = []
+  for (const [uid, list] of byUid) {
+    const sample = list[0]
+    rows.push({
+      marketerUid: uid,
+      marketerName: sample?.marketerName || 'Unknown marketer',
+      marketerEmail: sample?.marketerEmail || '',
+      taskCount: list.length,
+      completedCount: list.filter(t => t.status === 'completed').length,
+      inProgressCount: list.filter(t => t.status === 'in_progress').length,
+      progress: buildMarketingProgress(list, dayCount),
+    })
+  }
+
+  rows.sort((a, b) => b.progress.score - a.progress.score || a.marketerName.localeCompare(b.marketerName))
+  return rows
+}
+

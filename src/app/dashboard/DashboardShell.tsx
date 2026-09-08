@@ -28,6 +28,19 @@ function isActivePath(pathname: string, href: string) {
     if (pathname.startsWith('/dashboard/vero-ride/trips')) return false
     return pathname.startsWith('/dashboard/vero-ride/')
   }
+  if (href === '/dashboard/marketing/tasks') {
+    return pathname === href || pathname.startsWith(`${href}/`) || pathname === '/dashboard/marketing-tasks'
+  }
+  if (href === '/dashboard/marketing/kpi') {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
+  if (href === '/dashboard/marketing') {
+    if (pathname === '/dashboard/marketing') return true
+    if (pathname.startsWith('/dashboard/marketing/tasks')) return false
+    if (pathname.startsWith('/dashboard/marketing/kpi')) return false
+    if (pathname === '/dashboard/marketing-tasks') return false
+    return pathname.startsWith('/dashboard/marketing/')
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
