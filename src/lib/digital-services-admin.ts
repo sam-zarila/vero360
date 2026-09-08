@@ -5,6 +5,11 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import {
   DIGITAL_SERVICE_ORDERS_COLLECTION,
   computeSubscriptionEndDate,
+  isDigitalOrderPaid,
+  isDigitalOrderPending,
+  isDigitalSubscription,
+  normalizeDigitalOrderKind,
+  normalizeDigitalOrderStatus,
   type DigitalServiceOrder,
   type DigitalServiceOrderCounts,
 } from '@/lib/digital-services'
@@ -51,34 +56,40 @@ export function parseDigitalServiceOrder(
   id: string,
   data: DocumentData | Record<string, unknown>,
 ): DigitalServiceOrder {
-  const kindRaw = str(data.kind).toLowerCase()
-  const category = str(data.category).toLowerCase()
-  const kind =
-    kindRaw ||
-    (category === 'streaming' || data.period
-      ? 'subscription'
-      : 'gift_card')
+  const kind = normalizeDigitalOrderKind(data.kind, {
+    category: data.category,
+    period: data.period,
+  })
+  const status = normalizeDigitalOrderStatus(data.status)
 
-  const paidAt = tsToIso(data.paidAt)
+  const paidAtRaw = tsToIso(data.paidAt)
+  // Keep paidAt only for paid/fulfilled orders so pending never looks paid.
+  const paidAt = isDigitalOrderPaid({ status, paidAt: paidAtRaw }) ? paidAtRaw : null
   const createdAt = tsToIso(data.createdAt)
-  const startDate =
-    tsToIso(
-      data.startDate ??
-        data.startsAt ??
-        data.subscriptionStartDate ??
-        data.start_date,
-    ) ||
-    paidAt ||
-    createdAt
 
-  let endDate = tsToIso(
-    data.endDate ??
-      data.endsAt ??
-      data.subscriptionEndDate ??
-      data.end_date ??
-      data.expiresAt ??
-      data.expiryDate,
-  )
+  const startDate =
+    kind === 'subscription'
+      ? tsToIso(
+          data.startDate ??
+            data.startsAt ??
+            data.subscriptionStartDate ??
+            data.start_date,
+        ) ||
+        paidAt ||
+        (status !== 'pending_payment' ? createdAt : null)
+      : null
+
+  let endDate =
+    kind === 'subscription'
+      ? tsToIso(
+          data.endDate ??
+            data.endsAt ??
+            data.subscriptionEndDate ??
+            data.end_date ??
+            data.expiresAt ??
+            data.expiryDate,
+        )
+      : null
 
   const period = str(data.period) || (kind === 'subscription' ? 'monthly' : null)
   const periodLabel =
@@ -103,7 +114,7 @@ export function parseDigitalServiceOrder(
       return n > 0 ? n : null
     })(),
     amountMwk: num(data.amountMwk ?? data.amount),
-    status: str(data.status).toLowerCase() || 'pending_payment',
+    status,
     txRef: str(data.txRef || data.tx_ref) || null,
     buyerUid: str(data.buyerUid || data.userId),
     buyerName: str(data.buyerName || data.userName) || 'Buyer',
@@ -126,6 +137,8 @@ export function buildDigitalOrderCounts(
   let pending = 0
   let subscriptions = 0
   let giftCards = 0
+  let giftCardsPaid = 0
+  let giftCardsPending = 0
   let activeSubscriptions = 0
   let expiredSubscriptions = 0
   let feeCredited = 0
@@ -136,10 +149,13 @@ export function buildDigitalOrderCounts(
   const now = Date.now()
 
   for (const o of items) {
-    const isSub = o.kind === 'subscription'
+    const isSub = isDigitalSubscription(o)
+    const isPending = isDigitalOrderPending(o)
+    const isPaid = isDigitalOrderPaid(o)
+
     if (isSub) {
       subscriptions += 1
-      if (o.status !== 'cancelled' && o.status !== 'pending_payment') {
+      if (!isPending && o.status !== 'cancelled') {
         const endMs = o.endDate ? new Date(o.endDate).getTime() : 0
         if (endMs && endMs < now) {
           expiredSubscriptions += 1
@@ -149,10 +165,13 @@ export function buildDigitalOrderCounts(
       }
     } else {
       giftCards += 1
+      if (isPending) giftCardsPending += 1
+      else if (isPaid) giftCardsPaid += 1
     }
 
-    if (o.status === 'pending_payment') pending += 1
-    else if (o.status === 'paid' || o.status === 'fulfilled' || o.paidAt) {
+    if (isPending) {
+      pending += 1
+    } else if (isPaid) {
       paid += 1
       revenuePaid += o.amountMwk
     }
@@ -160,7 +179,7 @@ export function buildDigitalOrderCounts(
     if (o.platformFeeCredited) {
       feeCredited += 1
       revenueCredited += o.amountMwk
-    } else if (o.amountMwk > 0 && (o.paidAt || o.status === 'paid' || o.status === 'fulfilled')) {
+    } else if (o.amountMwk > 0 && isPaid) {
       feePending += 1
     }
   }
@@ -171,6 +190,8 @@ export function buildDigitalOrderCounts(
     pending,
     subscriptions,
     giftCards,
+    giftCardsPaid,
+    giftCardsPending,
     activeSubscriptions,
     expiredSubscriptions,
     feeCredited,
@@ -228,14 +249,22 @@ export async function updateDigitalServiceOrderStatus(
   if (!snap.exists) throw new Error('Order not found')
 
   const existingData = snap.data() || {}
-  const kind = str(existingData.kind).toLowerCase() || (existingData.period ? 'subscription' : 'gift_card')
+  const kind = normalizeDigitalOrderKind(existingData.kind, {
+    category: existingData.category,
+    period: existingData.period,
+  })
+  const nextStatus = normalizeDigitalOrderStatus(status)
 
   const updates: Record<string, unknown> = {
-    status,
+    status: nextStatus,
     updatedAt: FieldValue.serverTimestamp(),
-    ...(status === 'paid' || status === 'fulfilled'
-      ? { paidAt: existingData.paidAt ? existingData.paidAt : FieldValue.serverTimestamp() }
-      : {}),
+  }
+
+  if (nextStatus === 'paid' || nextStatus === 'fulfilled') {
+    updates.paidAt = existingData.paidAt ? existingData.paidAt : FieldValue.serverTimestamp()
+  } else if (nextStatus === 'pending_payment' || nextStatus === 'cancelled') {
+    // Prevent pending/cancelled gift cards from still looking paid via a leftover paidAt.
+    updates.paidAt = null
   }
 
   if (extra?.startDate !== undefined) updates.startDate = extra.startDate
@@ -243,7 +272,7 @@ export async function updateDigitalServiceOrderStatus(
 
   if (
     kind === 'subscription' &&
-    (status === 'paid' || status === 'fulfilled') &&
+    (nextStatus === 'paid' || nextStatus === 'fulfilled') &&
     !existingData.endDate &&
     !extra?.endDate
   ) {
@@ -328,7 +357,7 @@ export async function creditDigitalOrderPlatformFee(orderId: string): Promise<{
     const amount = order.amountMwk
     if (amount <= 0) throw new Error('Order has no paid amount to credit')
 
-    if (order.status === 'pending_payment' && !order.paidAt) {
+    if (order.status === 'pending_payment') {
       throw new Error('Order is still pending payment — amount not credited yet')
     }
 
@@ -410,10 +439,7 @@ export async function creditPendingDigitalOrderPlatformFees(): Promise<{
   await ensurePlatformWallet()
   const items = await listDigitalServiceOrders({ limit: 1000 })
   const candidates = items.filter(
-    o =>
-      !o.platformFeeCredited &&
-      o.amountMwk > 0 &&
-      (o.paidAt || o.status === 'paid' || o.status === 'fulfilled'),
+    o => !o.platformFeeCredited && o.amountMwk > 0 && isDigitalOrderPaid(o),
   )
 
   const results: Array<{ id: string; credited: boolean; amount: number; message: string }> = []

@@ -39,12 +39,97 @@ export type DigitalServiceOrderCounts = {
   pending: number
   subscriptions: number
   giftCards: number
+  giftCardsPaid: number
+  giftCardsPending: number
   activeSubscriptions: number
   expiredSubscriptions: number
   feeCredited: number
   feePending: number
   revenuePaid: number
   revenueCredited: number
+}
+
+function slugStatus(raw: unknown): string {
+  return String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+}
+
+/** Normalize app/Firestore status variants into one of the known panel statuses. */
+export function normalizeDigitalOrderStatus(raw: unknown): DigitalOrderStatus {
+  const v = slugStatus(raw)
+  if (!v) return 'pending_payment'
+  if (
+    v === 'pending_payment' ||
+    v === 'pendingpayment' ||
+    v === 'pending' ||
+    v === 'awaiting_payment' ||
+    v === 'awaitingpayment' ||
+    v === 'unpaid' ||
+    v === 'payment_pending'
+  ) {
+    return 'pending_payment'
+  }
+  if (v === 'fulfilled' || v === 'complete' || v === 'completed' || v === 'delivered') {
+    return 'fulfilled'
+  }
+  if (v === 'cancelled' || v === 'canceled' || v === 'failed' || v === 'refunded') {
+    return 'cancelled'
+  }
+  if (v === 'paid' || v === 'success' || v === 'successful' || v === 'payment_success') {
+    return 'paid'
+  }
+  return v
+}
+
+export function normalizeDigitalOrderKind(
+  rawKind: unknown,
+  opts?: { category?: unknown; period?: unknown },
+): DigitalOrderKind {
+  const v = slugStatus(rawKind)
+  if (v === 'subscription' || v === 'sub' || v === 'streaming') return 'subscription'
+  if (
+    v === 'gift_card' ||
+    v === 'giftcard' ||
+    v === 'gift' ||
+    v === 'voucher'
+  ) {
+    return 'gift_card'
+  }
+  if (v) return v
+
+  const category = slugStatus(opts?.category)
+  if (category === 'streaming' || category === 'subscription') return 'subscription'
+  if (category === 'gift_card' || category === 'giftcard' || category === 'gift') {
+    return 'gift_card'
+  }
+  if (opts?.period) return 'subscription'
+  return 'gift_card'
+}
+
+export function isDigitalOrderPending(order: Pick<DigitalServiceOrder, 'status'>): boolean {
+  return normalizeDigitalOrderStatus(order.status) === 'pending_payment'
+}
+
+/**
+ * Paid / fulfilled only — never overlaps with pending.
+ * `paidAt` alone does not mark an order paid while status is still pending.
+ */
+export function isDigitalOrderPaid(
+  order: Pick<DigitalServiceOrder, 'status' | 'paidAt'>,
+): boolean {
+  const status = normalizeDigitalOrderStatus(order.status)
+  if (status === 'pending_payment' || status === 'cancelled') return false
+  return status === 'paid' || status === 'fulfilled'
+}
+
+export function isDigitalGiftCard(order: Pick<DigitalServiceOrder, 'kind'>): boolean {
+  return normalizeDigitalOrderKind(order.kind) === 'gift_card'
+}
+
+export function isDigitalSubscription(order: Pick<DigitalServiceOrder, 'kind'>): boolean {
+  return normalizeDigitalOrderKind(order.kind) === 'subscription'
 }
 
 /**
@@ -143,10 +228,21 @@ export type SubscriptionTiming = {
 }
 
 export function getSubscriptionTiming(order: DigitalServiceOrder): SubscriptionTiming {
+  if (!isDigitalSubscription(order) || isDigitalOrderPending(order)) {
+    return {
+      startDate: null,
+      endDate: null,
+      isExpired: false,
+      isExpiringSoon: false,
+      daysRemaining: null,
+      label: 'Not started',
+    }
+  }
+
   const startDate = order.startDate || order.paidAt || order.createdAt || null
   const endDate =
     order.endDate ||
-    (order.kind === 'subscription' && startDate
+    (startDate
       ? computeSubscriptionEndDate(startDate, order.period, order.periodLabel)
       : null)
 

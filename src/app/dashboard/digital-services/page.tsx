@@ -4,6 +4,10 @@ import { adminFetch } from '@/lib/panel-client-auth'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   getSubscriptionTiming,
+  isDigitalGiftCard,
+  isDigitalOrderPaid,
+  isDigitalOrderPending,
+  isDigitalSubscription,
   type DigitalServiceOrder,
   type DigitalServiceOrderCounts,
 } from '@/lib/digital-services'
@@ -34,6 +38,8 @@ const emptyCounts: DigitalServiceOrderCounts = {
   pending: 0,
   subscriptions: 0,
   giftCards: 0,
+  giftCardsPaid: 0,
+  giftCardsPending: 0,
   activeSubscriptions: 0,
   expiredSubscriptions: 0,
   feeCredited: 0,
@@ -43,7 +49,7 @@ const emptyCounts: DigitalServiceOrderCounts = {
 }
 
 function statusTone(o: DigitalServiceOrder): { label: string; bg: string; color: string } {
-  if (o.status === 'pending_payment') {
+  if (isDigitalOrderPending(o)) {
     return { label: 'Pending payment', bg: '#FFF7ED', color: '#C2410C' }
   }
   if (o.status === 'fulfilled') {
@@ -52,7 +58,10 @@ function statusTone(o: DigitalServiceOrder): { label: string; bg: string; color:
   if (o.status === 'cancelled') {
     return { label: 'Cancelled', bg: '#F1F5F9', color: '#475569' }
   }
-  return { label: 'Paid', bg: '#EFF6FF', color: '#1D4ED8' }
+  if (isDigitalOrderPaid(o)) {
+    return { label: 'Paid', bg: '#EFF6FF', color: '#1D4ED8' }
+  }
+  return { label: o.status || 'Unknown', bg: '#F1F5F9', color: '#475569' }
 }
 
 export default function DigitalServicesAdminPage() {
@@ -95,31 +104,32 @@ export default function DigitalServicesAdminPage() {
   const filtered = useMemo(() => {
     let list = items
     if (tab === 'subscriptions') {
-      list = items.filter(o => o.kind === 'subscription')
+      list = items.filter(o => isDigitalSubscription(o))
     } else if (tab === 'active_subs') {
       list = items.filter(o => {
-        if (o.kind !== 'subscription') return false
-        if (o.status === 'cancelled' || o.status === 'pending_payment') return false
+        if (!isDigitalSubscription(o)) return false
+        if (o.status === 'cancelled' || isDigitalOrderPending(o)) return false
         const timing = getSubscriptionTiming(o)
         return !timing.isExpired
       })
     } else if (tab === 'expired_subs') {
       list = items.filter(o => {
-        if (o.kind !== 'subscription') return false
-        if (o.status === 'cancelled') return false
+        if (!isDigitalSubscription(o)) return false
+        if (o.status === 'cancelled' || isDigitalOrderPending(o)) return false
         const timing = getSubscriptionTiming(o)
         return timing.isExpired
       })
     } else if (tab === 'gift_cards') {
-      list = items.filter(o => o.kind !== 'subscription')
+      // Paid / fulfilled gift cards only — pending ones live under Pending.
+      list = items.filter(o => isDigitalGiftCard(o) && isDigitalOrderPaid(o))
     } else if (tab === 'pending') {
-      list = items.filter(o => o.status === 'pending_payment')
+      list = items.filter(o => isDigitalOrderPending(o))
     }
 
     const query = q.trim().toLowerCase()
     if (!query) return list
     return list.filter(o => {
-      const timing = o.kind === 'subscription' ? getSubscriptionTiming(o) : null
+      const timing = isDigitalSubscription(o) ? getSubscriptionTiming(o) : null
       const hay = [
         o.productName,
         o.productKey,
@@ -269,7 +279,7 @@ export default function DigitalServicesAdminPage() {
     { id: 'subscriptions', label: `Subscriptions (${counts.subscriptions})` },
     { id: 'active_subs', label: `Active (${counts.activeSubscriptions})` },
     { id: 'expired_subs', label: `Expired (${counts.expiredSubscriptions})` },
-    { id: 'gift_cards', label: `Gift cards (${counts.giftCards})` },
+    { id: 'gift_cards', label: `Gift cards paid (${counts.giftCardsPaid})` },
     { id: 'pending', label: `Pending (${counts.pending})` },
     { id: 'all', label: `All (${counts.all})` },
   ]
@@ -323,7 +333,8 @@ export default function DigitalServicesAdminPage() {
         <Metric label="Subscriptions" value={String(counts.subscriptions)} />
         <Metric label="Active subs" value={String(counts.activeSubscriptions)} />
         <Metric label="Expired subs" value={String(counts.expiredSubscriptions)} />
-        <Metric label="Gift cards" value={String(counts.giftCards)} />
+        <Metric label="Gift cards paid" value={String(counts.giftCardsPaid)} />
+        <Metric label="Gift cards pending" value={String(counts.giftCardsPending)} />
         <Metric label="Paid orders" value={String(counts.paid)} />
         <Metric label="Revenue paid" value={formatMwk(counts.revenuePaid)} />
         <Metric label="In platform wallet" value={formatMwk(counts.revenueCredited)} />
@@ -378,7 +389,9 @@ export default function DigitalServicesAdminPage() {
           <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
             {filtered.map(o => {
               const tone = statusTone(o)
-              const isSub = o.kind === 'subscription'
+              const isSub = isDigitalSubscription(o)
+              const isPending = isDigitalOrderPending(o)
+              const isPaid = isDigitalOrderPaid(o)
               const timing = isSub ? getSubscriptionTiming(o) : null
 
               return (
@@ -403,7 +416,7 @@ export default function DigitalServicesAdminPage() {
                     >
                       {isSub ? 'Subscription' : 'Gift card'}
                     </span>
-                    {isSub && timing && o.status !== 'cancelled' && o.status !== 'pending_payment' ? (
+                    {isSub && timing && !isPending && o.status !== 'cancelled' ? (
                       <span
                         style={{
                           ...badge,
@@ -430,7 +443,7 @@ export default function DigitalServicesAdminPage() {
                       <span style={{ ...badge, background: '#ECFDF5', color: '#166534' }}>
                         Fee in wallet
                       </span>
-                    ) : o.amountMwk > 0 && o.status !== 'pending_payment' ? (
+                    ) : o.amountMwk > 0 && isPaid ? (
                       <span style={{ ...badge, background: '#FFF7ED', color: '#C2410C' }}>
                         Fee pending
                       </span>
@@ -569,9 +582,7 @@ export default function DigitalServicesAdminPage() {
                   </div>
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                    {!o.platformFeeCredited &&
-                    o.amountMwk > 0 &&
-                    o.status !== 'pending_payment' ? (
+                    {!o.platformFeeCredited && o.amountMwk > 0 && isPaid ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -581,7 +592,7 @@ export default function DigitalServicesAdminPage() {
                         Credit full amount
                       </button>
                     ) : null}
-                    {o.status !== 'fulfilled' ? (
+                    {o.status !== 'fulfilled' && !isPending ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -591,7 +602,7 @@ export default function DigitalServicesAdminPage() {
                         Mark fulfilled
                       </button>
                     ) : null}
-                    {o.status === 'pending_payment' ? (
+                    {isPending ? (
                       <button
                         type="button"
                         disabled={busy}

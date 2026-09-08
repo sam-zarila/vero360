@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { isDigitalOrderPaid } from '@/lib/digital-services'
 import { listDigitalServiceOrders } from '@/lib/digital-services-admin'
 import { listHomepageAdverts } from '@/lib/homepage-adverts-admin'
 
@@ -20,11 +21,7 @@ export async function GET(request: Request) {
     ])
 
     const digital = digitalAll
-      .filter(
-        o =>
-          o.amountMwk > 0 &&
-          (o.status === 'paid' || o.status === 'fulfilled' || Boolean(o.paidAt)),
-      )
+      .filter(o => o.amountMwk > 0 && isDigitalOrderPaid(o))
       .sort((a, b) => {
         const at = a.paidAt ? new Date(a.paidAt).getTime() : a.createdAt ? new Date(a.createdAt).getTime() : 0
         const bt = b.paidAt ? new Date(b.paidAt).getTime() : b.createdAt ? new Date(b.createdAt).getTime() : 0
