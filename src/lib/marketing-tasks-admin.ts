@@ -76,6 +76,7 @@ export function parseMarketingTask(
     notes: str(data.notes),
     createdByUid: str(data.createdByUid) || null,
     createdByRole: str(data.createdByRole) || null,
+    createdByName: str(data.createdByName) || null,
     createdAt: tsToIso(data.createdAt),
     updatedAt: tsToIso(data.updatedAt),
   }
@@ -142,7 +143,7 @@ export async function getMarketingTask(id: string): Promise<MarketingTask | null
 
 export async function createMarketingTask(
   input: CreateMarketingTaskInput,
-  meta: { createdByUid: string; createdByRole: string },
+  meta: { createdByUid: string; createdByRole: string; createdByName?: string },
 ): Promise<MarketingTask> {
   const marketerUid = str(input.marketerUid)
   if (!marketerUid) throw new Error('Marketer is required')
@@ -177,6 +178,7 @@ export async function createMarketingTask(
     notes: str(input.notes),
     createdByUid: meta.createdByUid,
     createdByRole: meta.createdByRole,
+    createdByName: str(meta.createdByName) || null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   })
@@ -188,7 +190,12 @@ export async function createMarketingTask(
 export async function updateMarketingTask(
   id: string,
   patch: UpdateMarketingTaskInput,
-  opts?: { allowAssignee?: boolean; allowApprovedBy?: boolean },
+  opts?: {
+    allowAssignee?: boolean
+    allowApprovedBy?: boolean
+    /** When an admin reassigns, stamp who assigned. */
+    assignedBy?: { uid: string; role: string; name: string }
+  },
 ): Promise<MarketingTask> {
   const clean = id.trim()
   if (!clean) throw new Error('Missing task id')
@@ -240,6 +247,11 @@ export async function updateMarketingTask(
     }
     if (patch.marketerEmail !== undefined) {
       updates.marketerEmail = str(patch.marketerEmail).toLowerCase()
+    }
+    if (opts?.assignedBy) {
+      updates.createdByUid = opts.assignedBy.uid
+      updates.createdByRole = opts.assignedBy.role
+      updates.createdByName = opts.assignedBy.name
     }
   } else if (opts?.allowAssignee === false) {
     // Marketers cannot reassign.

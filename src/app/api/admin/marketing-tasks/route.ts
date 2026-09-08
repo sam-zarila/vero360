@@ -87,6 +87,7 @@ export async function POST(request: Request) {
       {
         createdByUid: actor.uid,
         createdByRole: actor.admin.role,
+        createdByName: actor.admin.displayName || actor.admin.email,
       },
     )
 

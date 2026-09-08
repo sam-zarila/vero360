@@ -26,8 +26,26 @@ export type MarketingTask = {
   notes: string
   createdByUid: string | null
   createdByRole: string | null
+  /** Display name of who created/assigned the task (admin or marketer). */
+  createdByName: string | null
   createdAt: string | null
   updatedAt: string | null
+}
+
+/** Label shown on task cards — admin assignments vs self-logged. */
+export function marketingTaskAssignedByLabel(task: Pick<
+  MarketingTask,
+  'createdByRole' | 'createdByName'
+>): string {
+  const role = String(task.createdByRole || '').toLowerCase()
+  const name = String(task.createdByName || '').trim()
+  if (role === 'admin' || role === 'super_admin') {
+    return name ? `Assigned by Admin · ${name}` : 'Assigned by Admin'
+  }
+  if (role === 'marketer') {
+    return name ? `Logged by ${name}` : 'Self'
+  }
+  return name || '—'
 }
 
 export type MarketingTaskCounts = {
@@ -421,7 +439,8 @@ export function buildDemoMarketingTasks(dayCount = 14): MarketingTask[] {
           approvedBy: null,
           notes: 'Demo sample',
           createdByUid: null,
-          createdByRole: null,
+          createdByRole: 'admin',
+          createdByName: 'Demo Admin',
           createdAt: `${dayKey}T09:00:00.000Z`,
           updatedAt: `${dayKey}T18:00:00.000Z`,
         })

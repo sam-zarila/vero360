@@ -16,6 +16,7 @@ import {
   MARKETING_TASK_PLATFORMS,
   MARKETING_TASK_STATUSES,
   formatMarketingDate,
+  marketingTaskAssignedByLabel,
   marketingTaskStatusLabel,
   marketingTaskStatusTone,
   toDateInputValue,
@@ -616,6 +617,7 @@ export default function MarketingTasksPage() {
                         'Category',
                         'Platform',
                         'Status',
+                        'Assigned by',
                         'Approved By',
                         'Notes',
                         'Actions',
@@ -629,6 +631,7 @@ export default function MarketingTasksPage() {
                         'Due Date',
                         'Status',
                         'Date Completed',
+                        'Assigned by',
                         'Approved By',
                         'Notes',
                         'Actions',
@@ -673,6 +676,30 @@ export default function MarketingTasksPage() {
                       {!isMarketer ? (
                         <td style={td}>{formatMarketingDate(t.dateCompleted)}</td>
                       ) : null}
+                      <td style={td}>
+                        {(() => {
+                          const label = marketingTaskAssignedByLabel(t)
+                          const byAdmin =
+                            t.createdByRole === 'admin' || t.createdByRole === 'super_admin'
+                          if (label === '—') return '—'
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '4px 8px',
+                                borderRadius: 8,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                background: byAdmin ? '#EFF6FF' : '#F8FAFC',
+                                color: byAdmin ? '#1D4ED8' : 'var(--text-2)',
+                                border: `1px solid ${byAdmin ? '#BFDBFE' : 'var(--border)'}`,
+                              }}
+                            >
+                              {label}
+                            </span>
+                          )
+                        })()}
+                      </td>
                       <td style={td}>{t.approvedBy || '—'}</td>
                       <td style={{ ...td, maxWidth: 180, color: 'var(--text-2)' }}>
                         {t.notes || '—'}

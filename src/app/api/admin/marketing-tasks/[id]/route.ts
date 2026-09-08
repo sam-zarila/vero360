@@ -95,6 +95,16 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const item = await updateMarketingTask(id, patch, {
       allowAssignee: isAdmin,
       allowApprovedBy: isAdmin,
+      assignedBy:
+        isAdmin &&
+        body.marketerUid &&
+        String(body.marketerUid).trim() !== existing.marketerUid
+          ? {
+              uid: actor.uid,
+              role: actor.admin.role,
+              name: actor.admin.displayName || actor.admin.email,
+            }
+          : undefined,
     })
     return NextResponse.json({ success: true, item })
   } catch (err) {
