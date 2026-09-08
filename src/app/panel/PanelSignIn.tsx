@@ -77,7 +77,7 @@ export default function PanelSignIn() {
         throw new Error(
           apiError ||
             (res.status >= 500
-              ? `Server error (${res.status}). Open /api/admin/health to check Firebase Admin env on Netlify.`
+              ? `Server error (${res.status}). `
               : 'This account is not an active admin. Ask a super admin to create or activate your access.'),
         )
       }
@@ -138,7 +138,7 @@ export default function PanelSignIn() {
           <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.6 }}>
             Only admins can sign in. First time locally?{' '}
             <Link href="/dashboard/admins" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-              Create the first admin
+              
             </Link>
             .
           </p>
