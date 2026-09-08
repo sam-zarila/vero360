@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const probe = new URL(request.url).searchParams.get('probe') === '1'
   if (!probe) {
     const ready =
-      flags.hasServiceAccountPath ||
+      flags.hasLegacyPath ||
       (flags.hasClientEmail && (flags.hasPrivateKeyBase64 || flags.hasPrivateKey)) ||
       flags.hasServiceAccountJson ||
       flags.hasServiceAccountBase64
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       firebaseAdmin: flags,
       hint: ready
         ? 'Env looks set. Check /api/admin/health?probe=1 next.'
-        : 'Set FIREBASE_SERVICE_ACCOUNT_PATH (local) or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY_BASE64 (Netlify).',
+        : 'Set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY_BASE64 (or FIREBASE_SERVICE_ACCOUNT_JSON) on Netlify.',
     })
   }
 
