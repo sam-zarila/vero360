@@ -1,13 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/panel-client-auth'
 import {
   MARKETING_PROGRESS_START_DATE,
+  buildDemoMarketingTasks,
   buildMarketerKpiBoard,
   buildMarketingProgress,
   formatMarketingDate,
+  isMarketingKpiDemoAvailable,
+  isMarketingLiveTrackingActive,
   type MarketingTask,
   type MarketerKpiRow,
 } from '@/lib/marketing-tasks'
@@ -20,14 +23,24 @@ import {
 import { usePanelSession } from '../../PanelSessionProvider'
 import { MarketingSubNav } from '../MarketingSubNav'
 
+type KpiMode = 'demo' | 'live'
+
 export default function MarketingKpiPage() {
   const router = useRouter()
   const { isMarketer, isFullAdmin, loading: sessionLoading } = usePanelSession()
 
+  const demoAvailable = isMarketingKpiDemoAvailable()
+  const liveActive = isMarketingLiveTrackingActive()
+
+  const [mode, setMode] = useState<KpiMode>(demoAvailable ? 'demo' : 'live')
   const [items, setItems] = useState<MarketingTask[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [dayCount, setDayCount] = useState(14)
+
+  useEffect(() => {
+    if (!demoAvailable && mode === 'demo') setMode('live')
+  }, [demoAvailable, mode])
 
   useEffect(() => {
     if (sessionLoading) return
@@ -51,11 +64,24 @@ export default function MarketingKpiPage() {
 
   useEffect(() => {
     if (sessionLoading || isMarketer) return
-    void load()
-  }, [load, sessionLoading, isMarketer])
+    if (mode === 'live') void load()
+    else setLoading(false)
+  }, [load, sessionLoading, isMarketer, mode])
 
-  const board = useMemo(() => buildMarketerKpiBoard(items, dayCount), [items, dayCount])
-  const teamProgress = useMemo(() => buildMarketingProgress(items, dayCount), [items, dayCount])
+  const isDemo = mode === 'demo' && demoAvailable
+  const sourceTasks = useMemo(
+    () => (isDemo ? buildDemoMarketingTasks(dayCount) : items),
+    [isDemo, dayCount, items],
+  )
+  const progressOpts = useMemo(() => (isDemo ? { demo: true } : undefined), [isDemo])
+  const board = useMemo(
+    () => buildMarketerKpiBoard(sourceTasks, dayCount, progressOpts),
+    [sourceTasks, dayCount, progressOpts],
+  )
+  const teamProgress = useMemo(
+    () => buildMarketingProgress(sourceTasks, dayCount, progressOpts),
+    [sourceTasks, dayCount, progressOpts],
+  )
 
   const teamRatingColor =
     teamProgress.rating === 'good' ? '#047857' : teamProgress.rating === 'ok' ? '#B45309' : '#B91C1C'
@@ -89,7 +115,11 @@ export default function MarketingKpiPage() {
       <DashboardPageHeader
         sectionId="marketing"
         title="Marketing KPI tracker"
-        description={`See how every marketer is working. Scoring starts ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`}
+        description={
+          isDemo
+            ? `Demo preview with sample marketers. Demo vanishes on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
+            : `Live marketer scoring from ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
+        }
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
@@ -104,14 +134,58 @@ export default function MarketingKpiPage() {
                 <option value={30}>30 days</option>
               </select>
             </label>
-            <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
+            {mode === 'live' ? (
+              <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
+            ) : null}
           </div>
         }
       />
 
       <MarketingSubNav />
 
-      {error ? (
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginBottom: 16,
+          alignItems: 'center',
+        }}
+      >
+        {demoAvailable ? (
+          <ModeTab active={mode === 'demo'} onClick={() => setMode('demo')}>
+            Demo
+          </ModeTab>
+        ) : null}
+        <ModeTab active={mode === 'live'} onClick={() => setMode('live')}>
+          Live
+        </ModeTab>
+        {demoAvailable ? (
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)' }}>
+            Demo ends {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}
+          </span>
+        ) : null}
+      </div>
+
+      {isDemo ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: '12px 14px',
+            borderRadius: 12,
+            background: '#FFF7ED',
+            border: '1px solid #FED7AA',
+            color: '#9A3412',
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          Showing sample data only — not real marketers. Switches to Live on{' '}
+          {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.
+        </div>
+      ) : null}
+
+      {error && mode === 'live' ? (
         <div
           style={{
             marginBottom: 16,
@@ -127,81 +201,117 @@ export default function MarketingKpiPage() {
         </div>
       ) : null}
 
-      {!teamProgress.trackingStarted ? (
+      {mode === 'live' && !liveActive ? (
         <DashboardEmptyState
           icon="layers"
           color="#C2410C"
-          title="Tracking starts soon"
-          hint={`KPI scoring begins on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`}
+          title="Live tracking starts soon"
+          hint={`Real KPI scoring begins on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}. Use Demo until then.`}
         />
       ) : (
         <>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: 12,
-          marginBottom: 18,
-        }}
-      >
-        <Metric label="Marketers" value={String(board.length)} />
-        <Metric label={`Posted (${teamProgress.trackedDays}d)`} value={String(teamProgress.totalPosted)} />
-        <Metric label="Team avg / day" value={String(teamProgress.avgPerDay)} />
-        <Metric label="Team score" value={String(teamProgress.score)} accent={teamRatingColor} />
-      </div>
-
-      <section style={{ ...card, marginBottom: 18 }}>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            gap: 12,
-            marginBottom: 12,
-            alignItems: 'flex-start',
-          }}
-        >
-          <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Team posting activity</h2>
-            <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
-              All marketers combined · last {dayCount} days
-            </p>
-          </div>
           <div
             style={{
-              padding: '8px 14px',
-              borderRadius: 12,
-              background: teamRatingBg,
-              color: teamRatingColor,
-              fontWeight: 800,
-              fontSize: 13,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 12,
+              marginBottom: 18,
             }}
           >
-            {teamProgress.ratingLabel}
+            <Metric label="Marketers" value={String(board.length)} />
+            <Metric
+              label={`Posted (${teamProgress.trackedDays}d)`}
+              value={String(teamProgress.totalPosted)}
+            />
+            <Metric label="Team avg / day" value={String(teamProgress.avgPerDay)} />
+            <Metric label="Team score" value={String(teamProgress.score)} accent={teamRatingColor} />
           </div>
-        </div>
-        <ProgressBars days={teamProgress.days} />
-      </section>
 
-      {loading ? (
-        <div style={{ padding: 24, color: 'var(--text-3)', fontWeight: 600 }}>Loading KPIs…</div>
-      ) : board.length === 0 ? (
-        <DashboardEmptyState
-          icon="layers"
-          color="#C2410C"
-          title="No marketer activity yet"
-          hint="Once marketers log tasks, their KPIs will show up here."
-        />
-      ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
-          {board.map(row => (
-            <MarketerKpiCard key={row.marketerUid} row={row} dayCount={dayCount} />
-          ))}
-        </div>
-      )}
+          <section style={{ ...card, marginBottom: 18 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 12,
+                alignItems: 'flex-start',
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+                  {isDemo ? 'Demo team activity' : 'Team posting activity'}
+                </h2>
+                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
+                  {isDemo
+                    ? `Sample marketers · last ${dayCount} days`
+                    : `All marketers combined · last ${dayCount} days`}
+                </p>
+              </div>
+              <div
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 12,
+                  background: teamRatingBg,
+                  color: teamRatingColor,
+                  fontWeight: 800,
+                  fontSize: 13,
+                }}
+              >
+                {teamProgress.ratingLabel}
+              </div>
+            </div>
+            <ProgressBars days={teamProgress.days} />
+          </section>
+
+          {mode === 'live' && loading ? (
+            <div style={{ padding: 24, color: 'var(--text-3)', fontWeight: 600 }}>Loading KPIs…</div>
+          ) : board.length === 0 ? (
+            <DashboardEmptyState
+              icon="layers"
+              color="#C2410C"
+              title="No marketer activity yet"
+              hint="Once marketers log tasks, their KPIs will show up here."
+            />
+          ) : (
+            <div style={{ display: 'grid', gap: 14 }}>
+              {board.map(row => (
+                <MarketerKpiCard key={row.marketerUid} row={row} dayCount={dayCount} />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
+  )
+}
+
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '8px 14px',
+        borderRadius: 999,
+        fontSize: 13,
+        fontWeight: 800,
+        border: active ? '1px solid #FDBA74' : '1px solid var(--border)',
+        background: active ? '#FFF7ED' : 'var(--surface)',
+        color: active ? '#C2410C' : 'var(--text-2)',
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -253,7 +363,10 @@ function MarketerKpiCard({ row, dayCount }: { row: MarketerKpiRow; dayCount: num
         }}
       >
         <MiniStat label={`Posted (${progress.trackedDays}d)`} value={String(progress.totalPosted)} />
-        <MiniStat label="Active days" value={`${progress.activeDays}/${progress.trackedDays || dayCount}`} />
+        <MiniStat
+          label="Active days"
+          value={`${progress.activeDays}/${progress.trackedDays || dayCount}`}
+        />
         <MiniStat label="Avg / day" value={String(progress.avgPerDay)} />
         <MiniStat label="Tasks" value={String(row.taskCount)} />
         <MiniStat label="Completed" value={String(row.completedCount)} />
@@ -275,7 +388,7 @@ function ProgressBars({
   days: ReturnType<typeof buildMarketingProgress>['days']
   compact?: boolean
 }) {
-  const maxBar = Math.max(3, ...days.map(d => d.count))
+  const maxBar = Math.max(3, ...days.map(d => d.count), 1)
   const height = compact ? 100 : 140
 
   return (

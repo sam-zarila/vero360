@@ -205,22 +205,37 @@ export type MarketingProgressSummary = {
   trackingStartDate: string
 }
 
-/** Official start of marketing progress / KPI scoring. */
+/** Official start of marketing progress / KPI live scoring. */
 export const MARKETING_PROGRESS_START_DATE = '2026-09-14'
 
+export function isMarketingLiveTrackingActive(now = new Date()) {
+  const today = new Date(now)
+  today.setHours(12, 0, 0, 0)
+  const start = new Date(`${MARKETING_PROGRESS_START_DATE}T12:00:00`)
+  return today.getTime() >= start.getTime()
+}
+
+/** Demo KPI is available until live tracking begins (vanishes on 14 Sep 2026). */
+export function isMarketingKpiDemoAvailable(now = new Date()) {
+  return !isMarketingLiveTrackingActive(now)
+}
+
 /**
- * Daily posting activity ending today, for up to `dayCount` days,
- * never earlier than MARKETING_PROGRESS_START_DATE.
+ * Daily posting activity ending today, for up to `dayCount` days.
+ * Live mode never scores earlier than MARKETING_PROGRESS_START_DATE.
+ * Demo mode ignores the live start date so sample data can show now.
  */
 export function buildMarketingProgress(
   tasks: MarketingTask[],
   dayCount = 14,
+  options?: { demo?: boolean },
 ): MarketingProgressSummary {
+  const demo = Boolean(options?.demo)
   const today = new Date()
   today.setHours(12, 0, 0, 0)
 
   const start = new Date(`${MARKETING_PROGRESS_START_DATE}T12:00:00`)
-  const trackingStarted = today.getTime() >= start.getTime()
+  const trackingStarted = demo || today.getTime() >= start.getTime()
 
   const counts = new Map<string, number>()
   for (const t of tasks) {
@@ -229,7 +244,7 @@ export function buildMarketingProgress(
     const d = new Date(raw)
     if (Number.isNaN(d.getTime())) continue
     d.setHours(12, 0, 0, 0)
-    if (d.getTime() < start.getTime()) continue
+    if (!demo && d.getTime() < start.getTime()) continue
     const key = toDateInputValue(d.toISOString())
     if (!key) continue
     counts.set(key, (counts.get(key) || 0) + 1)
@@ -254,10 +269,10 @@ export function buildMarketingProgress(
     }
   }
 
-  // Window: last dayCount days, clipped to start date.
   const earliest = new Date(today)
   earliest.setDate(today.getDate() - (dayCount - 1))
-  const windowStart = earliest.getTime() < start.getTime() ? new Date(start) : earliest
+  const windowStart =
+    !demo && earliest.getTime() < start.getTime() ? new Date(start) : earliest
 
   const trackedDays = Math.max(
     0,
@@ -267,7 +282,7 @@ export function buildMarketingProgress(
   for (let i = trackedDays - 1; i >= 0; i -= 1) {
     const d = new Date(today)
     d.setDate(today.getDate() - i)
-    if (d.getTime() < start.getTime()) continue
+    if (!demo && d.getTime() < start.getTime()) continue
     const key = toDateInputValue(d.toISOString())
     const count = counts.get(key) || 0
     totalPosted += count
@@ -326,6 +341,7 @@ export type MarketerKpiRow = {
 export function buildMarketerKpiBoard(
   tasks: MarketingTask[],
   dayCount = 14,
+  options?: { demo?: boolean },
 ): MarketerKpiRow[] {
   const byUid = new Map<string, MarketingTask[]>()
   for (const t of tasks) {
@@ -345,11 +361,74 @@ export function buildMarketerKpiBoard(
       taskCount: list.length,
       completedCount: list.filter(t => t.status === 'completed').length,
       inProgressCount: list.filter(t => t.status === 'in_progress').length,
-      progress: buildMarketingProgress(list, dayCount),
+      progress: buildMarketingProgress(list, dayCount, options),
     })
   }
 
   rows.sort((a, b) => b.progress.score - a.progress.score || a.marketerName.localeCompare(b.marketerName))
   return rows
+}
+
+/** Sample tasks so admins can preview KPI UI before live tracking starts. */
+export function buildDemoMarketingTasks(dayCount = 14): MarketingTask[] {
+  const marketers = [
+    {
+      uid: 'demo-marketer-a',
+      name: 'Amina Phiri',
+      email: 'amina.demo@vero360.com',
+      pattern: [2, 1, 3, 0, 2, 2, 1, 2, 0, 3, 2, 1, 2, 2],
+    },
+    {
+      uid: 'demo-marketer-b',
+      name: 'Chikondi Banda',
+      email: 'chikondi.demo@vero360.com',
+      pattern: [1, 0, 1, 0, 2, 0, 1, 1, 0, 0, 1, 0, 1, 0],
+    },
+    {
+      uid: 'demo-marketer-c',
+      name: 'Thoko Mwale',
+      email: 'thoko.demo@vero360.com',
+      pattern: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+    },
+  ] as const
+
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+  const tasks: MarketingTask[] = []
+  let n = 0
+
+  for (const m of marketers) {
+    for (let i = dayCount - 1; i >= 0; i -= 1) {
+      const d = new Date(today)
+      d.setDate(today.getDate() - i)
+      const dayKey = toDateInputValue(d.toISOString())
+      const posts = m.pattern[(dayCount - 1 - i) % m.pattern.length] ?? 0
+      for (let p = 0; p < posts; p += 1) {
+        n += 1
+        tasks.push({
+          id: `demo-task-${n}`,
+          datePosted: `${dayKey}T12:00:00.000Z`,
+          dateAssigned: `${dayKey}T09:00:00.000Z`,
+          marketerUid: m.uid,
+          marketerName: m.name,
+          marketerEmail: m.email,
+          taskTitle: `Demo post ${n}`,
+          category: p % 2 === 0 ? 'Post' : 'Reel',
+          platform: p % 2 === 0 ? 'Instagram' : 'TikTok',
+          dueDate: null,
+          status: 'completed',
+          dateCompleted: `${dayKey}T18:00:00.000Z`,
+          approvedBy: null,
+          notes: 'Demo sample',
+          createdByUid: null,
+          createdByRole: null,
+          createdAt: `${dayKey}T09:00:00.000Z`,
+          updatedAt: `${dayKey}T18:00:00.000Z`,
+        })
+      }
+    }
+  }
+
+  return tasks
 }
 
