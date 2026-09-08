@@ -21,6 +21,7 @@ type PanelSession = {
   isSuperAdmin: boolean
   isAdmin: boolean
   isMarketer: boolean
+  isAgent: boolean
   isFullAdmin: boolean
   authenticated: boolean
   refresh: () => Promise<void>
@@ -33,6 +34,7 @@ const PanelSessionContext = createContext<PanelSession>({
   isSuperAdmin: false,
   isAdmin: false,
   isMarketer: false,
+  isAgent: false,
   isFullAdmin: false,
   authenticated: false,
   refresh: async () => {},
@@ -83,6 +85,7 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
       isSuperAdmin: role === 'super_admin',
       isAdmin: role === 'admin',
       isMarketer: role === 'marketer',
+      isAgent: role === 'agent',
       isFullAdmin: role === 'super_admin' || role === 'admin',
       authenticated: !!me,
       refresh,
@@ -111,6 +114,13 @@ export const MARKETER_ALLOWED_PATHS = [
   '/dashboard/settings',
 ] as const
 
+export const AGENT_HOME = '/dashboard/agent'
+
+export const AGENT_ALLOWED_PATHS = [
+  '/dashboard/agent',
+  '/dashboard/settings',
+] as const
+
 export function isSuperAdminOnlyPath(pathname: string) {
   return SUPER_ADMIN_ONLY_PATHS.some(
     p => pathname === p || pathname.startsWith(`${p}/`),
@@ -122,6 +132,12 @@ export function isMarketerAllowedPath(pathname: string) {
     return false
   }
   return MARKETER_ALLOWED_PATHS.some(
+    p => pathname === p || pathname.startsWith(`${p}/`),
+  )
+}
+
+export function isAgentAllowedPath(pathname: string) {
+  return AGENT_ALLOWED_PATHS.some(
     p => pathname === p || pathname.startsWith(`${p}/`),
   )
 }

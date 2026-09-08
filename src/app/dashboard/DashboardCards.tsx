@@ -26,7 +26,7 @@ export default function DashboardCards() {
   const reportsOpen = useMerchantReportsOpenBadge()
   const digitalNew = useDigitalPaymentsNewBadge()
   const homepageAdNew = useHomepageAdPaymentsNewBadge()
-  const { isSuperAdmin, isMarketer } = usePanelSession()
+  const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
 
   return (
     <div
@@ -39,6 +39,7 @@ export default function DashboardCards() {
     >
       {DASHBOARD_SECTIONS.filter(card => {
         if (isMarketer) return card.id === 'marketing'
+        if (isAgent) return card.id === 'agents'
         return !card.superAdminOnly || isSuperAdmin
       }).map(card => {
         const isHelp = card.id === 'verochat'
@@ -122,7 +123,11 @@ export default function DashboardCards() {
         return (
           <Link
             key={card.id}
-            href={`/dashboard/${card.id}`}
+            href={
+              isAgent && card.id === 'agents'
+                ? '/dashboard/agent'
+                : `/dashboard/${card.id}`
+            }
             className={`dashboard-card${showBadge ? ' dashboard-card-alert' : ''}`}
             style={{
               position: 'relative',

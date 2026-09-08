@@ -22,6 +22,13 @@ export type AppUser = {
   photoURL: string | null
   createdAt: string | null
   updatedAt: string | null
+  isVerified: boolean
+  geoLat: number | null
+  geoLng: number | null
+  geoLabel: string
+  registeredByAgentId: string | null
+  registeredByAgentName: string | null
+  registeredByAgentEmail: string | null
 }
 
 export type UserCounts = {
@@ -125,6 +132,26 @@ export function parseAppUser(id: string, data: Record<string, unknown>): AppUser
     str(data.Phone) ||
     ''
 
+  const geo =
+    data.geo && typeof data.geo === 'object'
+      ? (data.geo as Record<string, unknown>)
+      : null
+
+  const geoLatRaw = geo?.lat ?? geo?.latitude ?? data.geoLat ?? data.latitude
+  const geoLngRaw = geo?.lng ?? geo?.longitude ?? data.geoLng ?? data.longitude
+  const geoLat =
+    geoLatRaw == null || geoLatRaw === ''
+      ? null
+      : Number.isFinite(Number(geoLatRaw))
+        ? Number(geoLatRaw)
+        : null
+  const geoLng =
+    geoLngRaw == null || geoLngRaw === ''
+      ? null
+      : Number.isFinite(Number(geoLngRaw))
+        ? Number(geoLngRaw)
+        : null
+
   return {
     id,
     name: name || '—',
@@ -136,14 +163,22 @@ export function parseAppUser(id: string, data: Record<string, unknown>): AppUser
     accountStatus: parseAccountStatus(data),
     authProvider: detectAuthProvider(data),
     photoURL: str(data.photoURL) || str(data.photoUrl) || str(data.profilepicture) || null,
-    // Prefer true registration time only — never fall back to updatedAt/lastLogin,
-    // or a returning user looks like a brand-new signup in the admin list.
     createdAt:
       tsToIso(data.createdAt) ||
       tsToIso(data.registeredAt) ||
       tsToIso(data.joinedAt) ||
       null,
     updatedAt: tsToIso(data.updatedAt) || tsToIso(data.lastLoginAt) || null,
+    isVerified: data.isVerified === true || data.verified === true || data.emailVerified === true,
+    geoLat,
+    geoLng,
+    geoLabel: str(geo?.label ?? geo?.address ?? data.geoLabel ?? data.locationLabel),
+    registeredByAgentId:
+      str(data.registeredByAgentId) || str(data.agentUid) || null,
+    registeredByAgentName:
+      str(data.registeredByAgentName) || str(data.agentName) || null,
+    registeredByAgentEmail:
+      str(data.registeredByAgentEmail) || str(data.agentEmail) || null,
   }
 }
 

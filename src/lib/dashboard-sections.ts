@@ -18,6 +18,7 @@ export type DashboardSectionId =
   | 'refunds'
   | 'merchant-reports'
   | 'users'
+  | 'agents'
   | 'admins'
   | 'finance'
   | 'verochat'
@@ -172,6 +173,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#F0FDFA',
   },
   {
+    id: 'agents',
+    title: 'Agents',
+    desc: 'Field agents, onboarding, and registrations',
+    icon: 'briefcase',
+    color: '#047857',
+    bg: '#ECFDF5',
+  },
+  {
     id: 'admins',
     title: 'Admins',
     desc: 'Super admins and panel admins',
@@ -232,6 +241,10 @@ export type DashboardNavItem = {
   marketerAllowed?: boolean
   /** Hidden from full admins — marketer-only nav item. */
   marketerOnly?: boolean
+  /** Visible to field agents. */
+  agentAllowed?: boolean
+  /** Hidden from full admins — agent-only nav item. */
+  agentOnly?: boolean
 }
 
 export type DashboardNavGroup = {
@@ -278,6 +291,37 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'People',
     items: [
       { href: '/dashboard/users', label: 'Users', icon: 'users', badgeKey: 'users' },
+      { href: '/dashboard/agents', label: 'Agents', icon: 'briefcase' },
+      { href: '/dashboard/agents/registrations', label: 'Agent registrations', icon: 'users' },
+      {
+        href: '/dashboard/agent',
+        label: 'Agent portal',
+        icon: 'briefcase',
+        agentAllowed: true,
+        agentOnly: true,
+      },
+      {
+        href: '/dashboard/agent/onboard',
+        label: 'Onboard user',
+        icon: 'user',
+        agentAllowed: true,
+        agentOnly: true,
+      },
+      {
+        href: '/dashboard/agent/registrations',
+        label: 'My registrations',
+        icon: 'users',
+        agentAllowed: true,
+        agentOnly: true,
+      },
+      {
+        href: '/dashboard/agent/drivers',
+        label: 'Verify drivers',
+        icon: 'car',
+        agentAllowed: true,
+        agentOnly: true,
+        badgeKey: 'drivers',
+      },
       { href: '/dashboard/admins', label: 'Admins', icon: 'shield', superAdminOnly: true },
       { href: '/dashboard/verochat', label: 'Help Center', icon: 'headset', badgeKey: 'help' },
     ],
@@ -287,7 +331,13 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
       { href: '/dashboard/get-started', label: 'Get started videos', icon: 'video' },
-      { href: '/dashboard/settings', label: 'Settings', icon: 'settings', marketerAllowed: true },
+      {
+        href: '/dashboard/settings',
+        label: 'Settings',
+        icon: 'settings',
+        marketerAllowed: true,
+        agentAllowed: true,
+      },
     ],
   },
 ]

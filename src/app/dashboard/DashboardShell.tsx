@@ -11,8 +11,10 @@ import { DASHBOARD_NAV_GROUPS } from '@/lib/dashboard-sections'
 import { AdminAlertsProvider, useAdminAlerts, useHelpCenterUnreadBadge } from './AdminAlertsProvider'
 import { ConfirmDialogProvider } from './ConfirmDialog'
 import {
+  isAgentAllowedPath,
   isMarketerAllowedPath,
   isSuperAdminOnlyPath,
+  AGENT_HOME,
   MARKETER_HOME,
   PanelSessionProvider,
   usePanelSession,
@@ -62,6 +64,7 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
   const {
     isSuperAdmin,
     isMarketer,
+    isAgent,
     loading: sessionLoading,
     authenticated,
   } = usePanelSession()
@@ -80,10 +83,14 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
       router.replace(MARKETER_HOME)
       return
     }
-    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
-      router.replace(isMarketer ? MARKETER_HOME : '/dashboard')
+    if (isAgent && !isAgentAllowedPath(pathname)) {
+      router.replace(AGENT_HOME)
+      return
     }
-  }, [sessionLoading, isSuperAdmin, isMarketer, pathname, router, authenticated])
+    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
+      router.replace(isMarketer ? MARKETER_HOME : isAgent ? AGENT_HOME : '/dashboard')
+    }
+  }, [sessionLoading, isSuperAdmin, isMarketer, isAgent, pathname, router, authenticated])
 
   if (sessionLoading || !authenticated) {
     return (
@@ -119,7 +126,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const unread = useHelpCenterUnreadBadge()
-  const { isSuperAdmin, isMarketer } = usePanelSession()
+  const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
   const {
     courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
     drivers: { pending: driversPending, toast: driversToast, clearToast: clearDriversToast },
@@ -145,12 +152,13 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       ...group,
       items: group.items.filter(item => {
         if (isMarketer) return Boolean(item.marketerAllowed)
-        if (item.marketerOnly) return false
+        if (isAgent) return Boolean(item.agentAllowed)
+        if (item.marketerOnly || item.agentOnly) return false
         if (item.superAdminOnly && !isSuperAdmin) return false
         return true
       }),
     })).filter(group => group.items.length > 0)
-  }, [isSuperAdmin, isMarketer])
+  }, [isSuperAdmin, isMarketer, isAgent])
 
   useEffect(() => {
     if (!courierToast) return

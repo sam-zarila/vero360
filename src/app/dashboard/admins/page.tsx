@@ -33,6 +33,7 @@ type Counts = {
   super_admin: number
   admin: number
   marketer: number
+  agent: number
   active: number
   suspended: number
 }
@@ -42,6 +43,7 @@ const EMPTY_COUNTS: Counts = {
   super_admin: 0,
   admin: 0,
   marketer: 0,
+  agent: 0,
   active: 0,
   suspended: 0,
 }
@@ -107,6 +109,7 @@ export default function AdminsPage() {
       if (tab === 'super_admin' && a.role !== 'super_admin') return false
       if (tab === 'admin' && a.role !== 'admin') return false
       if (tab === 'marketer' && a.role !== 'marketer') return false
+      if (tab === 'agent' && a.role !== 'agent') return false
       if (tab === 'suspended' && a.status !== 'suspended') return false
       if (!q) return true
       return (
@@ -154,6 +157,7 @@ export default function AdminsPage() {
           admin: data.admin.role === 'admin' ? Math.max(c.admin, 1) : c.admin,
           marketer:
             data.admin.role === 'marketer' ? Math.max(c.marketer, 1) : c.marketer,
+          agent: data.admin.role === 'agent' ? Math.max(c.agent, 1) : c.agent,
           active: Math.max(c.active, 1),
         }))
         setBootstrap(false)
@@ -257,6 +261,7 @@ export default function AdminsPage() {
     { id: 'super_admin', label: 'Super admins', count: counts.super_admin },
     { id: 'admin', label: 'Admins', count: counts.admin },
     { id: 'marketer', label: 'Marketers', count: counts.marketer },
+    { id: 'agent', label: 'Agents', count: counts.agent },
     { id: 'suspended', label: 'Suspended', count: counts.suspended },
   ]
 
@@ -266,7 +271,7 @@ export default function AdminsPage() {
 
       <DashboardPageHeader
         sectionId="admins"
-        description="Classify panel users as super admin, admin, or marketer. Marketers only access the Marketing task tracker. Super admins manage accounts; normal admins cannot see Finance or Admins."
+        description="Classify panel users as super admin, admin, marketer, or agent. Agents onboard customers/merchants/drivers and verify Vero Ride drivers. Marketers only access Marketing. Super admins manage accounts; normal admins cannot see Finance or Admins."
         actions={
           <>
             <DashboardRefreshButton
@@ -361,7 +366,7 @@ export default function AdminsPage() {
                   value={role}
                   onChange={e => {
                     const v = e.target.value
-                    if (v === 'super_admin' || v === 'marketer' || v === 'admin') {
+                    if (v === 'super_admin' || v === 'marketer' || v === 'admin' || v === 'agent') {
                       setRole(v)
                     }
                   }}
@@ -370,6 +375,7 @@ export default function AdminsPage() {
                   <option value="admin">Admin</option>
                   <option value="super_admin">Super admin</option>
                   <option value="marketer">Marketer</option>
+                  <option value="agent">Agent</option>
                 </select>
               </Field>
             ) : null}
@@ -507,6 +513,16 @@ export default function AdminsPage() {
                         style={btnGhost}
                       >
                         Make marketer
+                      </button>
+                    ) : null}
+                    {a.role !== 'agent' ? (
+                      <button
+                        type="button"
+                        disabled={busy || isMe}
+                        onClick={() => void runAction(a, 'set_role', 'agent')}
+                        style={btnGhost}
+                      >
+                        Make agent
                       </button>
                     ) : null}
                     <button

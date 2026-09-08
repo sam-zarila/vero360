@@ -99,6 +99,16 @@ export default function PanelSignIn() {
         return
       }
 
+      if (data?.me?.role === 'agent') {
+        const next = new URLSearchParams(window.location.search).get('next') || ''
+        const safe =
+          next.startsWith('/dashboard/agent') || next.startsWith('/dashboard/settings')
+            ? next
+            : '/dashboard/agent'
+        window.location.href = safe
+        return
+      }
+
       goToDashboard()
     } catch (err) {
       const message =
