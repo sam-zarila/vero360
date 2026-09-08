@@ -114,8 +114,8 @@ export default function HeroSection() {
             fontSize: 18, color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.7, marginBottom: 40, maxWidth: 480,
           }}>
-            Welcome to Vero360   a smarter way to connect with everyday services. From marketplace
-            and transport to food delivery, jobs, accommodation, and more in one secure platform.
+            Everything in one app — marketplace, rides, food, courier (Lilongwe), stays, jobs,
+            tenders, and more. Browse here, then open Vero360 to order and book.
           </p>
 
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 52 }} className="hero-ctas">

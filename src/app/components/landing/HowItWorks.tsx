@@ -7,7 +7,7 @@ const steps = [
         </svg>
       ),
       title: 'Browse & search',
-      desc: 'Open Vero360 and find what you need  rides, food, products, jobs, or accommodation.',
+      desc: 'Browse marketplace, food, stays, jobs, and tenders in one place — then open Vero360 to continue.',
       color: '#FFF7ED',
     },
     {
@@ -19,7 +19,7 @@ const steps = [
         </svg>
       ),
       title: 'Book or order',
-      desc: 'Choose a service, confirm details, and get matched with a driver, merchant, or provider.',
+      desc: 'Choose a ride, meal, product, stay, or courier (Lilongwe) and confirm in the app.',
       color: '#FEF3C7',
     },
     {
@@ -65,7 +65,7 @@ const steps = [
               Get started in 4 simple steps
             </h2>
             <p style={{ fontSize: 17, color: 'var(--text-3)', maxWidth: 480, margin: '0 auto' }}>
-              Vero360 simplifies everyday life by shopping, riding, eating, staying, and connecting from one app.
+              Everything you need lives in one app — shop, ride, order food, book a stay, find jobs, and more.
             </p>
           </div>
   
