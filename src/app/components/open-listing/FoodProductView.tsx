@@ -4,7 +4,8 @@ import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
-import { PLAY_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import { PLAY_STORE_URL, APP_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import ShareListingButton from '@/app/components/open-listing/ShareListingButton'
 import type { ListingModel } from '@/lib/open-listing-types'
 import { listingPriceLabel } from '@/lib/open-listing-utils'
 
@@ -76,10 +77,24 @@ export default function FoodProductView({ listing }: { listing: ListingModel }) 
   return (
     <main style={page}>
       <header style={top}>
-        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+        <div
+          style={{
+            maxWidth: 560,
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
           <Link href="/" style={{ textDecoration: 'none' }}>
             <Logo height={40} textColor="#fff" />
           </Link>
+          <ShareListingButton
+            light
+            title={title || 'Food on Vero360'}
+            text={`Check out ${title || 'this meal'} on Vero360`}
+          />
         </div>
       </header>
 
@@ -285,9 +300,9 @@ export default function FoodProductView({ listing }: { listing: ListingModel }) 
               Get on Google Play
             </a>
           ) : null}
-          {appStoreLinks.ios ? (
+          {appStoreLinks.ios || APP_STORE_URL ? (
             <a
-              href={appStoreLinks.ios}
+              href={appStoreLinks.ios || APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
               style={{ ...btn, background: '#FFF4E8', color: 'var(--text)' }}
@@ -303,7 +318,8 @@ export default function FoodProductView({ listing }: { listing: ListingModel }) 
               lineHeight: 1.45,
             }}
           >
-            Have Vero360? Order this dish in the app. If you don&apos;t, download it on Google Play.
+            Have Vero360? Order this dish in the app. If you don&apos;t, get it on Google Play or
+            the App Store.
           </p>
         </div>
       </section>

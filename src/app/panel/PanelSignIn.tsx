@@ -15,7 +15,7 @@ function firebaseSignInMessage(err: unknown): string {
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-      return 'No account with that email/password yet. If this is a fresh setup, create the first admin at /dashboard/admins first.'
+      return 'Invalid email or password, or not an active admin.'
     case 'auth/invalid-email':
       return 'Enter a valid email address.'
     case 'auth/user-disabled':
@@ -23,7 +23,7 @@ function firebaseSignInMessage(err: unknown): string {
     case 'auth/too-many-requests':
       return 'Too many attempts. Wait a minute and try again.'
     case 'auth/operation-not-allowed':
-      return 'Email/password sign-in is disabled in Firebase Console → Authentication → Sign-in method.'
+      return 'Email/password sign-in is disabled.'
     default:
       return 'Invalid email or password, or not an active admin.'
   }
@@ -78,7 +78,7 @@ export default function PanelSignIn() {
           apiError ||
             (res.status >= 500
               ? `Server error (${res.status}). `
-              : 'This account is not an active admin. Ask a super admin to create or activate your access.'),
+              : 'Invalid email or password, or not an active admin.'),
         )
       }
 

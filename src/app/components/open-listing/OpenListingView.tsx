@@ -3,7 +3,8 @@
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
-import { PLAY_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import { PLAY_STORE_URL, APP_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import ShareListingButton from '@/app/components/open-listing/ShareListingButton'
 import type { ListingModel } from '@/lib/open-listing-types'
 import { listingPriceLabel } from '@/lib/open-listing-utils'
 
@@ -62,14 +63,30 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
   } = listing
   const showImage = /^https?:\/\//i.test(image) || image.startsWith('/api/media')
   const priceLabel = listingPriceLabel(listing)
+  const shareKindLabel =
+    kind === 'shop' ? 'shop' : kind === 'marketplace' ? 'product' : 'stay'
 
   return (
     <main style={page}>
       <header style={top}>
-        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+        <div
+          style={{
+            maxWidth: 560,
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
           <Link href="/" style={{ textDecoration: 'none' }}>
             <Logo height={40} textColor="#fff" />
           </Link>
+          <ShareListingButton
+            light
+            title={title || `${shareKindLabel} on Vero360`}
+            text={`Check out this ${shareKindLabel} on Vero360: ${title}`}
+          />
         </div>
       </header>
 
@@ -233,9 +250,9 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
               Get on Google Play
             </a>
           ) : null}
-          {appStoreLinks.ios ? (
+          {appStoreLinks.ios || APP_STORE_URL ? (
             <a
-              href={appStoreLinks.ios}
+              href={appStoreLinks.ios || APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
               style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
@@ -253,7 +270,7 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
           >
             Have Vero360? This{' '}
             {kind === 'shop' ? 'shop' : kind === 'marketplace' ? 'product' : 'stay'}{' '}
-            opens in the app. If you don’t, download it on Google Play.
+            opens in the app. If you don’t, get it on Google Play or the App Store.
           </p>
         </div>
       </section>

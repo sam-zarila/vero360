@@ -4,7 +4,8 @@ import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
-import { PLAY_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import { PLAY_STORE_URL, APP_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import ShareListingButton from '@/app/components/open-listing/ShareListingButton'
 import type { ListingModel } from '@/lib/open-listing-types'
 import { listingPriceLabel } from '@/lib/open-listing-utils'
 
@@ -76,10 +77,24 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
   return (
     <main style={page}>
       <header style={top}>
-        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+        <div
+          style={{
+            maxWidth: 560,
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
           <Link href="/" style={{ textDecoration: 'none' }}>
             <Logo height={40} textColor="#fff" />
           </Link>
+          <ShareListingButton
+            light
+            title={title || 'Product on Vero360'}
+            text={`Check out ${title || 'this product'} on Vero360`}
+          />
         </div>
       </header>
 
@@ -198,17 +213,32 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
               </div>
             </div>
             {shopId ? (
-              <Link
-                href={`/shop/${shopId}`}
+              <div
                 style={{
-                  ...btn,
-                  background: 'var(--primary-light)',
-                  color: 'var(--text)',
+                  display: 'flex',
+                  gap: 10,
                   marginTop: 14,
+                  alignItems: 'stretch',
                 }}
               >
-                View seller shop
-              </Link>
+                <Link
+                  href={`/shop/${shopId}`}
+                  style={{
+                    ...btn,
+                    background: 'var(--primary-light)',
+                    color: 'var(--text)',
+                    marginTop: 0,
+                    flex: 1,
+                  }}
+                >
+                  View seller shop
+                </Link>
+                <ShareListingButton
+                  title={hostName || 'Shop on Vero360'}
+                  text={`Check out ${hostName || 'this shop'} on Vero360`}
+                  url={`/shop/${shopId}`}
+                />
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -285,9 +315,9 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
               Get on Google Play
             </a>
           ) : null}
-          {appStoreLinks.ios ? (
+          {appStoreLinks.ios || APP_STORE_URL ? (
             <a
-              href={appStoreLinks.ios}
+              href={appStoreLinks.ios || APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
               style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
@@ -303,7 +333,8 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
               lineHeight: 1.45,
             }}
           >
-            Have Vero360? Open this product in the app. If you don’t, download it on Google Play.
+            Have Vero360? Open this product in the app. If you don’t, get it on Google Play or the
+            App Store.
           </p>
         </div>
       </section>

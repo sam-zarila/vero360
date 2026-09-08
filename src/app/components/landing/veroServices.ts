@@ -15,13 +15,16 @@ export const ANDROID_PACKAGE_ID = 'com.vero265.app'
 export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_ID}`
 
 /**
- * App Store URL — leave empty until the iOS listing is live.
- * Empty/hash hides the App Store button so we never show “not available”.
+ * App Store download link.
+ * Prefer NEXT_PUBLIC_APP_STORE_URL when the live listing id is known.
+ * Falls back to Apple search (same as Flutter AppUpdateChecker) until then.
  */
-export const APP_STORE_URL = ''
+export const APP_STORE_URL =
+  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_APP_STORE_URL?.trim()) ||
+  'https://apps.apple.com/search?term=Vero360'
 
 export const appStoreLinks = {
-  ios: isAppStoreLaunched() && APP_STORE_URL ? APP_STORE_URL : '',
+  ios: isAppStoreLaunched() ? APP_STORE_URL : '',
   android: isAppStoreLaunched() ? PLAY_STORE_URL : '',
 }
 

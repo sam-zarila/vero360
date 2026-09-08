@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react'
 import Image from 'next/image'
 import { APP_LAUNCH_HEADLINE, isAppStoreLaunched } from '@/lib/app-launch'
-import { appStoreLinks, storeBadgeImages } from './veroServices'
+import { APP_STORE_URL, appStoreLinks, storeBadgeImages } from './veroServices'
 
 type Props = {
   className?: string
@@ -31,8 +31,8 @@ export default function StoreDownloadLinks({
   locked,
 }: Props) {
   const downloadsLocked = locked ?? !isAppStoreLaunched()
-  const showIos = Boolean(appStoreLinks.ios && appStoreLinks.ios !== '#')
-  const showAndroid = Boolean(appStoreLinks.android && appStoreLinks.android !== '#')
+  const showIos = Boolean((appStoreLinks.ios || APP_STORE_URL) && !downloadsLocked) || downloadsLocked
+  const showAndroid = Boolean(appStoreLinks.android && appStoreLinks.android !== '#') || downloadsLocked
 
   const renderStoreRow = (
     key: 'ios' | 'android',
@@ -119,7 +119,7 @@ export default function StoreDownloadLinks({
         ...style,
       }}
     >
-      {showAndroid || downloadsLocked
+      {showAndroid
         ? renderStoreRow(
             'android',
             storeBadgeImages.googlePlay,
@@ -136,7 +136,7 @@ export default function StoreDownloadLinks({
             'App Store',
             'Download on the',
             'App Store',
-            appStoreLinks.ios,
+            appStoreLinks.ios || APP_STORE_URL,
           )
         : null}
 
