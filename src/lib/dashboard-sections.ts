@@ -14,6 +14,7 @@ export type DashboardSectionId =
   | 'marketing'
   | 'latest-arrivals'
   | 'announcements'
+  | 'push'
   | 'marketplace'
   | 'orders'
   | 'refunds'
@@ -131,6 +132,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     desc: 'Homepage news with photo and post date',
     icon: 'bell',
     color: '#C2410C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'push',
+    title: 'Push notification',
+    desc: 'Send a push to everyone with the Vero360 app',
+    icon: 'bell',
+    color: '#EA580C',
     bg: '#FFF7ED',
   },
   {
@@ -293,6 +302,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/marketing/kpi', label: 'Marketing KPI', icon: 'layers' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
       { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
+      { href: '/dashboard/push', label: 'Push notification', icon: 'bell' },
     ],
   },
   {
