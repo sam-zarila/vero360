@@ -21,6 +21,7 @@ import {
 } from '@/app/dashboard/DashboardChrome'
 import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 import { useAdminAlerts } from '../AdminAlertsProvider'
+import { DigitalServicesPricingPanel } from './DigitalServicesPricingPanel'
 
 type Tab =
   | 'subscriptions'
@@ -29,6 +30,8 @@ type Tab =
   | 'gift_cards'
   | 'pending'
   | 'all'
+
+type ViewMode = 'orders' | 'pricing'
 
 const SECTION = DASHBOARD_SECTION_MAP['digital-services']
 
@@ -75,6 +78,7 @@ export default function DigitalServicesAdminPage() {
   const [items, setItems] = useState<DigitalServiceOrder[]>([])
   const [counts, setCounts] = useState<DigitalServiceOrderCounts>(emptyCounts)
   const [tab, setTab] = useState<Tab>('subscriptions')
+  const [view, setView] = useState<ViewMode>('orders')
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -290,22 +294,55 @@ export default function DigitalServicesAdminPage() {
 
       <DashboardPageHeader
         sectionId="digital-services"
-        description="Spotify, Apple Music, Netflix, ChatGPT subscriptions (monthly) and gift-card purchases — revenue goes to the Vero platform wallet."
+        description="Spotify, Apple Music, Netflix, ChatGPT subscriptions (monthly) and gift-card purchases — set prices here; revenue goes to the Vero platform wallet."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={() => void creditAllPending()}
-              disabled={busy || loading || counts.feePending <= 0}
-              style={primaryBtn}
+              onClick={() => setView('pricing')}
+              style={{
+                ...primaryBtn,
+                background: view === 'pricing' ? '#C2410C' : '#FFF7ED',
+                color: view === 'pricing' ? '#fff' : '#C2410C',
+                border: '1px solid #FDBA74',
+              }}
             >
-              Credit pending full amounts ({counts.feePending})
+              Prices & rate
             </button>
-            <DashboardRefreshButton onClick={() => void load()} disabled={loading || busy} />
+            <button
+              type="button"
+              onClick={() => setView('orders')}
+              style={{
+                ...primaryBtn,
+                background: view === 'orders' ? '#FF8A00' : '#fff',
+                color: view === 'orders' ? '#fff' : '#374151',
+                border: '1px solid #E5E7EB',
+              }}
+            >
+              Orders
+            </button>
+            {view === 'orders' ? (
+              <button
+                type="button"
+                onClick={() => void creditAllPending()}
+                disabled={busy || loading || counts.feePending <= 0}
+                style={primaryBtn}
+              >
+                Credit pending full amounts ({counts.feePending})
+              </button>
+            ) : null}
+            <DashboardRefreshButton
+              onClick={() => void load()}
+              disabled={loading || busy}
+            />
           </div>
         }
       />
 
+      {view === 'pricing' ? (
+        <DigitalServicesPricingPanel />
+      ) : (
+        <>
       {(error || notice) && (
         <div
           style={{
@@ -637,6 +674,8 @@ export default function DigitalServicesAdminPage() {
           </div>
         )}
       </section>
+        </>
+      )}
     </div>
   )
 }
