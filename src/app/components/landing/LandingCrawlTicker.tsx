@@ -11,40 +11,132 @@ export type LandingCrawlItem = {
   latestVersion: string
 }
 
-function crawlText(item: LandingCrawlItem): string {
-  const title = item.title.trim()
-  const subtitle = item.subtitle.trim()
-  if (item.linkType === 'app_update') {
-    const v = item.latestVersion || item.linkId
-    return v
-      ? `Update to latest version v${v}`
-      : title || 'Update available'
+type DisplayItem = {
+  id: string
+  text: string
+  linkType: string
+  actionLabel: string | null
+}
+
+function shortTitle(text: string) {
+  let t = text.trim()
+  const lower = t.toLowerCase()
+  for (const prefix of ['promos:', 'promo:', 'marketplace:', 'announcement:']) {
+    if (lower.startsWith(prefix)) {
+      t = t.slice(prefix.length).trim()
+      break
+    }
   }
-  if (!subtitle) return title
-  return `${title} — ${subtitle}`
+  const dash = t.indexOf(' — ')
+  if (dash > 0) t = t.slice(0, dash).trim()
+  return t
+}
+
+function actionLabelFor(linkType: string): string | null {
+  switch (linkType.toLowerCase().trim()) {
+    case 'app_update':
+      return 'Update'
+    case 'promotion':
+    case 'promotions':
+      return 'See promos'
+    case 'marketplace':
+      return 'Shop'
+    case 'announcements':
+      return 'See more'
+    case 'none':
+    case '':
+      return null
+    default:
+      return 'See more'
+  }
+}
+
+/** Mirror app ticker: app update first, then other crawls, then one Promos line. */
+export function buildLandingCrawlDisplay(
+  crawls: LandingCrawlItem[],
+  promoTitles: string[],
+): DisplayItem[] {
+  const updates: DisplayItem[] = []
+  const others: DisplayItem[] = []
+  const adminPromoTitles: string[] = []
+
+  for (const item of crawls) {
+    const type = (item.linkType || 'none').toLowerCase().trim()
+    const title = item.title.trim()
+    if (!title) continue
+
+    if (type === 'app_update') {
+      const v = (item.latestVersion || item.linkId || '').trim()
+      updates.push({
+        id: item.id,
+        text: v ? `Update to latest version v${v}` : title || 'Update available',
+        linkType: 'app_update',
+        actionLabel: 'Update',
+      })
+      continue
+    }
+
+    if (type === 'promotion' || type === 'promotions') {
+      const t = shortTitle(title)
+      if (t) adminPromoTitles.push(t)
+      continue
+    }
+
+    const subtitle = (item.subtitle || '').trim()
+    others.push({
+      id: item.id,
+      text: subtitle ? `${title} — ${subtitle}` : title,
+      linkType: type || 'none',
+      actionLabel: actionLabelFor(type),
+    })
+  }
+
+  const promoNames: string[] = []
+  const seen = new Set<string>()
+  for (const name of [...adminPromoTitles, ...promoTitles]) {
+    const key = name.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      promoNames.push(name)
+    }
+  }
+
+  const promoLine =
+    promoNames.length === 0
+      ? null
+      : ({
+          id: 'promos_grouped',
+          text: `Promos: ${promoNames.slice(0, 10).join(', ')}`,
+          linkType: 'promotions',
+          actionLabel: 'See promos',
+        } satisfies DisplayItem)
+
+  return [...updates, ...others, ...(promoLine ? [promoLine] : [])]
 }
 
 type Props = {
-  /** Full-width bar on the orange hero */
   variant?: 'hero' | 'phone'
-  /** Optional prefetched items (skips client fetch) */
   items?: LandingCrawlItem[]
+  promoTitles?: string[]
+  onAction?: (item: DisplayItem) => void
 }
 
 export default function LandingCrawlTicker({
   variant = 'hero',
-  items: initialItems = [],
+  items: crawls = [],
+  promoTitles = [],
+  onAction,
 }: Props) {
-  const items = initialItems
+  const items = buildLandingCrawlDisplay(crawls, promoTitles)
   const trackRef = useRef<HTMLDivElement>(null)
   const [loopWidth, setLoopWidth] = useState(0)
 
-  const texts = items.map(crawlText).filter(Boolean)
-  const textsKey = texts.join('|')
+  const textsKey = items.map(i => `${i.id}:${i.text}:${i.actionLabel}`).join('|')
+  const hasActions = items.some(i => i.actionLabel)
 
   useEffect(() => {
     const el = trackRef.current
-    if (!el || texts.length === 0) {
+    if (!el || items.length === 0) {
       setLoopWidth(0)
       return
     }
@@ -56,12 +148,12 @@ export default function LandingCrawlTicker({
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
     ro?.observe(el)
     return () => ro?.disconnect()
-  }, [textsKey, texts.length])
+  }, [textsKey, items.length])
 
-  if (texts.length === 0) return null
+  if (items.length === 0) return null
 
   const isPhone = variant === 'phone'
-  const duration = Math.max(12, Math.min(90, loopWidth / 40))
+  const duration = Math.max(14, Math.min(100, loopWidth / 36))
 
   return (
     <div
@@ -72,13 +164,13 @@ export default function LandingCrawlTicker({
         position: 'relative',
         ...(isPhone
           ? {
-              height: 18,
+              height: hasActions ? 22 : 18,
               marginTop: 8,
               borderRadius: 8,
               background: 'rgba(255,255,255,0.16)',
             }
           : {
-              height: 40,
+              height: hasActions ? 48 : 40,
               background: 'rgba(0,0,0,0.18)',
               borderTop: '1px solid rgba(255,255,255,0.12)',
               backdropFilter: 'blur(8px)',
@@ -100,12 +192,13 @@ export default function LandingCrawlTicker({
       >
         {[0, 1].map(copy => (
           <span key={copy} style={{ display: 'inline-flex', alignItems: 'center' }}>
-            {texts.map((t, i) => (
+            {items.map((item, i) => (
               <span
-                key={`${copy}-${i}`}
+                key={`${copy}-${item.id}-${i}`}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  gap: isPhone ? 6 : 10,
                   color: '#fff',
                   fontWeight: 700,
                   fontSize: isPhone ? 9 : 14,
@@ -118,14 +211,39 @@ export default function LandingCrawlTicker({
                   <span
                     style={{
                       opacity: 0.45,
-                      marginRight: isPhone ? 14 : 28,
+                      marginRight: isPhone ? 8 : 18,
                       fontWeight: 800,
                     }}
                   >
                     •
                   </span>
                 ) : null}
-                {t}
+                <span>{item.text}</span>
+                {item.actionLabel ? (
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onAction?.(item)
+                    }}
+                    style={{
+                      border: 'none',
+                      borderRadius: 999,
+                      background: '#fff',
+                      color: '#EA580C',
+                      fontWeight: 900,
+                      fontSize: isPhone ? 8 : 12,
+                      padding: isPhone ? '2px 8px' : '5px 12px',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      lineHeight: 1.2,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {item.actionLabel}
+                  </button>
+                ) : null}
               </span>
             ))}
           </span>

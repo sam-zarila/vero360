@@ -46,6 +46,7 @@ export default function HeroSection() {
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
   const [crawls, setCrawls] = useState<LandingCrawlItem[]>([])
+  const [promoTitles, setPromoTitles] = useState<string[]>([])
 
   useEffect(() => {
     const update = () => setNow(new Date())
@@ -58,24 +59,55 @@ export default function HeroSection() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch('/api/homepage-crawls', { cache: 'no-store' })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok || cancelled) return
-        const list = Array.isArray(data.items) ? data.items : []
+        const [crawlRes, promoRes] = await Promise.all([
+          fetch('/api/homepage-crawls', { cache: 'no-store' }),
+          fetch('/api/public/promos', { cache: 'no-store' }),
+        ])
+        const crawlData = await crawlRes.json().catch(() => ({}))
+        const promoData = await promoRes.json().catch(() => ({}))
+        if (cancelled) return
+
+        const list = Array.isArray(crawlData.items) ? crawlData.items : []
         setCrawls(
           list.filter(
             (i: LandingCrawlItem) =>
               i && typeof i.title === 'string' && i.title.trim().length > 0,
           ),
         )
+
+        const promos = Array.isArray(promoData.items) ? promoData.items : []
+        setPromoTitles(
+          promos
+            .map((p: { title?: string }) => String(p?.title || '').trim())
+            .filter(Boolean)
+            .slice(0, 12),
+        )
       } catch {
-        if (!cancelled) setCrawls([])
+        if (!cancelled) {
+          setCrawls([])
+          setPromoTitles([])
+        }
       }
     })()
     return () => {
       cancelled = true
     }
   }, [])
+
+  function onCrawlAction(item: { linkType: string }) {
+    const type = item.linkType.toLowerCase().trim()
+    if (type === 'app_update' || type === 'promotion' || type === 'promotions') {
+      setDownloadOpen(true)
+      return
+    }
+    if (type === 'marketplace') {
+      window.location.href = '/browse/marketplace'
+      return
+    }
+    if (type === 'announcements') {
+      document.getElementById('announcements')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   useEffect(() => {
     const el = phoneRef.current
@@ -286,7 +318,12 @@ export default function HeroSection() {
                   <VeroIcon name="search" size={12} color="var(--text-4)" strokeWidth={2} />
                   <span style={{ color: 'var(--text-4)', fontSize: 10 }}>what are you looking for?</span>
                 </div>
-                <LandingCrawlTicker variant="phone" items={crawls} />
+                <LandingCrawlTicker
+                  variant="phone"
+                  items={crawls}
+                  promoTitles={promoTitles}
+                  onAction={onCrawlAction}
+                />
               </div>
 
               {/* Scrollable body */}
@@ -410,7 +447,12 @@ export default function HeroSection() {
           zIndex: 2,
         }}
       >
-        <LandingCrawlTicker variant="hero" items={crawls} />
+        <LandingCrawlTicker
+          variant="hero"
+          items={crawls}
+          promoTitles={promoTitles}
+          onAction={onCrawlAction}
+        />
       </div>
 
       <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, zIndex: 1 }}>
