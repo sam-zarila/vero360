@@ -6,6 +6,9 @@ const team = [
   { name: 'Tenganawo Njikho', role: 'Marketer and social media manager', photo: '/team/tenganawo-njikho.jpeg' },
   { name: 'Patrick Thala', role: 'Technical Support Manager', photo: '/team/patrick-thala.jpeg' },
   { name: 'Gift Wahuta', role: 'Operations Manager', photo: '/team/gift-wahuta.jpg' },
+  { name: 'Margret Mbendela', role: 'Marketing Team', photo: '/team/margret-mbendela.jpg' },
+  { name: 'Emily Mdoka', role: 'Marketing Team', photo: '/team/emily-mdoka.jpg' },
+  { name: 'Peter Kasambala', role: 'Marketing Team', photo: '/team/peter-kasambala.jpg' },
 ]
 
 const missionVisionValues = [
