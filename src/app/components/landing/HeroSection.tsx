@@ -139,7 +139,7 @@ export default function HeroSection() {
             fontSize: 18, color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.7, marginBottom: 40, maxWidth: 480,
           }}>
-            Everything in one app — marketplace, rides, food, courier (Lilongwe), stays, jobs,
+            Everything in one app ,marketplace, rides, food, Vero Courier(Lilongwe), stays, jobs,
             tenders, and more. Browse here, then open Vero360 to order and book.
           </p>
 
