@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import DownloadAppModal from './DownloadAppModal'
+import LandingCrawlTicker, { type LandingCrawlItem } from './LandingCrawlTicker'
 import { IconBadge, VeroIcon, type VeroIconName } from './icons'
 
 const stats = [
@@ -44,12 +45,36 @@ export default function HeroSection() {
   const phoneRef = useRef<HTMLDivElement>(null)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
+  const [crawls, setCrawls] = useState<LandingCrawlItem[]>([])
 
   useEffect(() => {
     const update = () => setNow(new Date())
     update()
     const id = setInterval(update, 60_000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/homepage-crawls', { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || cancelled) return
+        const list = Array.isArray(data.items) ? data.items : []
+        setCrawls(
+          list.filter(
+            (i: LandingCrawlItem) =>
+              i && typeof i.title === 'string' && i.title.trim().length > 0,
+          ),
+        )
+      } catch {
+        if (!cancelled) setCrawls([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -84,7 +109,7 @@ export default function HeroSection() {
       }}/>
 
       <div style={{
-        maxWidth: 1200, margin: '0 auto', padding: '120px 24px 80px',
+        maxWidth: 1200, margin: '0 auto', padding: '120px 24px 120px',
         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60,
         alignItems: 'center', width: '100%', position: 'relative',
       }} className="hero-grid">
@@ -261,6 +286,7 @@ export default function HeroSection() {
                   <VeroIcon name="search" size={12} color="var(--text-4)" strokeWidth={2} />
                   <span style={{ color: 'var(--text-4)', fontSize: 10 }}>what are you looking for?</span>
                 </div>
+                <LandingCrawlTicker variant="phone" items={crawls} />
               </div>
 
               {/* Scrollable body */}
@@ -374,7 +400,20 @@ export default function HeroSection() {
         </div>
       </div>
 
-      <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0 }}>
+      {/* Live home crawl — same messages as the Vero360 app ticker */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 56,
+          zIndex: 2,
+        }}
+      >
+        <LandingCrawlTicker variant="hero" items={crawls} />
+      </div>
+
+      <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, zIndex: 1 }}>
         <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: 'block', width: '100%', height: 80 }}>
           <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#fff"/>
         </svg>
