@@ -29,6 +29,7 @@ import {
   DashboardRefreshButton,
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
+import { AdminPasswordGate } from '@/app/dashboard/AdminPasswordGate'
 
 type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts'
 
@@ -52,6 +53,17 @@ const EMPTY_SUMMARY: FinanceSummary = {
 type EscrowFilter = 'all' | 'held' | 'released' | 'auto_released' | 'refunded'
 
 export default function FinanceAdminPage() {
+  return (
+    <AdminPasswordGate
+      title="Finance"
+      description="Enter your admin panel password to open Finance. Use the same password you sign in with at /panel."
+    >
+      <FinanceAdminInner />
+    </AdminPasswordGate>
+  )
+}
+
+function FinanceAdminInner() {
   const [tab, setTab] = useState<Tab>('overview')
   const [wallets, setWallets] = useState<WalletRow[]>([])
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])

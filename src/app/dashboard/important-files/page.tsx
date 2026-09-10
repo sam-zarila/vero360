@@ -7,6 +7,7 @@ import {
   DashboardPageHeader,
   DashboardRefreshButton,
 } from '@/app/dashboard/DashboardChrome'
+import { AdminPasswordGate } from '@/app/dashboard/AdminPasswordGate'
 import { useConfirmDelete } from '../ConfirmDialog'
 
 type Folder = {
@@ -45,6 +46,17 @@ function formatWhen(iso: string | null) {
 }
 
 export default function ImportantFilesPage() {
+  return (
+    <AdminPasswordGate
+      title="Important files"
+      description="Enter your admin panel password to open Important files. Use the same password you sign in with at /panel — same lock as Finance."
+    >
+      <ImportantFilesInner />
+    </AdminPasswordGate>
+  )
+}
+
+function ImportantFilesInner() {
   const confirmDelete = useConfirmDelete()
   const [folderId, setFolderId] = useState<string | null>(null)
   const [breadcrumb, setBreadcrumb] = useState<Folder[]>([])
