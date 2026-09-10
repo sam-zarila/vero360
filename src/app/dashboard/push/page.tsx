@@ -16,6 +16,8 @@ type PushItem = {
   badgeRoute: string
   target: string
   sent: boolean
+  fcmError: string | null
+  topics: string[]
   createdAt: string | null
   sentAt: string | null
   createdByEmail: string
@@ -101,7 +103,7 @@ export default function AdminPushPage() {
       }
       setNotice(
         data?.message ||
-          'Push queued — everyone with the app will receive it shortly.',
+          'Push sent to everyone on Vero360.',
       )
       setTitle('')
       setBody('')
@@ -109,6 +111,30 @@ export default function AdminPushPage() {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Send failed')
+      await load()
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function retrySend(id: string) {
+    setError('')
+    setNotice('')
+    setSending(true)
+    try {
+      const res = await adminFetch('/api/admin/push', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'retry', id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Retry failed')
+      }
+      setNotice(data?.message || 'Push sent.')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Retry failed')
+      await load()
     } finally {
       setSending(false)
     }
@@ -136,8 +162,9 @@ export default function AdminPushPage() {
           fontWeight: 600,
         }}
       >
-        This reaches <strong>all app users</strong> via Firebase (topic{' '}
-        <code>vero360_all</code>). Use it for important updates — not for spam.
+        This sends immediately via Firebase to <strong>all app users</strong> subscribed to
+        topic <code>vero360_all</code> (and <code>vero360_engagement</code> for older
+        installs). Use it for important updates — not for spam.
       </div>
 
       <form
@@ -307,13 +334,33 @@ export default function AdminPushPage() {
                     fontWeight: 800,
                     padding: '4px 8px',
                     borderRadius: 999,
-                    background: item.sent ? '#ECFDF5' : '#FFF7ED',
-                    color: item.sent ? '#047857' : '#C2410C',
+                    background: item.sent
+                      ? '#ECFDF5'
+                      : item.fcmError
+                        ? '#FEF2F2'
+                        : '#FFF7ED',
+                    color: item.sent
+                      ? '#047857'
+                      : item.fcmError
+                        ? '#B91C1C'
+                        : '#C2410C',
                   }}
                 >
-                  {item.sent ? 'Sent' : 'Queued'}
+                  {item.sent ? 'Sent' : item.fcmError ? 'Failed' : 'Queued'}
                 </span>
               </div>
+              {item.fcmError && !item.sent ? (
+                <p
+                  style={{
+                    margin: '8px 0 0',
+                    fontSize: 12,
+                    color: '#B91C1C',
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.fcmError}
+                </p>
+              ) : null}
               <div
                 style={{
                   marginTop: 10,
@@ -322,11 +369,32 @@ export default function AdminPushPage() {
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: 10,
+                  alignItems: 'center',
                 }}
               >
                 <span>{formatWhen(item.createdAt)}</span>
                 {item.createdByEmail ? <span>· {item.createdByEmail}</span> : null}
                 {item.type ? <span>· {item.type}</span> : null}
+                {!item.sent ? (
+                  <button
+                    type="button"
+                    disabled={sending}
+                    onClick={() => void retrySend(item.id)}
+                    style={{
+                      border: '1px solid #FDBA74',
+                      background: '#FFF7ED',
+                      color: '#C2410C',
+                      borderRadius: 8,
+                      padding: '4px 10px',
+                      fontWeight: 800,
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    Retry send
+                  </button>
+                ) : null}
               </div>
             </article>
           ))}

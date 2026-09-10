@@ -26,6 +26,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
       subtitle: body.subtitle !== undefined ? String(body.subtitle) : undefined,
       linkType: body.linkType !== undefined ? String(body.linkType) : undefined,
       linkId: body.linkId !== undefined ? String(body.linkId) : undefined,
+      latestVersion:
+        body.latestVersion !== undefined
+          ? String(body.latestVersion)
+          : body.version !== undefined
+            ? String(body.version)
+            : undefined,
       active: body.active !== undefined ? !!body.active : undefined,
       sortOrder:
         body.sortOrder !== undefined ? Number(body.sortOrder) : undefined,

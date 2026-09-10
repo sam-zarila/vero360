@@ -15,6 +15,7 @@ export async function GET() {
         subtitle: i.subtitle,
         linkType: i.linkType,
         linkId: i.linkId,
+        latestVersion: i.latestVersion,
       })),
     })
   } catch (err) {

@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
 import { getAdminDb } from '@/lib/firebase-admin'
+import {
+  ENGAGEMENT_BROADCASTS_COLLECTION,
+  markBroadcastSent,
+  sendBroadcastToTopics,
+} from '@/lib/admin-push'
 
 export const dynamic = 'force-dynamic'
-
-const COLLECTION = 'engagement_broadcasts'
 
 function stringifyData(data: unknown): Record<string, string> {
   if (!data || typeof data !== 'object') return {}
@@ -25,12 +28,12 @@ export async function GET(request: Request) {
 
   try {
     const snap = await getAdminDb()
-      .collection(COLLECTION)
+      .collection(ENGAGEMENT_BROADCASTS_COLLECTION)
       .orderBy('createdAt', 'desc')
       .limit(40)
       .get()
 
-    const items = snap.docs.map((d) => {
+    const items = snap.docs.map(d => {
       const data = d.data() || {}
       const createdAt = data.createdAt?.toDate?.()
         ? data.createdAt.toDate().toISOString()
@@ -46,6 +49,8 @@ export async function GET(request: Request) {
         badgeRoute: String(data.badgeRoute || ''),
         target: String(data.target || ''),
         sent: data.sent === true,
+        fcmError: data.fcmError ? String(data.fcmError) : null,
+        topics: Array.isArray(data.topics) ? data.topics.map(String) : [],
         createdAt,
         sentAt,
         createdByEmail: String(data.createdByEmail || ''),
@@ -64,8 +69,7 @@ export async function GET(request: Request) {
 
 /**
  * POST a push to everyone with the Vero360 app.
- * Writes Firestore `engagement_broadcasts` → Cloud Function sends FCM topic
- * `vero360_all` (+ engagement topic for older installs).
+ * Writes Firestore + sends FCM topics immediately (vero360_all + vero360_engagement).
  */
 export async function POST(request: Request) {
   const denied = await denyUnlessPanelAdmin(request)
@@ -79,6 +83,58 @@ export async function POST(request: Request) {
     > | null
     if (!json) {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    // Retry a stuck queued broadcast
+    if (json.action === 'retry' && typeof json.id === 'string') {
+      const id = json.id.trim()
+      const snap = await getAdminDb()
+        .collection(ENGAGEMENT_BROADCASTS_COLLECTION)
+        .doc(id)
+        .get()
+      if (!snap.exists) {
+        return NextResponse.json({ error: 'Broadcast not found' }, { status: 404 })
+      }
+      const data = snap.data() || {}
+      if (data.sent === true) {
+        return NextResponse.json({
+          success: true,
+          id,
+          alreadySent: true,
+          message: 'This push was already sent.',
+        })
+      }
+
+      const title = String(data.title || '').trim()
+      const body = String(data.body || '').trim()
+      const outcome = await sendBroadcastToTopics({
+        title,
+        body,
+        type: String(data.type || 'admin_broadcast'),
+        badgeRoute: String(data.badgeRoute || ''),
+        target: String(data.target || 'all'),
+      })
+      const sent = await markBroadcastSent(id, outcome)
+      if (!sent) {
+        return NextResponse.json(
+          {
+            error:
+              outcome.results.map(r => r.error).filter(Boolean).join('; ') ||
+              'FCM send failed — check Firebase Messaging credentials',
+            id,
+            fcmResults: outcome.results,
+          },
+          { status: 502 },
+        )
+      }
+      return NextResponse.json({
+        success: true,
+        id,
+        sent: true,
+        topics: outcome.topics,
+        fcmResults: outcome.results,
+        message: 'Push sent to everyone on Vero360.',
+      })
     }
 
     const title = String(json.title || '').trim()
@@ -104,12 +160,14 @@ export async function POST(request: Request) {
 
     const badgeRoute = String(json.badgeRoute || 'notifications').trim()
     const extra = stringifyData(json.data)
+    const type = 'admin_broadcast'
+    const target = 'all'
 
     const doc = {
       title,
       body,
-      type: 'admin_broadcast',
-      target: 'all',
+      type,
+      target,
       badgeRoute: badgeRoute || 'notifications',
       ...extra,
       createdAt: FieldValue.serverTimestamp(),
@@ -119,18 +177,47 @@ export async function POST(request: Request) {
       sent: false,
     }
 
-    const ref = await getAdminDb().collection(COLLECTION).add(doc)
+    const ref = await getAdminDb().collection(ENGAGEMENT_BROADCASTS_COLLECTION).add(doc)
+
+    const outcome = await sendBroadcastToTopics({
+      title,
+      body,
+      type,
+      badgeRoute,
+      target,
+      extra,
+    })
+    const sent = await markBroadcastSent(ref.id, outcome)
+
+    if (!sent) {
+      return NextResponse.json(
+        {
+          error:
+            outcome.results.map(r => r.error).filter(Boolean).join('; ') ||
+            'Saved, but FCM send failed — use Retry on the queued item',
+          id: ref.id,
+          sent: false,
+          fcmResults: outcome.results,
+        },
+        { status: 502 },
+      )
+    }
 
     return NextResponse.json({
       success: true,
       id: ref.id,
-      message:
-        'Push queued. Everyone subscribed to Vero360 will receive it shortly.',
+      sent: true,
+      topics: outcome.topics,
+      fcmResults: outcome.results,
+      message: 'Push sent to everyone on Vero360 (topics vero360_all + vero360_engagement).',
     })
   } catch (err) {
     console.error('Admin push POST:', err)
     return NextResponse.json(
-      { error: 'Failed to send push notification' },
+      {
+        error:
+          err instanceof Error ? err.message : 'Failed to send push notification',
+      },
       { status: 500 },
     )
   }

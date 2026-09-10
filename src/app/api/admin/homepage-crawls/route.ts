@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       subtitle: String(body.subtitle || body.body || ''),
       linkType: String(body.linkType || 'none'),
       linkId: String(body.linkId || ''),
+      latestVersion: String(body.latestVersion || body.version || ''),
       active: body.active !== false,
       sortOrder:
         typeof body.sortOrder === 'number' ? body.sortOrder : undefined,
