@@ -198,7 +198,16 @@ export default function HeroSection() {
         </div>
 
         {/* Phone mockup — Vero360 super app home */}
-        <div className="hero-phone" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div
+          className="hero-phone"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
           <div className="hero-phone-scale">
           <div ref={phoneRef} style={{ position: 'relative' }}>
             <div style={{
@@ -397,21 +406,10 @@ export default function HeroSection() {
             </div>
           </div>
           </div>
+          <div style={{ width: '100%', maxWidth: 320, borderRadius: 12, overflow: 'hidden' }}>
+            <LandingCrawlTicker variant="hero" items={crawls} />
+          </div>
         </div>
-      </div>
-
-      {/* Live home crawl — mid hero */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          zIndex: 2,
-        }}
-      >
-        <LandingCrawlTicker variant="hero" items={crawls} />
       </div>
 
       <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, zIndex: 1 }}>
