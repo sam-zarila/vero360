@@ -109,7 +109,7 @@ export default function HeroSection() {
       }}/>
 
       <div style={{
-        maxWidth: 1200, margin: '0 auto', padding: '120px 24px 120px',
+        maxWidth: 1200, margin: '0 auto', padding: '120px 24px 80px',
         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60,
         alignItems: 'center', width: '100%', position: 'relative',
       }} className="hero-grid">
@@ -400,13 +400,14 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* Live home crawl — same messages as the Vero360 app ticker */}
+      {/* Live home crawl — mid hero */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: 56,
+          top: '50%',
+          transform: 'translateY(-50%)',
           zIndex: 2,
         }}
       >
