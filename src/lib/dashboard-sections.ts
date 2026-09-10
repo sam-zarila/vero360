@@ -16,7 +16,6 @@ export type DashboardSectionId =
   | 'announcements'
   | 'home-crawl'
   | 'push'
-  | 'important-files'
   | 'marketplace'
   | 'orders'
   | 'refunds'
@@ -151,14 +150,6 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'bell',
     color: '#EA580C',
     bg: '#FFF7ED',
-  },
-  {
-    id: 'important-files',
-    title: 'Important files',
-    desc: 'Folders for key documents — name, usage, and uploads',
-    icon: 'file-text',
-    color: '#0369A1',
-    bg: '#F0F9FF',
   },
   {
     id: 'marketplace',
@@ -322,7 +313,6 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
       { href: '/dashboard/home-crawl', label: 'Home crawl', icon: 'megaphone' },
       { href: '/dashboard/push', label: 'Push notification', icon: 'bell' },
-      { href: '/dashboard/important-files', label: 'Important files', icon: 'file-text' },
     ],
   },
   {
