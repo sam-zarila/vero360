@@ -118,8 +118,8 @@ export default function AdminPushPage() {
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '8px 16px 48px' }}>
       <DashboardBackLink />
       <DashboardPageHeader
-        title="Push notification"
-        subtitle="Send a push to everyone who has the Vero360 app installed and notifications enabled."
+        sectionId="push"
+        description="Send a push to everyone who has the Vero360 app installed and notifications enabled."
         actions={<DashboardRefreshButton onClick={() => void load()} />}
       />
 

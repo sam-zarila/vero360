@@ -14,6 +14,7 @@ export type DashboardSectionId =
   | 'marketing'
   | 'latest-arrivals'
   | 'announcements'
+  | 'home-crawl'
   | 'push'
   | 'marketplace'
   | 'orders'
@@ -132,6 +133,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     desc: 'Homepage news with photo and post date',
     icon: 'bell',
     color: '#C2410C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'home-crawl',
+    title: 'Home crawl ticker',
+    desc: 'Scrolling messages under the app home search bar',
+    icon: 'megaphone',
+    color: '#EA580C',
     bg: '#FFF7ED',
   },
   {
@@ -302,6 +311,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/marketing/kpi', label: 'Marketing KPI', icon: 'layers' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
       { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
+      { href: '/dashboard/home-crawl', label: 'Home crawl', icon: 'megaphone' },
       { href: '/dashboard/push', label: 'Push notification', icon: 'bell' },
     ],
   },
