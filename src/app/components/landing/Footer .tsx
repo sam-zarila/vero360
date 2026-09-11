@@ -6,17 +6,19 @@ import Logo from './Logo'
 import { VeroIcon } from './icons'
 
 const links = {
-    Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation','Jobs','digital services'],
+    Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation', 'Digital Services', 'Jobs'],
     Company: ['About Vero360', 'Careers'],
     Partners: ['Become a merchant', 'Customers', 'Driver signup', 'Partner support'],
     Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service'],
   }
 
 const linkHrefs: Record<string, string> = {
-  'Marketplace': '/#services',
+  'Marketplace': '/browse/marketplace',
   'Vero Ride': '/#services',
-  'Food & Courier': '/#services',
-  'Accommodation': '/#services',
+  'Food & Courier': '/browse/food',
+  'Accommodation': '/browse/stays',
+  'Digital Services': '/browse/digital-services',
+  'Jobs': '/browse/jobs',
   'About Vero360': '/#about-us',
   'Careers': '/careers',
   'Become a merchant': '/get-started?role=merchant',

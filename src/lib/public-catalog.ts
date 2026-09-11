@@ -292,3 +292,70 @@ export async function listPublicTenderCards(limit = 500): Promise<PublicCatalogC
     return []
   }
 }
+
+const DIGITAL_BRAND_IMAGES: Record<string, string> = {
+  spotify: '/brands/spotify.jpg',
+  apple_music: '/brands/apple_music.png',
+  netflix: '/brands/netflix.png',
+  chatgpt_plus: '/brands/chatgpt.png',
+}
+
+function digitalCategoryLabel(category: string): string {
+  const c = category.trim().toLowerCase()
+  if (c === 'streaming' || c === 'subscription') return 'Subscription'
+  if (c === 'gaming') return 'Gaming'
+  if (c === 'gift_cards') return 'Gift card'
+  return 'Digital'
+}
+
+/** Active digital products from Firestore `app_config/digital_services` (+ defaults). */
+export async function listPublicDigitalServices(
+  limit = 500,
+): Promise<PublicCatalogCard[]> {
+  const take = clampLimit(limit)
+  try {
+    const { getDigitalServicesConfig } = await import('@/lib/digital-services-config')
+    const config = await getDigitalServicesConfig()
+    const rate = Math.max(1, config.usdToMwkRate || 4700)
+
+    return config.products
+      .filter(p => p.active !== false)
+      .slice(0, take)
+      .map(p => {
+        const isSub =
+          p.category === 'streaming' || p.category === 'subscription'
+        const fixed =
+          typeof p.fixedMwkPrice === 'number' && p.fixedMwkPrice > 0
+            ? Math.round(p.fixedMwkPrice)
+            : null
+        const fromUsd =
+          Array.isArray(p.usdAmounts) && p.usdAmounts.length > 0
+            ? Math.round(Number(p.usdAmounts[0]) * rate)
+            : null
+        const price = isSub ? fixed : fixed ?? fromUsd
+        const amounts =
+          Array.isArray(p.usdAmounts) && p.usdAmounts.length
+            ? `From $${p.usdAmounts[0]}`
+            : null
+        const metaParts = [
+          digitalCategoryLabel(p.category),
+          p.brandTag || null,
+          !isSub && amounts ? amounts : p.subtitle || null,
+        ].filter(Boolean)
+
+        return {
+          id: p.key,
+          title: p.name,
+          image: DIGITAL_BRAND_IMAGES[p.key] || null,
+          price,
+          location: null,
+          meta: metaParts.join(' · ') || null,
+          href: `/digital-services/${encodeURIComponent(p.key)}`,
+          externalUrl: null,
+        }
+      })
+  } catch (err) {
+    console.warn('listPublicDigitalServices:', err)
+    return []
+  }
+}

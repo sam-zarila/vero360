@@ -8,6 +8,7 @@ export const exploreServices: { icon: VeroIconName; name: string; desc: string }
   { icon: 'bike', name: 'Vero Bike', desc: 'Quick rides on two wheels' },
   { icon: 'food', name: 'Food', desc: 'Order from nearby restaurants' },
   { icon: 'bed', name: 'Accommodation', desc: 'Hotels, lodges & short stays' },
+  { icon: 'sparkles', name: 'Digital Services', desc: 'Subs, gift cards & gaming' },
 ]
 
 /** Matches Android applicationId in Vero360App. */

@@ -51,6 +51,15 @@ const STRIPS: StripConfig[] = [
     endpoint: '/api/public/stays?limit=500',
   },
   {
+    id: 'digital-services',
+    browsePath: '/browse/digital-services',
+    icon: 'sparkles',
+    title: 'Digital Services',
+    subtitle: 'Subscriptions, gift cards, and gaming top-ups',
+    viewMoreLabel: 'View more digital services',
+    endpoint: '/api/public/digital-services?limit=500',
+  },
+  {
     id: 'jobs',
     browsePath: '/browse/jobs',
     icon: 'briefcase',
@@ -151,8 +160,8 @@ export default function ServicesSection() {
               margin: '0 auto',
             }}
           >
-            Marketplace, food, stays, jobs, and tenders from the same catalogs as the app. Tap a
-            product for details, or view more to see the full list.
+            Marketplace, food, stays, digital services, jobs, and tenders from the same catalogs
+            as the app. Tap a product for details, or view more to see the full list.
           </p>
         </div>
 

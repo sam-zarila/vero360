@@ -11,7 +11,13 @@ export type CatalogCard = {
   externalUrl: string | null
 }
 
-export type BrowseCatalogId = 'marketplace' | 'food' | 'stays' | 'jobs' | 'tenders'
+export type BrowseCatalogId =
+  | 'marketplace'
+  | 'food'
+  | 'stays'
+  | 'digital-services'
+  | 'jobs'
+  | 'tenders'
 
 export const BROWSE_CATALOGS: Record<
   BrowseCatalogId,
@@ -39,6 +45,12 @@ export const BROWSE_CATALOGS: Record<
     subtitle: 'Hotels, lodges, and short stays',
     endpoint: '/api/public/stays?limit=500',
     itemLabel: 'stays',
+  },
+  'digital-services': {
+    title: 'Digital Services',
+    subtitle: 'Subscriptions, gift cards, and gaming top-ups',
+    endpoint: '/api/public/digital-services?limit=500',
+    itemLabel: 'services',
   },
   jobs: {
     title: 'Jobs',
