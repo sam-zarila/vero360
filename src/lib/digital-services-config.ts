@@ -260,27 +260,32 @@ function mergeWithDefaults(saved: Partial<DigitalServicesConfig> | null): Digita
 }
 
 export async function getDigitalServicesConfig(): Promise<DigitalServicesConfig> {
-  const snap = await getAdminDb().doc(DIGITAL_SERVICES_CONFIG_DOC).get()
-  if (!snap.exists) {
+  try {
+    const snap = await getAdminDb().doc(DIGITAL_SERVICES_CONFIG_DOC).get()
+    if (!snap.exists) {
+      return { ...DEFAULT_DIGITAL_SERVICES_CONFIG }
+    }
+    const data = snap.data() || {}
+    const productsRaw = Array.isArray(data.products)
+      ? data.products
+      : data.products && typeof data.products === 'object'
+        ? Object.values(data.products as Record<string, unknown>)
+        : []
+
+    const updatedAt = data.updatedAt?.toDate?.()
+      ? data.updatedAt.toDate().toISOString()
+      : data.updatedAt || null
+
+    return mergeWithDefaults({
+      usdToMwkRate: num(data.usdToMwkRate, DEFAULT_DIGITAL_SERVICES_CONFIG.usdToMwkRate),
+      products: productsRaw as DigitalProductPriceConfig[],
+      updatedAt,
+      updatedByEmail: data.updatedByEmail ? String(data.updatedByEmail) : null,
+    })
+  } catch (err) {
+    console.error('getDigitalServicesConfig:', err)
     return { ...DEFAULT_DIGITAL_SERVICES_CONFIG }
   }
-  const data = snap.data() || {}
-  const productsRaw = Array.isArray(data.products)
-    ? data.products
-    : data.products && typeof data.products === 'object'
-      ? Object.values(data.products as Record<string, unknown>)
-      : []
-
-  const updatedAt = data.updatedAt?.toDate?.()
-    ? data.updatedAt.toDate().toISOString()
-    : data.updatedAt || null
-
-  return mergeWithDefaults({
-    usdToMwkRate: num(data.usdToMwkRate, DEFAULT_DIGITAL_SERVICES_CONFIG.usdToMwkRate),
-    products: productsRaw as DigitalProductPriceConfig[],
-    updatedAt,
-    updatedByEmail: data.updatedByEmail ? String(data.updatedByEmail) : null,
-  })
 }
 
 export async function saveDigitalServicesConfig(input: {
