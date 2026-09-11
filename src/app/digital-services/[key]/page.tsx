@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = config.products.find(p => p.key === key && p.active !== false)
   if (!product) return { title: 'Digital Service · Vero360' }
   return {
-    title: `${product.name} · Digital Services · Vero360`,
+    title: `${product.name} · Buy · Vero360`,
     description: product.subtitle || `Buy ${product.name} on Vero360`,
   }
 }
@@ -39,13 +39,16 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
   const product = config.products.find(p => p.key === key && p.active !== false)
   if (!product) notFound()
 
-  const isSub =
-    product.category === 'streaming' || product.category === 'subscription'
+  const fixed =
+    typeof product.fixedMwkPrice === 'number' && product.fixedMwkPrice > 0
+      ? Math.round(product.fixedMwkPrice)
+      : null
+  const isFixedPrice = fixed != null
   const labels = formatDigitalPriceLabel({
-    fixedMwkPrice: product.fixedMwkPrice,
+    fixedMwkPrice: fixed,
     usdAmounts: product.usdAmounts,
     usdToMwkRate: config.usdToMwkRate,
-    isSubscription: isSub,
+    isSubscription: isFixedPrice,
   })
 
   return (
@@ -60,6 +63,10 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
         priceLabel: labels.priceLabel,
         amountsLabel: labels.amountsLabel,
         rateLabel: labels.rateLabel,
+        fixedMwkPrice: fixed,
+        usdAmounts: product.usdAmounts || [],
+        usdToMwkRate: config.usdToMwkRate,
+        isFixedPrice,
       }}
     />
   )
