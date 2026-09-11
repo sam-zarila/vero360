@@ -25,6 +25,7 @@ export type DashboardSectionId =
   | 'agents'
   | 'admins'
   | 'finance'
+  | 'rewards'
   | 'verochat'
   | 'get-started'
   | 'settings'
@@ -227,6 +228,15 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     superAdminOnly: true,
   },
   {
+    id: 'rewards',
+    title: 'Vero Coins',
+    desc: 'User points, coins, pending and withdrawable MWK',
+    icon: 'sparkles',
+    color: '#D97706',
+    bg: '#FFFBEB',
+    superAdminOnly: true,
+  },
+  {
     id: 'verochat',
     title: 'Help Center',
     desc: 'Live chats from Vero360 Help Center',
@@ -368,6 +378,12 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'System',
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
+      {
+        href: '/dashboard/rewards',
+        label: 'Vero Coins',
+        icon: 'sparkles',
+        superAdminOnly: true,
+      },
       { href: '/dashboard/get-started', label: 'Get started videos', icon: 'video' },
       {
         href: '/dashboard/settings',

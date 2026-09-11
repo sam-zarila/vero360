@@ -102,7 +102,11 @@ export function usePanelSession() {
 }
 
 /** Paths only super admins may open. */
-export const SUPER_ADMIN_ONLY_PATHS = ['/dashboard/finance', '/dashboard/admins'] as const
+export const SUPER_ADMIN_ONLY_PATHS = [
+  '/dashboard/finance',
+  '/dashboard/admins',
+  '/dashboard/rewards',
+] as const
 
 export const MARKETER_HOME = '/dashboard/marketing/tasks'
 
