@@ -71,16 +71,14 @@ function CatalogCardItem({
           <img
             src={card.image}
             alt=""
+            loading="lazy"
+            decoding="async"
             style={{
               width: '100%',
               height: '100%',
-              objectFit: card.image.endsWith('.svg') ? 'cover' : 'contain',
+              objectFit: 'cover',
               objectPosition: 'center',
-              padding: card.image.endsWith('.svg') ? 0 : 16,
-              background: card.image.endsWith('.svg')
-                ? undefined
-                : 'linear-gradient(160deg, #FFF7ED, #FFEDD5)',
-              boxSizing: 'border-box',
+              display: 'block',
             }}
           />
         ) : (

@@ -31,37 +31,37 @@ export const BROWSE_CATALOGS: Record<
   marketplace: {
     title: 'Marketplace',
     subtitle: 'All products from verified merchants',
-    endpoint: '/api/public/marketplace?limit=500',
+    endpoint: '/api/public/marketplace?limit=120',
     itemLabel: 'products',
   },
   food: {
     title: 'Food',
     subtitle: 'Meals and restaurants on Vero360',
-    endpoint: '/api/public/food?limit=500',
+    endpoint: '/api/public/food?limit=120',
     itemLabel: 'meals',
   },
   stays: {
     title: 'Stay',
     subtitle: 'Hotels, lodges, and short stays',
-    endpoint: '/api/public/stays?limit=500',
+    endpoint: '/api/public/stays?limit=120',
     itemLabel: 'stays',
   },
   'digital-services': {
     title: 'Digital Services',
     subtitle: 'Subscriptions, gift cards, and gaming top-ups',
-    endpoint: '/api/public/digital-services?limit=500',
+    endpoint: '/api/public/digital-services?limit=120',
     itemLabel: 'services',
   },
   jobs: {
     title: 'Jobs',
     subtitle: 'Roles across Malawi and beyond',
-    endpoint: '/api/public/jobs?limit=500',
+    endpoint: '/api/public/jobs?limit=120',
     itemLabel: 'jobs',
   },
   tenders: {
     title: 'Tenders',
     subtitle: 'Open opportunities and RFPs',
-    endpoint: '/api/tenders?limit=500',
+    endpoint: '/api/tenders?limit=120',
     itemLabel: 'tenders',
   },
 }

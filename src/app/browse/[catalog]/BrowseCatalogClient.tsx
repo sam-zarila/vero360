@@ -29,7 +29,7 @@ export default function BrowseCatalogClient({ catalog }: Props) {
       setLoading(true)
       setError('')
       try {
-        const res = await fetch(meta.endpoint, { cache: 'no-store' })
+        const res = await fetch(meta.endpoint)
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Failed to load')
         const raw = Array.isArray(data.items) ? data.items : []

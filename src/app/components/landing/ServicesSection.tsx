@@ -21,6 +21,8 @@ type StripConfig = {
 }
 
 const PREVIEW_COUNT = 12
+/** Only fetch what the strip shows (+ a little headroom). */
+const PREVIEW_FETCH = 24
 
 const STRIPS: StripConfig[] = [
   {
@@ -30,7 +32,7 @@ const STRIPS: StripConfig[] = [
     title: 'Marketplace',
     subtitle: 'Shop products from verified merchants',
     viewMoreLabel: 'View more products',
-    endpoint: '/api/public/marketplace?limit=500',
+    endpoint: `/api/public/marketplace?limit=${PREVIEW_FETCH}`,
   },
   {
     id: 'food',
@@ -39,7 +41,7 @@ const STRIPS: StripConfig[] = [
     title: 'Food',
     subtitle: 'Order from restaurants near you',
     viewMoreLabel: 'View more meals',
-    endpoint: '/api/public/food?limit=500',
+    endpoint: `/api/public/food?limit=${PREVIEW_FETCH}`,
   },
   {
     id: 'stay',
@@ -48,7 +50,7 @@ const STRIPS: StripConfig[] = [
     title: 'Stay',
     subtitle: 'Hotels, lodges, and short stays',
     viewMoreLabel: 'View more stays',
-    endpoint: '/api/public/stays?limit=500',
+    endpoint: `/api/public/stays?limit=${PREVIEW_FETCH}`,
   },
   {
     id: 'digital-services',
@@ -57,7 +59,7 @@ const STRIPS: StripConfig[] = [
     title: 'Digital Services',
     subtitle: 'Subscriptions, gift cards, and gaming top-ups',
     viewMoreLabel: 'View more digital services',
-    endpoint: '/api/public/digital-services?limit=500',
+    endpoint: `/api/public/digital-services?limit=${PREVIEW_FETCH}`,
   },
   {
     id: 'jobs',
@@ -66,7 +68,7 @@ const STRIPS: StripConfig[] = [
     title: 'Jobs',
     subtitle: 'Find work across Malawi and beyond',
     viewMoreLabel: 'View more jobs',
-    endpoint: '/api/public/jobs?limit=500',
+    endpoint: `/api/public/jobs?limit=${PREVIEW_FETCH}`,
   },
   {
     id: 'tenders',
@@ -75,39 +77,38 @@ const STRIPS: StripConfig[] = [
     title: 'Tenders',
     subtitle: 'Open opportunities and RFPs',
     viewMoreLabel: 'View more tenders',
-    endpoint: '/api/tenders?limit=500',
+    endpoint: `/api/tenders?limit=${PREVIEW_FETCH}`,
   },
 ]
 
 export default function ServicesSection() {
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [itemsByStrip, setItemsByStrip] = useState<Record<string, CatalogCard[]>>({})
-  const [loading, setLoading] = useState(true)
+  const [loadingByStrip, setLoadingByStrip] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(STRIPS.map(s => [s.id, true])),
+  )
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      setLoading(true)
-      const next: Record<string, CatalogCard[]> = {}
-      await Promise.all(
-        STRIPS.map(async strip => {
-          try {
-            const res = await fetch(strip.endpoint, { cache: 'no-store' })
-            const data = await res.json().catch(() => ({}))
-            const raw = Array.isArray(data.items) ? data.items : []
-            next[strip.id] =
-              strip.id === 'tenders' ? mapTenderItems(raw) : (raw as CatalogCard[])
-          } catch {
-            next[strip.id] = []
+    for (const strip of STRIPS) {
+      void (async () => {
+        try {
+          const res = await fetch(strip.endpoint)
+          const data = await res.json().catch(() => ({}))
+          const raw = Array.isArray(data.items) ? data.items : []
+          const items =
+            strip.id === 'tenders' ? mapTenderItems(raw) : (raw as CatalogCard[])
+          if (cancelled) return
+          setItemsByStrip(prev => ({ ...prev, [strip.id]: items }))
+        } catch {
+          if (!cancelled) setItemsByStrip(prev => ({ ...prev, [strip.id]: [] }))
+        } finally {
+          if (!cancelled) {
+            setLoadingByStrip(prev => ({ ...prev, [strip.id]: false }))
           }
-        }),
-      )
-      if (!cancelled) {
-        setItemsByStrip(next)
-        setLoading(false)
-      }
+        }
+      })()
     }
-    void load()
     return () => {
       cancelled = true
     }
@@ -211,6 +212,7 @@ export default function ServicesSection() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
           {STRIPS.map(strip => {
+            const loading = loadingByStrip[strip.id] !== false
             const items = itemsByStrip[strip.id] || []
             const visible = items.slice(0, PREVIEW_COUNT)
             const hasMore = items.length > PREVIEW_COUNT
@@ -241,7 +243,8 @@ export default function ServicesSection() {
                               color: 'var(--text-3)',
                             }}
                           >
-                            ({items.length})
+                            ({items.length}
+                            {items.length >= PREVIEW_FETCH ? '+' : ''})
                           </span>
                         ) : null}
                       </h3>
@@ -278,7 +281,7 @@ export default function ServicesSection() {
                     <div style={{ marginTop: 14, textAlign: 'center' }}>
                       <Link href={strip.browsePath} style={primaryBtnLink}>
                         {hasMore
-                          ? `${strip.viewMoreLabel} (${items.length - PREVIEW_COUNT} more)`
+                          ? `${strip.viewMoreLabel} (${items.length - PREVIEW_COUNT}+ more)`
                           : `See all ${strip.title.toLowerCase()}`}
                       </Link>
                     </div>

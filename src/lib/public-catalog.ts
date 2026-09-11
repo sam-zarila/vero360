@@ -63,6 +63,8 @@ function foodHref(item: FoodItem) {
 
 async function loadMarketplaceRaw(limit = 500): Promise<MarketplaceListing[]> {
   const take = clampLimit(limit)
+  const previewOnly = take <= 48
+
   let firestoreItems: MarketplaceListing[] = []
   try {
     const snap = await getAdminDb()
@@ -91,11 +93,20 @@ async function loadMarketplaceRaw(limit = 500): Promise<MarketplaceListing[]> {
     }
   }
 
+  // Landing previews: Firestore is enough — skip slow Nest round-trip.
+  if (previewOnly && firestoreItems.length >= Math.min(take, 8)) {
+    return firestoreItems.sort((a, b) => {
+      const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return bt - at
+    })
+  }
+
   let apiItems: MarketplaceListing[] = []
   try {
     const res = await fetch(veroEndpoint('marketplace'), {
       headers: { Accept: 'application/json' },
-      cache: 'no-store',
+      next: { revalidate: 60 },
     })
     const body = await readJsonSafe(res)
     if (res.ok) apiItems = parseMarketplaceListings(body)
@@ -140,15 +151,9 @@ export async function listPublicMarketplace(limit = 500): Promise<PublicCatalogC
 
 export async function listPublicFood(limit = 500): Promise<PublicCatalogCard[]> {
   const take = clampLimit(limit)
+  const previewOnly = take <= 48
   try {
-    const apiUrl = new URL(veroEndpoint('marketplace'))
-    apiUrl.searchParams.set('category', 'food')
-
-    const [apiRes, marketplaceSnap, menuSnap] = await Promise.all([
-      fetch(apiUrl.toString(), {
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-      }).catch(() => null),
+    const [marketplaceSnap, menuSnap] = await Promise.all([
       getAdminDb()
         .collection('marketplace_items')
         .where('category', '==', 'food')
@@ -157,12 +162,6 @@ export async function listPublicFood(limit = 500): Promise<PublicCatalogCard[]> 
         .catch(() => null),
       getAdminDb().collection('food_menu_items').limit(take).get().catch(() => null),
     ])
-
-    let apiItems: FoodItem[] = []
-    if (apiRes) {
-      const body = await readJsonSafe(apiRes)
-      if (apiRes.ok) apiItems = parseApiFoodItems(body)
-    }
 
     const marketplaceItems =
       marketplaceSnap?.docs
@@ -175,6 +174,21 @@ export async function listPublicFood(limit = 500): Promise<PublicCatalogCard[]> 
       menuSnap?.docs
         .map(doc => parseFirestoreMenuFood(doc.id, doc.data() as Record<string, unknown>))
         .filter((item): item is FoodItem => !!item) ?? []
+
+    let apiItems: FoodItem[] = []
+    const firestoreCount = marketplaceItems.length + menuItems.length
+    if (!previewOnly || firestoreCount < Math.min(take, 8)) {
+      const apiUrl = new URL(veroEndpoint('marketplace'))
+      apiUrl.searchParams.set('category', 'food')
+      const apiRes = await fetch(apiUrl.toString(), {
+        headers: { Accept: 'application/json' },
+        next: { revalidate: 60 },
+      }).catch(() => null)
+      if (apiRes) {
+        const body = await readJsonSafe(apiRes)
+        if (apiRes.ok) apiItems = parseApiFoodItems(body)
+      }
+    }
 
     const items = mergeFoodItems([apiItems, marketplaceItems, menuItems])
       .filter(i => i.available !== false)
@@ -206,7 +220,7 @@ export async function listPublicStays(limit = 500): Promise<PublicCatalogCard[]>
   try {
     const res = await fetch(veroEndpoint('accommodations', 'all'), {
       headers: { Accept: 'application/json' },
-      cache: 'no-store',
+      next: { revalidate: 60 },
     })
     const body = await readJsonSafe(res)
     if (!res.ok) {
@@ -215,10 +229,13 @@ export async function listPublicStays(limit = 500): Promise<PublicCatalogCard[]>
     }
 
     let items: StayListing[] = parseStayListings(body)
-    try {
-      items = await enrichStayListings(items)
-    } catch {
-      // enrichment optional
+    // Skip room enrichment on small preview requests — big latency win.
+    if (take > 36) {
+      try {
+        items = await enrichStayListings(items)
+      } catch {
+        // enrichment optional
+      }
     }
 
     return items
@@ -246,7 +263,7 @@ export async function listPublicJobs(limit = 500): Promise<PublicCatalogCard[]> 
     const qs = new URLSearchParams({ activeOnly: 'true' })
     const res = await fetch(`${veroEndpoint('jobs')}?${qs.toString()}`, {
       headers: { Accept: 'application/json' },
-      cache: 'no-store',
+      next: { revalidate: 60 },
     })
     const body = await readJsonSafe(res)
     if (!res.ok) {
