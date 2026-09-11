@@ -33,5 +33,8 @@ CONTACT_TO_EMAIL=info@vero360.app
 VEROCHAT_NOTIFY_EMAIL=info@vero360.app
 FORMSUBMIT_ID=af3930657a7c20515c4324c017f006ce
 
+# PayChangu secret for public digital-services checkout (server only)
+# PAYCHANGU_SECRET_KEY=SEC-LIVE-...
+
 # Scheduled sync (optional — daily cron hits /api/cron/sync-content)
 CRON_SECRET=generate-a-long-random-string
