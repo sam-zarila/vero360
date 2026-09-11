@@ -19,6 +19,7 @@ function categoryLabel(category: string): string {
   if (c === 'streaming' || c === 'subscription') return 'Subscription'
   if (c === 'gaming') return 'Gaming'
   if (c === 'gift_cards') return 'Gift card'
+  if (c === 'crypto') return 'Crypto / FX'
   return 'Digital'
 }
 
@@ -61,6 +62,8 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
     fixedMwkPrice: fixed,
     usdAmounts: product.usdAmounts,
     usdToMwkRate: config.usdToMwkRate,
+    mwkPerUnit: product.mwkPerUnit,
+    unitLabel: product.unitLabel,
     isSubscription: isFixedPrice,
   })
 
@@ -72,13 +75,17 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
         subtitle: product.subtitle || null,
         categoryLabel: categoryLabel(product.category),
         brandTag: product.brandTag || null,
-        image: digitalBrandImage(product.key),
+        image: digitalBrandImage(product.key, product.imageUrl),
         priceLabel: labels.priceLabel,
         amountsLabel: labels.amountsLabel,
         rateLabel: labels.rateLabel,
         fixedMwkPrice: fixed,
         usdAmounts: Array.isArray(product.usdAmounts) ? product.usdAmounts : [],
-        usdToMwkRate: config.usdToMwkRate || 4700,
+        usdToMwkRate:
+          product.mwkPerUnit && product.mwkPerUnit > 0
+            ? product.mwkPerUnit
+            : config.usdToMwkRate || 4700,
+        unitLabel: product.unitLabel || null,
         isFixedPrice,
       }}
     />

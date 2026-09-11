@@ -11,8 +11,14 @@ export type DigitalProductPriceConfig = {
   brandTag?: string
   /** Fixed MWK for subscriptions. */
   fixedMwkPrice?: number | null
-  /** USD face values for gift cards. */
+  /** Face values (USD for gift cards, or units for crypto e.g. USDT). */
   usdAmounts?: number[]
+  /** Custom MWK per unit (USDT/CNY/BNB). When set, overrides global USD rate. */
+  mwkPerUnit?: number | null
+  /** Unit label shown in app, e.g. USDT, CNY, BNB. */
+  unitLabel?: string
+  /** Product picture (Firebase Storage / HTTPS URL). */
+  imageUrl?: string
   active?: boolean
 }
 
@@ -190,6 +196,14 @@ function parseProduct(raw: unknown): DigitalProductPriceConfig | null {
   }
 
   const isSub = category === 'streaming' || category === 'subscription'
+  const mwkPerUnitRaw = d.mwkPerUnit
+  const mwkPerUnit =
+    mwkPerUnitRaw === null || mwkPerUnitRaw === undefined || mwkPerUnitRaw === ''
+      ? null
+      : Math.max(0, Math.round(num(mwkPerUnitRaw)))
+  const unitLabel = String(d.unitLabel || '').trim() || undefined
+  const imageUrl = String(d.imageUrl || '').trim() || undefined
+
   return {
     key,
     name,
@@ -199,6 +213,9 @@ function parseProduct(raw: unknown): DigitalProductPriceConfig | null {
     fixedMwkPrice: isSub ? fixedMwkPrice : fixedMwkPrice || null,
     // Never leave undefined for Firestore writes — omit via sanitize instead.
     usdAmounts: isSub ? [] : usdAmounts?.length ? usdAmounts : [],
+    mwkPerUnit: isSub ? null : mwkPerUnit,
+    unitLabel: isSub ? undefined : unitLabel,
+    imageUrl,
     active: d.active === false ? false : true,
   }
 }
@@ -230,7 +247,16 @@ function productForFirestore(p: DigitalProductPriceConfig): Record<string, unkno
       : []
     out.usdAmounts = amounts
     out.fixedMwkPrice = p.fixedMwkPrice == null ? null : Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
+    if (p.mwkPerUnit != null && Number(p.mwkPerUnit) > 0) {
+      out.mwkPerUnit = Math.max(1, Math.round(Number(p.mwkPerUnit)))
+    } else {
+      out.mwkPerUnit = null
+    }
+    const unitLabel = (p.unitLabel || '').trim()
+    if (unitLabel) out.unitLabel = unitLabel
   }
+  const imageUrl = (p.imageUrl || '').trim()
+  if (imageUrl) out.imageUrl = imageUrl
   return out
 }
 
@@ -322,4 +348,71 @@ export async function saveDigitalServicesConfig(input: {
   })
 
   return getDigitalServicesConfig()
+}
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+])
+
+function imageExt(contentType: string, fileName: string): string {
+  const fromName = (fileName.split('.').pop() || '').toLowerCase()
+  if (
+    fromName === 'png' ||
+    fromName === 'webp' ||
+    fromName === 'gif' ||
+    fromName === 'jpg' ||
+    fromName === 'jpeg'
+  ) {
+    return fromName === 'jpeg' ? 'jpg' : fromName
+  }
+  if (contentType.includes('png')) return 'png'
+  if (contentType.includes('webp')) return 'webp'
+  if (contentType.includes('gif')) return 'gif'
+  return 'jpg'
+}
+
+/** Upload a product picture for custom gift / crypto cards. */
+export async function uploadDigitalProductImage(file: File): Promise<string> {
+  const { randomUUID } = await import('crypto')
+  const { getAdminStorage, getAdminStorageBucket } = await import(
+    '@/lib/firebase-admin'
+  )
+
+  if (file.size <= 0) throw new Error('Empty file')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('Image must be 8MB or smaller')
+
+  const contentType = (file.type || 'application/octet-stream').toLowerCase()
+  if (!contentType.startsWith('image/')) {
+    throw new Error('Only image files are allowed')
+  }
+  if (
+    ALLOWED_IMAGE_TYPES.size > 0 &&
+    !ALLOWED_IMAGE_TYPES.has(contentType) &&
+    contentType !== 'image/jpg'
+  ) {
+    throw new Error('Use JPEG, PNG, WebP, or GIF')
+  }
+
+  const ext = imageExt(contentType, file.name)
+  const objectPath = `digital_products/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const bucket = getAdminStorage().bucket(getAdminStorageBucket())
+  const token = randomUUID()
+
+  await bucket.file(objectPath).save(buffer, {
+    resumable: false,
+    metadata: {
+      contentType,
+      metadata: {
+        firebaseStorageDownloadTokens: token,
+      },
+    },
+  })
+
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`
 }

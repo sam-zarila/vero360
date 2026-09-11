@@ -56,17 +56,32 @@ function RewardsAdminInner() {
   const [filter, setFilter] = useState<'all' | 'with_coins' | 'withdrawable'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [cashOutEnabled, setCashOutEnabled] = useState(true)
+  const [earningEnabled, setEarningEnabled] = useState(true)
+  const [configBusy, setConfigBusy] = useState(false)
+  const [configUpdatedAt, setConfigUpdatedAt] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await adminFetch('/api/admin/rewards', { cache: 'no-store' })
+      const [res, cfgRes] = await Promise.all([
+        adminFetch('/api/admin/rewards', { cache: 'no-store' }),
+        adminFetch('/api/admin/rewards/config', { cache: 'no-store' }),
+      ])
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load Vero Coins')
       setRows(data.rows || [])
       setSummary(data.summary || EMPTY_SUMMARY)
       setRulesNote(typeof data.rules?.note === 'string' ? data.rules.note : '')
+
+      const cfgData = await cfgRes.json().catch(() => ({}))
+      if (cfgRes.ok && cfgData.config) {
+        setCashOutEnabled(cfgData.config.cashOutEnabled !== false)
+        setEarningEnabled(cfgData.config.earningEnabled !== false)
+        setConfigUpdatedAt(cfgData.config.updatedAt || null)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load Vero Coins')
     } finally {
@@ -77,6 +92,42 @@ function RewardsAdminInner() {
   useEffect(() => {
     void load()
   }, [load])
+
+  async function saveFinanceSwitch(patch: {
+    cashOutEnabled?: boolean
+    earningEnabled?: boolean
+  }) {
+    setConfigBusy(true)
+    setError('')
+    setNotice('')
+    const prevCash = cashOutEnabled
+    const prevEarn = earningEnabled
+    if (patch.cashOutEnabled !== undefined) setCashOutEnabled(patch.cashOutEnabled)
+    if (patch.earningEnabled !== undefined) setEarningEnabled(patch.earningEnabled)
+    try {
+      const res = await adminFetch('/api/admin/rewards/config', {
+        method: 'PUT',
+        body: JSON.stringify({
+          cashOutEnabled: patch.cashOutEnabled ?? cashOutEnabled,
+          earningEnabled: patch.earningEnabled ?? earningEnabled,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not update switch')
+      if (data.config) {
+        setCashOutEnabled(data.config.cashOutEnabled !== false)
+        setEarningEnabled(data.config.earningEnabled !== false)
+        setConfigUpdatedAt(data.config.updatedAt || null)
+      }
+      setNotice(data.message || 'Saved.')
+    } catch (err) {
+      setCashOutEnabled(prevCash)
+      setEarningEnabled(prevEarn)
+      setError(err instanceof Error ? err.message : 'Could not update switch')
+    } finally {
+      setConfigBusy(false)
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -152,6 +203,105 @@ function RewardsAdminInner() {
         >
           {rulesNote}
         </p>
+      ) : null}
+
+      <div
+        style={{
+          marginBottom: 18,
+          padding: 18,
+          borderRadius: 16,
+          border: cashOutEnabled ? '1px solid #BBF7D0' : '1px solid #FECACA',
+          background: cashOutEnabled ? '#F0FDF4' : '#FEF2F2',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 14,
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ maxWidth: 640 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#111827' }}>
+              Finance / cash-out switch
+            </h2>
+            <p style={{ margin: '6px 0 0', fontSize: 13.5, color: '#4B5563', lineHeight: 1.5 }}>
+              Temporarily pause Vero Coin cash-outs when the app is paying out too much.
+              Users keep their coins but cannot redeem to wallet until you turn it back on.
+            </p>
+            {configUpdatedAt ? (
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#6B7280' }}>
+                Last changed {new Date(configUpdatedAt).toLocaleString()}
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            disabled={configBusy || loading}
+            onClick={() => void saveFinanceSwitch({ cashOutEnabled: !cashOutEnabled })}
+            style={{
+              border: 'none',
+              borderRadius: 12,
+              padding: '14px 18px',
+              fontWeight: 900,
+              fontSize: 14,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              background: cashOutEnabled ? '#DC2626' : '#16A34A',
+              color: '#fff',
+              minWidth: 220,
+            }}
+          >
+            {configBusy
+              ? 'Updating…'
+              : cashOutEnabled
+                ? 'Pause cash-outs now'
+                : 'Turn cash-outs back ON'}
+          </button>
+        </div>
+        <div
+          style={{
+            marginTop: 14,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 16,
+            alignItems: 'center',
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 800,
+              color: cashOutEnabled ? '#166534' : '#991B1B',
+            }}
+          >
+            Cash-outs: {cashOutEnabled ? 'ON' : 'PAUSED'}
+          </span>
+          <label
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 700,
+              color: '#374151',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={earningEnabled}
+              disabled={configBusy}
+              onChange={e => void saveFinanceSwitch({ earningEnabled: e.target.checked })}
+            />
+            Allow earning / spins
+          </label>
+        </div>
+      </div>
+
+      {notice ? (
+        <p style={{ color: '#047857', fontWeight: 700, marginBottom: 12 }}>{notice}</p>
       ) : null}
 
       {error ? (

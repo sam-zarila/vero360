@@ -316,6 +316,7 @@ function digitalCategoryLabel(category: string): string {
   if (c === 'streaming' || c === 'subscription') return 'Subscription'
   if (c === 'gaming') return 'Gaming'
   if (c === 'gift_cards') return 'Gift card'
+  if (c === 'crypto') return 'Crypto / FX'
   return 'Digital'
 }
 
@@ -335,18 +336,25 @@ export async function listPublicDigitalServices(
       .map(p => {
         const isSub =
           p.category === 'streaming' || p.category === 'subscription'
+        const unitRate =
+          typeof p.mwkPerUnit === 'number' && p.mwkPerUnit > 0
+            ? p.mwkPerUnit
+            : rate
         const fixed =
           typeof p.fixedMwkPrice === 'number' && p.fixedMwkPrice > 0
             ? Math.round(p.fixedMwkPrice)
             : null
         const fromUsd =
           Array.isArray(p.usdAmounts) && p.usdAmounts.length > 0
-            ? Math.round(Number(p.usdAmounts[0]) * rate)
+            ? Math.round(Number(p.usdAmounts[0]) * unitRate)
             : null
         const price = isSub ? fixed : fixed ?? fromUsd
+        const unit = (p.unitLabel || '').trim()
         const amounts =
           Array.isArray(p.usdAmounts) && p.usdAmounts.length
-            ? `From $${p.usdAmounts[0]}`
+            ? unit
+              ? `From ${p.usdAmounts[0]} ${unit}`
+              : `From $${p.usdAmounts[0]}`
             : null
         const metaParts = [
           digitalCategoryLabel(p.category),
@@ -357,7 +365,7 @@ export async function listPublicDigitalServices(
         return {
           id: p.key,
           title: p.name,
-          image: digitalBrandImage(p.key),
+          image: digitalBrandImage(p.key, p.imageUrl),
           price,
           location: null,
           meta: metaParts.join(' · ') || null,

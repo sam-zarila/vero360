@@ -18,6 +18,7 @@ export type DigitalServicePublicDetail = {
   fixedMwkPrice: number | null
   usdAmounts: number[]
   usdToMwkRate: number
+  unitLabel?: string | null
   isFixedPrice: boolean
 }
 
@@ -89,6 +90,10 @@ export default function DigitalServiceView({
   const [phone, setPhone] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  const unit = (product.unitLabel || '').trim() || 'USD'
+  const formatUnit = (n: number) =>
+    unit === 'USD' ? `$${n}` : `${n} ${unit}`
 
   const amountMwk = useMemo(() => {
     if (product.isFixedPrice && product.fixedMwkPrice) {
@@ -284,7 +289,7 @@ export default function DigitalServiceView({
                           fontFamily: 'inherit',
                         }}
                       >
-                        ${usd}
+                        {formatUnit(usd)}
                       </button>
                     )
                   })}
@@ -292,7 +297,7 @@ export default function DigitalServiceView({
                 <input
                   style={input}
                   inputMode="decimal"
-                  placeholder="Or enter custom USD (1–500)"
+                  placeholder={`Or enter custom ${unit} amount`}
                   value={customUsd}
                   onChange={e => setCustomUsd(e.target.value)}
                 />
@@ -304,7 +309,7 @@ export default function DigitalServiceView({
                     fontWeight: 700,
                   }}
                 >
-                  ≈ {formatMwk(amountMwk)} at {formatMwk(product.usdToMwkRate)} / USD
+                  ≈ {formatMwk(amountMwk)} at {formatMwk(product.usdToMwkRate)} / {unit}
                 </div>
               </div>
             ) : (

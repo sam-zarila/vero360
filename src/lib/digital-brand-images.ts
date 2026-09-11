@@ -18,7 +18,12 @@ export const DIGITAL_BRAND_IMAGES: Record<string, string> = {
   eneba: '/brands/eneba.svg',
 }
 
-export function digitalBrandImage(key: string): string | null {
+export function digitalBrandImage(
+  key: string,
+  imageUrl?: string | null,
+): string | null {
+  const custom = (imageUrl || '').trim()
+  if (custom) return custom
   return DIGITAL_BRAND_IMAGES[key] || null
 }
 
@@ -26,13 +31,20 @@ export function formatDigitalPriceLabel(opts: {
   fixedMwkPrice?: number | null
   usdAmounts?: number[]
   usdToMwkRate: number
+  mwkPerUnit?: number | null
+  unitLabel?: string | null
   isSubscription: boolean
 }): {
   priceLabel: string | null
   amountsLabel: string | null
   rateLabel: string | null
 } {
-  const rate = Math.max(1, opts.usdToMwkRate || 4700)
+  const unit = (opts.unitLabel || '').trim() || 'USD'
+  const perUnit =
+    opts.mwkPerUnit != null && opts.mwkPerUnit > 0
+      ? opts.mwkPerUnit
+      : Math.max(1, opts.usdToMwkRate || 4700)
+
   if (opts.isSubscription && opts.fixedMwkPrice && opts.fixedMwkPrice > 0) {
     return {
       priceLabel: formatMwk(opts.fixedMwkPrice),
@@ -51,10 +63,13 @@ export function formatDigitalPriceLabel(opts: {
     }
     return { priceLabel: null, amountsLabel: null, rateLabel: null }
   }
-  const fromMwk = Math.round(amounts[0] * rate)
+  const fromMwk = Math.round(amounts[0] * perUnit)
+  const amountText = amounts
+    .map(a => (unit === 'USD' ? `$${a}` : `${a} ${unit}`))
+    .join(', ')
   return {
     priceLabel: `From ${formatMwk(fromMwk)}`,
-    amountsLabel: `USD options: ${amounts.map(a => `$${a}`).join(', ')}`,
-    rateLabel: `Approx. MWK at ${formatMwk(rate)} per USD`,
+    amountsLabel: `Options: ${amountText}`,
+    rateLabel: `MWK ${perUnit.toLocaleString()} per ${unit}`,
   }
 }
