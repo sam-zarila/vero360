@@ -184,8 +184,8 @@ export default function DigitalServiceView({
           >
             <div
               style={{
-                width: 72,
-                height: 72,
+                width: product.image?.endsWith('.svg') ? 96 : 72,
+                height: product.image?.endsWith('.svg') ? 60 : 72,
                 borderRadius: 16,
                 overflow: 'hidden',
                 background: 'linear-gradient(145deg, #FFF7ED, #FFEDD5)',
@@ -200,7 +200,13 @@ export default function DigitalServiceView({
                 <img
                   src={product.image}
                   alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: product.image.endsWith('.svg') ? 'cover' : 'contain',
+                    padding: product.image.endsWith('.svg') ? 0 : 8,
+                    boxSizing: 'border-box',
+                  }}
                 />
               ) : (
                 <span style={{ fontWeight: 900, color: '#EA580C', fontSize: 22 }}>
