@@ -210,7 +210,8 @@ function productForFirestore(p: DigitalProductPriceConfig): Record<string, unkno
     key: p.key,
     name: p.name,
     category: p.category || 'gift_cards',
-    active: p.active !== false,
+    // Always write a real boolean so the app can hide out-of-stock items.
+    active: p.active === false ? false : true,
   }
   const subtitle = (p.subtitle || '').trim()
   if (subtitle) out.subtitle = subtitle
@@ -300,17 +301,20 @@ export async function saveDigitalServicesConfig(input: {
   }
 
   const merged = mergeWithDefaults({ usdToMwkRate: rate, products })
+  const firestoreProducts = merged.products.map(productForFirestore)
+  const disabledProductKeys = firestoreProducts
+    .filter((p) => p.active === false)
+    .map((p) => String(p.key))
 
-  await getAdminDb().doc(DIGITAL_SERVICES_CONFIG_DOC).set(
-    {
-      usdToMwkRate: merged.usdToMwkRate,
-      products: merged.products.map(productForFirestore),
-      updatedAt: FieldValue.serverTimestamp(),
-      updatedByEmail: (input.updatedByEmail || '').trim() || null,
-      source: 'admin_panel',
-    },
-    { merge: true },
-  )
+  // Full replace of pricing doc fields (not merge) so inactive flags always stick.
+  await getAdminDb().doc(DIGITAL_SERVICES_CONFIG_DOC).set({
+    usdToMwkRate: merged.usdToMwkRate,
+    products: firestoreProducts,
+    disabledProductKeys,
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedByEmail: (input.updatedByEmail || '').trim() || null,
+    source: 'admin_panel',
+  })
 
   return getDigitalServicesConfig()
 }
