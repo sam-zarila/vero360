@@ -1,0 +1,8 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#003791"/><stop offset="100%" stop-color="#001E4D"/></linearGradient></defs>
+  <rect width="640" height="400" rx="28" fill="url(#g)"/>
+  <text x="56" y="160" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="64" font-weight="900">PS</text>
+  <text x="56" y="230" fill="#ffffff" font-family="Arial, sans-serif" font-size="34" font-weight="700">PlayStation</text>
+  <text x="56" y="290" fill="#66D3FA" font-family="Arial, sans-serif" font-size="22" font-weight="700">PSN Wallet</text>
+  <text x="56" y="340" fill="#ffffff" fill-opacity=".65" font-family="Arial, sans-serif" font-size="18">Gift card</text>
+</svg>

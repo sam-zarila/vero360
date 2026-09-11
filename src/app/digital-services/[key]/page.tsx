@@ -4,15 +4,9 @@ import DigitalServiceView, {
   formatDigitalPriceLabel,
 } from '@/app/components/open-listing/DigitalServiceView'
 import { getDigitalServicesConfig } from '@/lib/digital-services-config'
+import { digitalBrandImage } from '@/lib/digital-brand-images'
 
 type Props = { params: Promise<{ key: string }> }
-
-const BRAND_IMAGES: Record<string, string> = {
-  spotify: '/brands/spotify.jpg',
-  apple_music: '/brands/apple_music.png',
-  netflix: '/brands/netflix.png',
-  chatgpt_plus: '/brands/chatgpt.png',
-}
 
 function categoryLabel(category: string): string {
   const c = category.trim().toLowerCase()
@@ -59,7 +53,7 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
         subtitle: product.subtitle || null,
         categoryLabel: categoryLabel(product.category),
         brandTag: product.brandTag || null,
-        image: BRAND_IMAGES[product.key] || null,
+        image: digitalBrandImage(product.key),
         priceLabel: labels.priceLabel,
         amountsLabel: labels.amountsLabel,
         rateLabel: labels.rateLabel,

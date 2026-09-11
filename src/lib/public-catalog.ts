@@ -26,6 +26,7 @@ import {
   resolveVeroMediaUrl,
   veroEndpoint,
 } from '@/lib/vero-api'
+import { digitalBrandImage } from '@/lib/digital-brand-images'
 
 export type PublicCatalogCard = {
   id: string
@@ -293,13 +294,6 @@ export async function listPublicTenderCards(limit = 500): Promise<PublicCatalogC
   }
 }
 
-const DIGITAL_BRAND_IMAGES: Record<string, string> = {
-  spotify: '/brands/spotify.jpg',
-  apple_music: '/brands/apple_music.png',
-  netflix: '/brands/netflix.png',
-  chatgpt_plus: '/brands/chatgpt.png',
-}
-
 function digitalCategoryLabel(category: string): string {
   const c = category.trim().toLowerCase()
   if (c === 'streaming' || c === 'subscription') return 'Subscription'
@@ -346,7 +340,7 @@ export async function listPublicDigitalServices(
         return {
           id: p.key,
           title: p.name,
-          image: DIGITAL_BRAND_IMAGES[p.key] || null,
+          image: digitalBrandImage(p.key),
           price,
           location: null,
           meta: metaParts.join(' · ') || null,

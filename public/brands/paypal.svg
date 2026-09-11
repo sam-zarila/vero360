@@ -1,0 +1,9 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#003087"/><stop offset="100%" stop-color="#009CDE"/></linearGradient></defs>
+  <rect width="640" height="400" rx="28" fill="url(#g)"/>
+  <circle cx="480" cy="300" r="120" fill="#ffffff" fill-opacity=".08"/>
+  <text x="56" y="150" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="54" font-weight="900">PayPal</text>
+  <text x="56" y="205" fill="#ffffff" fill-opacity=".9" font-family="Arial, sans-serif" font-size="26" font-weight="600">Balance top-up</text>
+  <rect x="56" y="250" width="220" height="56" rx="28" fill="#ffffff"/>
+  <text x="90" y="286" fill="#003087" font-family="Arial, sans-serif" font-size="22" font-weight="800">Gift Card</text>
+</svg>

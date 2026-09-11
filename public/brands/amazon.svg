@@ -1,0 +1,8 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#232F3E"/><stop offset="100%" stop-color="#131A22"/></linearGradient></defs>
+  <rect width="640" height="400" rx="28" fill="url(#g)"/>
+  <text x="56" y="165" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="58" font-weight="900">amazon</text>
+  <path d="M90 195 Q220 250 360 195" fill="none" stroke="#FF9900" stroke-width="10" stroke-linecap="round"/>
+  <text x="56" y="280" fill="#FF9900" font-family="Arial, sans-serif" font-size="26" font-weight="700">Gift Card</text>
+  <text x="56" y="330" fill="#ffffff" fill-opacity=".65" font-family="Arial, sans-serif" font-size="18">Digital code delivery</text>
+</svg>
