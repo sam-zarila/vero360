@@ -29,7 +29,7 @@ export async function GET(request: Request) {
         coinsPerRedeem: COINS_PER_REDEEM,
         mwkPerRedeem: MWK_PER_REDEEM,
         note:
-          '1 coin = MWK 100. Users cash out in batches of 5 coins (MWK 1,000). Pending = coins not yet in a full batch.',
+          '1 coin = MWK 50. Users cash out in batches of 10 coins (MWK 500). Jackpot max MWK 10,000. Pending = coins not yet in a full batch.',
       },
     })
   } catch (err) {

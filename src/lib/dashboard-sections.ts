@@ -230,7 +230,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'rewards',
     title: 'Vero Coins',
-    desc: 'User points, coins, pending and withdrawable MWK',
+    desc: '1 coin = MWK 50 · 10 coins = MWK 500 cash-out',
     icon: 'sparkles',
     color: '#D97706',
     bg: '#FFFBEB',

@@ -5,9 +5,12 @@ import { WALLET_TX_COLLECTION } from '@/lib/finance'
 export const VERO_REWARDS_COLLECTION = 'vero_rewards'
 
 /** Mirror of Flutter `VeroRewardsService` cash-out rules. */
-export const COINS_PER_REDEEM = 5
-export const MWK_PER_COIN = 100
-export const MWK_PER_REDEEM = COINS_PER_REDEEM * MWK_PER_COIN // 1,000
+export const COINS_PER_REDEEM = 10
+export const MWK_PER_COIN = 50
+export const MWK_PER_REDEEM = COINS_PER_REDEEM * MWK_PER_COIN // 500
+/** Jackpot ceiling (coins) — MWK 10,000 / MWK 50. */
+export const MAX_SPIN_COINS = 200
+export const MAX_SPIN_MWK = MAX_SPIN_COINS * MWK_PER_COIN // 10,000
 
 export type RewardsUserRow = {
   uid: string
@@ -19,13 +22,13 @@ export type RewardsUserRow = {
   availableSpins: number
   visitPointsThisWeek: number
   visitCountToday: number
-  /** Coins that can be cashed out now (multiples of 5). */
+  /** Coins that can be cashed out now (multiples of 10). */
   withdrawableCoins: number
   /** MWK user can redeem now. */
   withdrawableMwk: number
-  /** Coins waiting for the next full 5-coin batch. */
+  /** Coins waiting for the next full 10-coin batch. */
   pendingCoins: number
-  /** Notional liability if every coin were valued at MWK 100. */
+  /** Notional liability if every coin were valued at MWK 50. */
   notionalMwk: number
   lastRedeemAt: string | null
   lastRedeemMwk: number
@@ -44,9 +47,9 @@ export type RewardsSummary = {
   totalSpinsAvailable: number
   /** Full cash-out batches ready now (MWK). */
   totalWithdrawableMwk: number
-  /** Coins not yet in a redeemable batch of 5. */
+  /** Coins not yet in a redeemable batch of 10. */
   totalPendingCoins: number
-  /** All outstanding coins × MWK 100 (liability ceiling). */
+  /** All outstanding coins × MWK 50 (liability ceiling). */
   totalNotionalMwk: number
   /** Sum of lastRedeemMwk on docs (partial — prefer paidOutMwk). */
   totalLastRedeemMwk: number

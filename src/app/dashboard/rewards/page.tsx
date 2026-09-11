@@ -9,7 +9,12 @@ import {
 } from 'react'
 import { adminFetch } from '@/lib/panel-client-auth'
 import { formatDateTime, formatMwk } from '@/lib/vero-api'
-import type { RewardsSummary, RewardsUserRow } from '@/lib/rewards-admin'
+import {
+  COINS_PER_REDEEM,
+  MWK_PER_COIN,
+  type RewardsSummary,
+  type RewardsUserRow,
+} from '@/lib/rewards-admin'
 import {
   DashboardBackLink,
   DashboardPageHeader,
@@ -97,12 +102,12 @@ function RewardsAdminInner() {
     {
       label: 'Withdrawable now',
       value: formatMwk(summary.totalWithdrawableMwk),
-      sub: 'Full 5-coin batches ready to cash out',
+      sub: `Full ${COINS_PER_REDEEM}-coin batches ready to cash out`,
     },
     {
       label: 'Pending (not redeemable yet)',
       value: `${summary.totalPendingCoins.toLocaleString()} coins`,
-      sub: `Remainder under 5 · ${formatMwk(summary.totalPendingCoins * 100)}`,
+      sub: `Remainder under ${COINS_PER_REDEEM} · ${formatMwk(summary.totalPendingCoins * MWK_PER_COIN)}`,
     },
     {
       label: 'Already paid to wallets',
@@ -294,7 +299,7 @@ function RewardsAdminInner() {
                 <td style={td}>
                   {r.pendingCoins}{' '}
                   <span style={{ color: '#9CA3AF' }}>
-                    ({formatMwk(r.pendingCoins * 100)})
+                    ({formatMwk(r.pendingCoins * MWK_PER_COIN)})
                   </span>
                 </td>
                 <td style={td}>{formatMwk(r.notionalMwk)}</td>
