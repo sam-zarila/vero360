@@ -88,14 +88,15 @@ export function DigitalServicesPricingPanel() {
     void load()
   }, [load])
 
-  const save = async () => {
+  const save = async (overrideProducts?: DraftProduct[]) => {
     setSaving(true)
     setError('')
     setNotice('')
     try {
+      const list = overrideProducts ?? products
       const payload = {
         usdToMwkRate: Number(rate),
-        products: products.map(fromDraft),
+        products: list.map(fromDraft),
       }
       const res = await adminFetch('/api/admin/digital-services/pricing', {
         method: 'PUT',
@@ -114,8 +115,10 @@ export function DigitalServicesPricingPanel() {
         setUpdatedAt(config.updatedAt || null)
         setUpdatedBy(config.updatedByEmail || null)
       }
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed')
+      return false
     } finally {
       setSaving(false)
     }
@@ -125,6 +128,49 @@ export function DigitalServicesPricingPanel() {
     setProducts((prev) =>
       prev.map((p) => (p.key === key ? { ...p, ...patch } : p)),
     )
+  }
+
+  /** Toggle stock / visibility in the app — saves immediately. */
+  const toggleActive = async (key: string, active: boolean) => {
+    const next = products.map((p) =>
+      p.key === key ? { ...p, active } : p,
+    )
+    setProducts(next)
+    const name = next.find((p) => p.key === key)?.name || key
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch('/api/admin/digital-services/pricing', {
+        method: 'PUT',
+        body: JSON.stringify({
+          usdToMwkRate: Number(rate),
+          products: next.map(fromDraft),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not update stock')
+      const config = data.config as DigitalServicesConfig
+      if (config) {
+        setRate(config.usdToMwkRate)
+        setProducts((config.products || []).map(toDraft))
+        setUpdatedAt(config.updatedAt || null)
+        setUpdatedBy(config.updatedByEmail || null)
+      }
+      setNotice(
+        active
+          ? `${name} is active in the app again.`
+          : `${name} deactivated — hidden in the app (out of stock).`,
+      )
+    } catch (err) {
+      // Revert checkbox if save failed
+      setProducts((prev) =>
+        prev.map((p) => (p.key === key ? { ...p, active: !active } : p)),
+      )
+      setError(err instanceof Error ? err.message : 'Could not update stock')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const subs = products.filter(
@@ -158,8 +204,9 @@ export function DigitalServicesPricingPanel() {
             Prices & USD → MWK rate
           </h2>
           <p style={{ margin: '6px 0 0', color: 'var(--muted)', fontSize: 13.5 }}>
-            Changes apply in the Vero360 app without a code release. Users pick
-            them up on next open / refresh.
+            Uncheck <strong>Active</strong> when you are out of stock — that product
+            hides in the Vero360 app immediately. Check it again when stock returns.
+            Price edits still need <strong>Save prices</strong>.
           </p>
           {(updatedAt || updatedBy) && (
             <p style={{ margin: '6px 0 0', color: '#9A3412', fontSize: 12.5, fontWeight: 600 }}>
@@ -216,18 +263,26 @@ export function DigitalServicesPricingPanel() {
           <h3 style={sectionTitle}>Subscriptions (fixed MWK)</h3>
           <div style={{ display: 'grid', gap: 10 }}>
             {subs.map((p) => (
-              <article key={p.key} style={cardStyle}>
+              <article
+                key={p.key}
+                style={{
+                  ...cardStyle,
+                  opacity: p.active === false ? 0.72 : 1,
+                  borderColor: p.active === false ? '#FECACA' : '#E5E7EB',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                   <strong style={{ fontSize: 14 }}>{p.name}</strong>
-                  <label style={checkLabel}>
+                  <label style={checkLabel} title="When off, this product is hidden in the app">
                     <input
                       type="checkbox"
                       checked={p.active !== false}
+                      disabled={saving}
                       onChange={(e) =>
-                        updateProduct(p.key, { active: e.target.checked })
+                        void toggleActive(p.key, e.target.checked)
                       }
                     />
-                    Active
+                    {p.active !== false ? 'Active in app' : 'Out of stock'}
                   </label>
                 </div>
                 <div style={rowStyle}>
@@ -271,7 +326,14 @@ export function DigitalServicesPricingPanel() {
           <h3 style={sectionTitle}>Gift cards & gaming (USD amounts)</h3>
           <div style={{ display: 'grid', gap: 10 }}>
             {gifts.map((p) => (
-              <article key={p.key} style={cardStyle}>
+              <article
+                key={p.key}
+                style={{
+                  ...cardStyle,
+                  opacity: p.active === false ? 0.72 : 1,
+                  borderColor: p.active === false ? '#FECACA' : '#E5E7EB',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                   <strong style={{ fontSize: 14 }}>
                     {p.name}{' '}
@@ -279,15 +341,16 @@ export function DigitalServicesPricingPanel() {
                       · {p.category}
                     </span>
                   </strong>
-                  <label style={checkLabel}>
+                  <label style={checkLabel} title="When off, this product is hidden in the app">
                     <input
                       type="checkbox"
                       checked={p.active !== false}
+                      disabled={saving}
                       onChange={(e) =>
-                        updateProduct(p.key, { active: e.target.checked })
+                        void toggleActive(p.key, e.target.checked)
                       }
                     />
-                    Active
+                    {p.active !== false ? 'Active in app' : 'Out of stock'}
                   </label>
                 </div>
                 <div style={rowStyle}>
