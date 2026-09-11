@@ -14,7 +14,7 @@ import {
   MWK_PER_COIN,
   type RewardsSummary,
   type RewardsUserRow,
-} from '@/lib/rewards-admin'
+} from '@/lib/rewards-rules'
 import {
   DashboardBackLink,
   DashboardPageHeader,
