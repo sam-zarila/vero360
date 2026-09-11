@@ -48,7 +48,7 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
     fixedMwkPrice: isSub
       ? Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
       : null,
-    usdAmounts: isSub ? undefined : amounts,
+    usdAmounts: isSub ? [] : amounts,
     active: p.active !== false,
   }
 }

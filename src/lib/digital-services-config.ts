@@ -197,9 +197,40 @@ function parseProduct(raw: unknown): DigitalProductPriceConfig | null {
     category,
     brandTag: String(d.brandTag || '').trim() || undefined,
     fixedMwkPrice: isSub ? fixedMwkPrice : fixedMwkPrice || null,
-    usdAmounts: isSub ? undefined : usdAmounts?.length ? usdAmounts : undefined,
+    // Never leave undefined for Firestore writes — omit via sanitize instead.
+    usdAmounts: isSub ? [] : usdAmounts?.length ? usdAmounts : [],
     active: d.active === false ? false : true,
   }
+}
+
+/** Firestore rejects `undefined` field values — only write defined keys. */
+function productForFirestore(p: DigitalProductPriceConfig): Record<string, unknown> {
+  const isSub = p.category === 'streaming' || p.category === 'subscription'
+  const out: Record<string, unknown> = {
+    key: p.key,
+    name: p.name,
+    category: p.category || 'gift_cards',
+    active: p.active !== false,
+  }
+  const subtitle = (p.subtitle || '').trim()
+  if (subtitle) out.subtitle = subtitle
+  const brandTag = (p.brandTag || '').trim()
+  if (brandTag) out.brandTag = brandTag
+
+  if (isSub) {
+    out.fixedMwkPrice =
+      p.fixedMwkPrice == null ? null : Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
+  } else {
+    const amounts = Array.isArray(p.usdAmounts)
+      ? p.usdAmounts
+          .map((x) => num(x))
+          .filter((x) => x > 0)
+          .map((x) => Math.round(x * 100) / 100)
+      : []
+    out.usdAmounts = amounts
+    out.fixedMwkPrice = p.fixedMwkPrice == null ? null : Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
+  }
+  return out
 }
 
 function mergeWithDefaults(saved: Partial<DigitalServicesConfig> | null): DigitalServicesConfig {
@@ -273,7 +304,7 @@ export async function saveDigitalServicesConfig(input: {
   await getAdminDb().doc(DIGITAL_SERVICES_CONFIG_DOC).set(
     {
       usdToMwkRate: merged.usdToMwkRate,
-      products: merged.products,
+      products: merged.products.map(productForFirestore),
       updatedAt: FieldValue.serverTimestamp(),
       updatedByEmail: (input.updatedByEmail || '').trim() || null,
       source: 'admin_panel',
