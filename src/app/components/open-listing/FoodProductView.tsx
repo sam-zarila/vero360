@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
 import { PLAY_STORE_URL, APP_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import OpenAppBridge from '@/app/components/open-listing/OpenAppBridge'
 import ShareListingButton from '@/app/components/open-listing/ShareListingButton'
 import type { ListingModel } from '@/lib/open-listing-types'
 import { listingPriceLabel } from '@/lib/open-listing-utils'
@@ -73,9 +74,11 @@ export default function FoodProductView({ listing }: { listing: ListingModel }) 
   const kitchenAvatar =
     sellerImage &&
     (sellerImage.startsWith('http') || sellerImage.startsWith('/api/media'))
+  const webUrl = listing.webUrl || `https://vero360.app/food/${id}`
 
   return (
     <main style={page}>
+      <OpenAppBridge appHref={appHref} webUrl={webUrl} />
       <header style={top}>
         <div
           style={{

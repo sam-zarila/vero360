@@ -1,6 +1,11 @@
 import 'server-only'
 
 import type { Metadata } from 'next'
+import {
+  ANDROID_PACKAGE_ID,
+  appleAppStoreId,
+  customSchemeHref,
+} from '@/lib/app-links'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { fetchPublicFoodById } from '@/lib/food'
 import { parseFirestoreMarketplaceListing } from '@/lib/marketplace'
@@ -10,7 +15,8 @@ import type {
   ListingPageProps,
   ListingQuery,
 } from '@/lib/open-listing-types'
-import { parseStayListings } from '@/lib/stay'
+import { parseStayListings, type StayListing } from '@/lib/stay'
+import { ACCOMMODATION_ROOMS_COLLECTION } from '@/lib/stay-rooms'
 import { USERS_COLLECTION } from '@/lib/users'
 import {
   readJsonSafe,
@@ -87,10 +93,13 @@ function appPathForKind(kind: ListingKind): string {
   return 'accommodation'
 }
 
-async function fetchStayById(id: string) {
-  const n = Number(id)
-  if (!Number.isFinite(n) || n <= 0) return null
+type StayFetchResult = {
+  stay: StayListing
+  amenities: string[]
+} | null
 
+async function fetchStayByApiId(n: number): Promise<StayFetchResult> {
+  if (!Number.isFinite(n) || n <= 0) return null
   const headers = { Accept: 'application/json' }
   const urls = [veroEndpoint('accommodations', n), veroEndpoint('accommodations', 'all')]
 
@@ -109,6 +118,74 @@ async function fetchStayById(id: string) {
     }
   }
   return null
+}
+
+async function fetchStayById(id: string): Promise<StayFetchResult> {
+  const n = Number(id)
+  if (Number.isFinite(n) && n > 0) {
+    const fromApi = await fetchStayByApiId(n)
+    if (fromApi) return fromApi
+  }
+
+  // Facebook / Firestore room docs often use non-numeric ids (e.g. uid_123).
+  try {
+    const db = getAdminDb()
+    let doc = await db.collection(ACCOMMODATION_ROOMS_COLLECTION).doc(id).get()
+    if (!doc.exists) {
+      doc = await db.collection('accommodations').doc(id).get()
+    }
+    if (doc.exists) {
+      const data = (doc.data() || {}) as Record<string, unknown>
+      const apiId =
+        Number(data.accommodationId ?? data.sqlId ?? data.id ?? data.ID) ||
+        (id.includes('_') ? Number(id.split('_').pop()) : 0)
+      if (apiId > 0) {
+        const nested = await fetchStayByApiId(apiId)
+        if (nested) return nested
+      }
+      const name = str(data.name) || str(data.title) || 'Stay on Vero360'
+      const price = num(data.price ?? data.pricePerNight)
+      const image =
+        str(data.image) ||
+        str(data.imageUrl) ||
+        str(data.coverImage) ||
+        (Array.isArray(data.gallery) ? str(data.gallery[0]) : '')
+      const stay: StayListing = {
+        id: apiId > 0 ? apiId : 0,
+        name,
+        location: str(data.location) || '—',
+        description: str(data.description) || null,
+        price,
+        accommodationType: str(data.accommodationType || data.type) || 'lodge',
+        image: image || null,
+        gallery: Array.isArray(data.gallery)
+          ? data.gallery.map((x: unknown) => str(x)).filter(Boolean)
+          : [],
+        hostName: str(data.hostName || data.merchantName) || null,
+        hostEmail: null,
+        hostPhone: null,
+        hostFirebaseUid: str(data.merchantId || data.hostFirebaseUid) || null,
+        pricingPeriod: str(data.pricingPeriod || data.pricePeriod) || 'night',
+        capacity: null,
+        isAvailable: true,
+        hostelGender: null,
+        roomType: null,
+      }
+      return {
+        stay,
+        amenities: parseAmenities(data),
+      }
+    }
+  } catch (err) {
+    console.warn('Public stay Firestore fetch failed:', err)
+  }
+
+  return null
+}
+
+function num(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  return Number(String(value ?? '').replace(/,/g, '')) || 0
 }
 
 async function fetchMarketplaceProductById(id: string) {
@@ -333,6 +410,15 @@ export async function listingFromProps(
           ? 'Order this dish in the Vero360 app, or view it here.'
           : 'Open this stay in the Vero360 app, or view it here.')
 
+  const webPath =
+    kind === 'shop'
+      ? `/shop/${id}`
+      : kind === 'marketplace'
+        ? `/marketplace/${id}`
+        : kind === 'food'
+          ? `/food/${id}`
+          : `/accommodation/${id}`
+
   return {
     kind,
     id,
@@ -348,7 +434,8 @@ export async function listingFromProps(
     hostName,
     sellerImage,
     shopId,
-    appHref: `vero360://${appPath}${id ? `/${id}` : ''}`,
+    appHref: customSchemeHref(`${appPath}${id ? `/${id}` : ''}`),
+    webUrl: `https://vero360.app${webPath}`,
     title,
     subtitle,
   }
@@ -377,6 +464,22 @@ export async function listingMetadata(
   }
 
   const canonical = `https://vero360.app${path}`
+  const storeId = appleAppStoreId()
+
+  const other: Record<string, string> = {
+    // Facebook App Links — prefer native app when installed.
+    'al:android:url': listing.appHref,
+    'al:android:package': ANDROID_PACKAGE_ID,
+    'al:android:app_name': 'Vero360',
+    'al:ios:url': listing.appHref,
+    'al:ios:app_name': 'Vero360',
+    'al:web:url': canonical,
+    'al:web:should_fallback': 'true',
+  }
+  if (storeId) {
+    other['al:ios:app_store_id'] = storeId
+    other['apple-itunes-app'] = `app-id=${storeId}, app-argument=${canonical}`
+  }
 
   return {
     title: `${listing.title} · Vero360`,
@@ -398,6 +501,7 @@ export async function listingMetadata(
       description: listing.subtitle,
       images: imageUrl ? [imageUrl] : undefined,
     },
+    other,
   }
 }
 

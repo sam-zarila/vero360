@@ -18,6 +18,8 @@ export type ListingModel = {
   sellerImage: string
   shopId: string
   appHref: string
+  /** Canonical https URL for this listing (website fallback). */
+  webUrl: string
   title: string
   subtitle: string
 }

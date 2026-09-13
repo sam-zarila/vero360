@@ -1,18 +1,20 @@
+import { appleAppId } from '@/lib/app-links'
+
 export function GET() {
   const body = {
     applinks: {
       apps: [],
       details: [
         {
-          appID: 'TEAMID.com.vero265.app',
+          appID: appleAppId(),
           paths: [
             '/accommodation/*',
             '/stay/*',
             '/stays/*',
             '/marketplace/*',
-          '/shop/*',
-          '/merchant/*',
-          '/food/*',
+            '/shop/*',
+            '/merchant/*',
+            '/food/*',
           ],
         },
       ],
@@ -21,6 +23,7 @@ export function GET() {
 
   return new Response(JSON.stringify(body), {
     headers: {
+      // Apple requires application/json (no charset) for AASA.
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=3600',
     },
