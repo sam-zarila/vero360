@@ -200,7 +200,7 @@ export default function ServicesSection() {
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Vero Courier</h3>
               <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>
                 Same-day parcel delivery in <strong>Lilongwe only</strong>. Blantyre, Zomba, and
-                other cities are expanding soon — order courier from the app when you&apos;re in
+                other cities are expanding soon. Order courier from the app when you&apos;re in
                 Lilongwe.
               </p>
             </div>

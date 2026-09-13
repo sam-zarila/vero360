@@ -186,7 +186,7 @@ export async function fetchPpdaTenders(limit = 60): Promise<MalawiTenderDraft[]>
         source: 'ppda' as const,
         externalId: hashId('ppda', key),
         title: title.slice(0, 240),
-        description: [title, buyer, reference].filter(Boolean).join(' — '),
+        description: [title, buyer, reference].filter(Boolean).join(' · '),
         buyer,
         reference,
         location: 'Malawi',

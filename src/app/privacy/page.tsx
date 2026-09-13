@@ -86,7 +86,7 @@ export default function PrivacyPage() {
                 textDecoration: 'none',
               }}
             >
-              Read more — Privacy Policy →
+              Read more: Privacy Policy →
             </a>
             <a
               href="/legal/Vero360_Platform_Agreement_Policy.pdf"
@@ -102,7 +102,7 @@ export default function PrivacyPage() {
                 textDecoration: 'none',
               }}
             >
-              Read more — Platform Agreement →
+              Read more: Platform Agreement →
             </a>
           </div>
         </article>

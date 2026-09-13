@@ -205,7 +205,7 @@ export async function creditPromotionPlatformFee(promoId: string): Promise<{
     }
 
     if (!isPromotionPaid(promo)) {
-      throw new Error('Promotion is still pending payment — amount not credited yet')
+      throw new Error('Promotion is still pending payment. Amount not credited yet')
     }
 
     const walletRef = db.collection(WALLETS_COLLECTION).doc(PLATFORM_WALLET_DOC_ID)

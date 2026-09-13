@@ -81,7 +81,7 @@ export default function HomeCrawlAdminPage() {
       setTitle('')
       setSubtitle('')
       setLinkType('none')
-      setNotice('Crawl message posted — it will scroll on the app home under search.')
+      setNotice('Crawl message posted. It will scroll on the app home under search.')
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Create failed')
@@ -179,7 +179,7 @@ export default function HomeCrawlAdminPage() {
         }}
       >
         Keep titles short (one line). They scroll continuously right → left on the homepage.
-        Use <strong>App update</strong> below when you publish a new store version — users on older
+        Use <strong>App update</strong> below when you publish a new store version. Users on older
         builds see an Update button.
       </div>
 

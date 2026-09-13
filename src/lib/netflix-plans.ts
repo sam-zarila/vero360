@@ -17,14 +17,14 @@ function features(spec: Omit<NetflixPlanSpec, 'featureLines'>): NetflixPlanSpec 
   return {
     ...spec,
     featureLines: [
-      `Video and sound quality — ${spec.qualityLabel}`,
-      `Resolution — ${spec.resolution}`,
+      `Video and sound quality: ${spec.qualityLabel}`,
+      `Resolution: ${spec.resolution}`,
       ...(spec.spatialAudio
-        ? ['Spatial audio (immersive sound) — included']
+        ? ['Spatial audio (immersive sound): included']
         : []),
-      `Supported devices — ${spec.supportedDevices}`,
-      `Devices your household can watch at the same time — ${spec.simultaneousStreams}`,
-      `Download devices — ${spec.downloadDevices}`,
+      `Supported devices: ${spec.supportedDevices}`,
+      `Devices your household can watch at the same time: ${spec.simultaneousStreams}`,
+      `Download devices: ${spec.downloadDevices}`,
     ],
   }
 }

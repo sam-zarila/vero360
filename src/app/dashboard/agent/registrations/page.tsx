@@ -90,7 +90,7 @@ export default function AgentMyRegistrationsPage() {
       <DashboardPageHeader
         sectionId="agents"
         title="My registrations"
-        description="People you onboarded — email, phone, registered date, verification, and location."
+        description="People you onboarded: email, phone, registered date, verification, and location."
         actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
       />
 

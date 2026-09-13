@@ -49,7 +49,7 @@ export default function ImportantFilesPage() {
   return (
     <AdminPasswordGate
       title="Important files"
-      description="Enter your admin panel password to open Important files. Use the same password you sign in with at /panel — same lock as Finance."
+      description="Enter your admin panel password to open Important files. Use the same password you sign in with at /panel (same lock as Finance)."
     >
       <ImportantFilesInner />
     </AdminPasswordGate>
@@ -342,7 +342,7 @@ function ImportantFilesInner() {
         <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
           {folders.length === 0 && files.length === 0 ? (
             <p style={{ color: '#6B7280' }}>
-              {folderId ? 'This folder is empty.' : 'No folders yet — create one above.'}
+              {folderId ? 'This folder is empty.' : 'No folders yet. Create one above.'}
             </p>
           ) : null}
 

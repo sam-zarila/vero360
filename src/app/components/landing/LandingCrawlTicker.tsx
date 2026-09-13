@@ -27,7 +27,7 @@ function shortTitle(text: string) {
       break
     }
   }
-  const dash = t.indexOf(' — ')
+  const dash = t.indexOf(' · ')
   if (dash > 0) t = t.slice(0, dash).trim()
   return t
 }
@@ -85,7 +85,7 @@ export function buildLandingCrawlDisplay(
     const subtitle = (item.subtitle || '').trim()
     others.push({
       id: item.id,
-      text: subtitle ? `${title} — ${subtitle}` : title,
+      text: subtitle ? `${title} · ${subtitle}` : title,
       linkType: type || 'none',
       actionLabel: actionLabelFor(type),
     })

@@ -80,7 +80,7 @@ function digitalMessage(fresh: string[], items: PaidItem[]) {
   if (fresh.length === 1) {
     const latest = items.find(d => d.id === fresh[0])
     if (latest) {
-      return `Digital service paid — ${latest.title} · ${formatMwk(latest.amountMwk)}${
+      return `Digital service paid · ${latest.title} · ${formatMwk(latest.amountMwk)}${
         latest.buyerName ? ` · ${latest.buyerName}` : ''
       }`
     }
@@ -93,7 +93,7 @@ function adsMessage(fresh: string[], items: PaidItem[]) {
   if (fresh.length === 1) {
     const latest = items.find(a => a.id === fresh[0])
     if (latest) {
-      return `Homepage ad paid — ${latest.title} · ${formatMwk(latest.amountMwk)}${
+      return `Homepage ad paid · ${latest.title} · ${formatMwk(latest.amountMwk)}${
         latest.buyerName ? ` · ${latest.buyerName}` : ''
       }`
     }

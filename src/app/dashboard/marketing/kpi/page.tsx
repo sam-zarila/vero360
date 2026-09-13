@@ -130,7 +130,7 @@ export default function MarketingKpiPage() {
 
   const description = isMarketer
     ? isDemo
-      ? `Demo scoring on your posted tasks only — not official until ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
+      ? `Demo scoring on your posted tasks only. Not official until ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
       : `Live scoring from ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
     : isDemo
       ? `Demo preview with sample marketers. Demo vanishes on ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`
@@ -211,12 +211,12 @@ export default function MarketingKpiPage() {
         >
           {isMarketer ? (
             <>
-              This is a <strong>demo</strong> — only your own tasks are scored here. Not official
+              This is a <strong>demo</strong>. Only your own tasks are scored here. Not official
               until {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.
             </>
           ) : (
             <>
-              This is a <strong>demo</strong> — sample marketers only, not real data. Switches to
+              This is a <strong>demo</strong>. Sample marketers only, not real data. Switches to
               Live on {formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.
             </>
           )}

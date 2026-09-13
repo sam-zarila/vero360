@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       from: process.env.RESEND_FROM_EMAIL || 'Vero360 <onboarding@resend.dev>',
       to: [to],
-      subject: `[Vero Ride] ${subjectLabel} — ${nameLabel}`,
+      subject: `[Vero Ride] ${subjectLabel} · ${nameLabel}`,
       text,
     }),
   })

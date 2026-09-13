@@ -64,9 +64,9 @@ function formatNewItemMessage(
   if (fresh.length === 1) {
     const item = fresh[0]
     if (item.type === 'vehicle') {
-      return `New vehicle documents from ${item.name} — review proposal`
+      return `New vehicle documents from ${item.name}. Review proposal`
     }
-    return `New driver application from ${item.name} — review documents`
+    return `New driver application from ${item.name}. Review documents`
   }
   const drivers = fresh.filter(i => i.type === 'driver').length
   const vehicles = fresh.filter(i => i.type === 'vehicle').length

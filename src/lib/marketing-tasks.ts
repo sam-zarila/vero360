@@ -322,13 +322,13 @@ export function buildMarketingProgress(
   const score = Math.round(Math.min(100, consistency + volume))
 
   let rating: MarketingProgressSummary['rating'] = 'poor'
-  let ratingLabel = 'Poor performance — post more consistently'
+  let ratingLabel = 'Poor performance. Post more consistently'
   if (score >= 65) {
     rating = 'good'
-    ratingLabel = 'Working well — strong posting activity'
+    ratingLabel = 'Working well. Strong posting activity'
   } else if (score >= 35) {
     rating = 'ok'
-    ratingLabel = 'Okay — keep posting to improve'
+    ratingLabel = 'Okay. Keep posting to improve'
   }
 
   return {

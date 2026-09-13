@@ -164,7 +164,7 @@ export default function AdminPushPage() {
       >
         This sends immediately via Firebase to <strong>all app users</strong> subscribed to
         topic <code>vero360_all</code> (and <code>vero360_engagement</code> for older
-        installs). Use it for important updates — not for spam.
+        installs). Use it for important updates, not for spam.
       </div>
 
       <form

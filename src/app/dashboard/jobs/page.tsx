@@ -146,8 +146,8 @@ export default function JobsAdminPage() {
           )
           .join(' · ')
         const message = opts?.quiet
-          ? `Auto-sync — fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, skipped ${data.skipped ?? 0}.`
-          : `Malawi sync done — fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, skipped ${data.skipped ?? 0}${
+          ? `Auto-sync: fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, skipped ${data.skipped ?? 0}.`
+          : `Malawi sync done: fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, skipped ${data.skipped ?? 0}${
               parts ? ` (${parts})` : ''
             }. Sources: onlinejobmw.com, jobsearchmalawi.com, mwayi.mw.`
         setNotice(message)
@@ -258,8 +258,8 @@ export default function JobsAdminPage() {
 
       setNotice(
         isEdit
-          ? `Updated “${position}” — visible in the app when Active`
-          : `Posted “${position}” — pull to refresh Jobs in the app`,
+          ? `Updated “${position}”. Visible in the app when Active`
+          : `Posted “${position}”. Pull to refresh Jobs in the app`,
       )
       closeForm()
       await load()

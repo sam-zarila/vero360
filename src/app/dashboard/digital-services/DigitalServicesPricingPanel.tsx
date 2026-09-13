@@ -202,7 +202,7 @@ export function DigitalServicesPricingPanel() {
       setNotice(
         active
           ? `${name} is active in the app again.`
-          : `${name} deactivated — hidden in the app (out of stock).`,
+          : `${name} deactivated. Hidden in the app (out of stock).`,
       )
     } catch (err) {
       setProducts((prev) =>
@@ -351,7 +351,7 @@ export function DigitalServicesPricingPanel() {
             Prices & USD → MWK rate
           </h2>
           <p style={{ margin: '6px 0 0', color: 'var(--muted)', fontSize: 13.5 }}>
-            Uncheck <strong>Active</strong> when you are out of stock — that product
+            Uncheck <strong>Active</strong> when you are out of stock. That product
             hides in the Vero360 app immediately. Check it again when stock returns.
             Price edits still need <strong>Save prices</strong>.
           </p>
@@ -797,7 +797,7 @@ export function DigitalServicesPricingPanel() {
                   </label>
                   {p.key === 'netflix' ? (
                     <p style={{ margin: 0, fontSize: 12.5, color: '#6B7280', alignSelf: 'end', paddingBottom: 10 }}>
-                      Hub only — prices are on the Netflix plans above.
+                      Hub only. Prices are on the Netflix plans above.
                     </p>
                   ) : (
                     <label style={fieldLabel}>

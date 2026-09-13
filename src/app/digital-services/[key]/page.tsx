@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { key } = await params
     if (isNetflixHubKey(key)) {
       return {
-        title: 'Netflix — Choose your plan · Vero360',
+        title: 'Netflix · Choose your plan · Vero360',
         description:
           'Pick Mobile, Basic, Standard, or Premium Netflix on Vero360.',
       }

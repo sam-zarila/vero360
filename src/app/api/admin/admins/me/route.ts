@@ -42,7 +42,7 @@ export async function GET(request: Request) {
             ? 'No admins yet. Create the first super admin from /dashboard/admins.'
             : !hasBearer
               ? 'Sign-in token missing.'
-              : 'Not an active panel admin. If Firebase login worked, Netlify FIREBASE_SERVICE_ACCOUNT_JSON is probably missing or invalid — token cannot be verified.',
+              : 'Not an active panel admin. If Firebase login worked, Netlify FIREBASE_SERVICE_ACCOUNT_JSON is probably missing or invalid. Token cannot be verified.',
         },
         { status: needsBootstrap || !hasBearer ? 200 : 401 },
       )

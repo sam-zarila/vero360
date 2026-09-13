@@ -432,7 +432,7 @@ export default function MarketingTasksPage() {
                 required
                 value={form.taskTitle}
                 onChange={e => setForm(f => ({ ...f, taskTitle: e.target.value }))}
-                placeholder="Instagram carousel — Vero Ride…"
+                placeholder="Instagram carousel: Vero Ride…"
                 style={input}
               />
             </Field>

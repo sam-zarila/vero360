@@ -235,7 +235,7 @@ export default function GetStartedVideosAdminPage() {
                     <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '6px 0 0' }}>
                       {video.url
                         ? `${videoKindLabel(video.kind)}${video.fileName ? ` · ${video.fileName}` : ''}`
-                        : 'No video yet — placeholder on /get-started'}
+                        : 'No video yet. Placeholder on /get-started'}
                     </p>
                   </div>
                   {video.url && (

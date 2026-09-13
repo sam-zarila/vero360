@@ -7,7 +7,7 @@ const steps = [
         </svg>
       ),
       title: 'Browse & search',
-      desc: 'Browse marketplace, food, stays, jobs, and tenders in one place — then open Vero360 to continue.',
+      desc: 'Browse marketplace, food, stays, jobs, and tenders in one place, then open Vero360 to continue.',
       color: '#FFF7ED',
     },
     {
@@ -65,7 +65,7 @@ const steps = [
               Get started in 4 simple steps
             </h2>
             <p style={{ fontSize: 17, color: 'var(--text-3)', maxWidth: 480, margin: '0 auto' }}>
-              Everything you need lives in one app — shop, ride, order food, book a stay, find jobs, and more.
+              Everything you need lives in one app: shop, ride, order food, book a stay, find jobs, and more.
             </p>
           </div>
   

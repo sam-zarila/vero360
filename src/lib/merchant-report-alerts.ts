@@ -98,8 +98,8 @@ export function useMerchantReportAlerts(enabled = true): MerchantReportAlertStat
           const merchant = data.latest?.merchantName?.trim() || 'a merchant'
           const message =
             fresh.length === 1
-              ? `New report against ${merchant} — review in Merchant reports`
-              : `${fresh.length} new merchant reports — review in Merchant reports`
+              ? `New report against ${merchant}. Review in Merchant reports`
+              : `${fresh.length} new merchant reports. Review in Merchant reports`
           setToast(message)
           notifyBrowser('New merchant report', message)
           writeKnownIds([...new Set([...known, ...openIds])])

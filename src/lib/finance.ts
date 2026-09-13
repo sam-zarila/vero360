@@ -191,7 +191,7 @@ export function escrowReleaseExplanation(e: EscrowRow): {
 
   if (status === 'refunded') {
     return {
-      title: 'Refunded — not paid to merchant',
+      title: 'Refunded. Not paid to merchant',
       detail: e.refundReason
         ? `Hold voided for refund. ${e.refundReason}`
         : 'Escrow voided so the merchant is not paid.',
@@ -204,7 +204,7 @@ export function escrowReleaseExplanation(e: EscrowRow): {
       e.releaseKind === 'buyer_confirm' ||
       (e.releaseKind || '').includes('buyer')
     return {
-      title: byBuyer ? 'Released — buyer confirmed receipt' : 'Released to merchant wallet',
+      title: byBuyer ? 'Released. Buyer confirmed receipt' : 'Released to merchant wallet',
       detail: byBuyer
         ? `Buyer confirmed parcel receipt${e.releasedAt ? ` on ${formatDateTime(e.releasedAt)}` : ''}. Merchant credited.`
         : `Funds credited to merchant${e.releasedAt ? ` on ${formatDateTime(e.releasedAt)}` : ''}.`,
@@ -214,7 +214,7 @@ export function escrowReleaseExplanation(e: EscrowRow): {
 
   if (status === 'auto_released') {
     return {
-      title: 'Released — automatic after hold window',
+      title: 'Released. Automatic after hold window',
       detail: `Buyer did not confirm in time. Auto-released after the escrow window${
         e.releasedAt ? ` on ${formatDateTime(e.releasedAt)}` : ''
       }.`,
@@ -225,7 +225,7 @@ export function escrowReleaseExplanation(e: EscrowRow): {
   // held
   if (!e.deliveredAt) {
     return {
-      title: 'Held — waiting for shipment',
+      title: 'Held. Waiting for shipment',
       detail:
         'Payment is held until the merchant uploads shipment proof / marks delivered. Then the buyer can confirm or auto-release starts.',
       tone: 'held',
@@ -237,8 +237,8 @@ export function escrowReleaseExplanation(e: EscrowRow): {
     const overdue = !Number.isNaN(due.getTime()) && due.getTime() <= Date.now()
     return {
       title: overdue
-        ? 'Held — auto-release due (awaiting process)'
-        : 'Held — awaiting buyer confirm or auto-release',
+        ? 'Held. Auto-release due (awaiting process)'
+        : 'Held. Awaiting buyer confirm or auto-release',
       detail: overdue
         ? `Shipment recorded. Auto-release was due ${formatDateTime(e.releaseDueAt)}. Buyer can still confirm; otherwise Cloud Function / app refresh releases funds.`
         : `Shipment recorded. Buyer can confirm receipt to release now, or funds auto-release on ${formatDateTime(e.releaseDueAt)} (7-day window after ship).`,
@@ -247,8 +247,8 @@ export function escrowReleaseExplanation(e: EscrowRow): {
   }
 
   return {
-    title: 'Held — shipped, window not set',
-    detail: 'Delivered timestamp present but release due date missing — may need repair.',
+    title: 'Held. Shipped, window not set',
+    detail: 'Delivered timestamp present but release due date missing. May need repair.',
     tone: 'waiting',
   }
 }

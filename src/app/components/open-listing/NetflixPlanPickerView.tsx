@@ -132,7 +132,7 @@ export default function NetflixPlanPickerView({
             </div>
           </div>
           <p style={{ margin: '0 0 16px', color: 'var(--text-3)', fontSize: 14, lineHeight: 1.45 }}>
-            Netflix — pick the plan that fits you. Change anytime.
+            Netflix. Pick the plan that fits you. Change anytime.
           </p>
 
           <div style={{ display: 'grid', gap: 12 }}>

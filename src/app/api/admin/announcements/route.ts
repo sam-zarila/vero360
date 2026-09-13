@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const contentType = request.headers.get('content-type') || ''
     if (!contentType.includes('multipart/form-data')) {
       return NextResponse.json(
-        { error: 'Upload a photo file — image links are not allowed' },
+        { error: 'Upload a photo file. Image links are not allowed' },
         { status: 400 },
       )
     }

@@ -19,7 +19,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Vero360 — One app. Everything.",
+  title: "Vero360 · One app. Everything.",
   description: "Vero360 is Malawi's all-in-one super app for marketplace, Vero Ride, courier, food, accommodation, jobs, and more.",
   icons: { icon: '/logo.png', apple: '/logo.png' },
 };

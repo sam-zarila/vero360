@@ -120,7 +120,7 @@ export async function POST(request: Request) {
           {
             error:
               outcome.results.map(r => r.error).filter(Boolean).join('; ') ||
-              'FCM send failed — check Firebase Messaging credentials',
+              'FCM send failed. Check Firebase Messaging credentials',
             id,
             fcmResults: outcome.results,
           },
@@ -194,7 +194,7 @@ export async function POST(request: Request) {
         {
           error:
             outcome.results.map(r => r.error).filter(Boolean).join('; ') ||
-            'Saved, but FCM send failed — use Retry on the queued item',
+            'Saved, but FCM send failed. Use Retry on the queued item',
           id: ref.id,
           sent: false,
           fcmResults: outcome.results,

@@ -165,7 +165,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'important-files',
     title: 'Important files',
-    desc: 'Folders for key documents — name, usage, and uploads',
+    desc: 'Folders for key documents: name, usage, and uploads',
     icon: 'file-text',
     color: '#0369A1',
     bg: '#F0F9FF',

@@ -55,7 +55,7 @@ export async function GET(request: Request) {
         firebaseAdmin: status,
         hint: status.ok
           ? 'Firebase Admin OK. Sign in at /panel with admin@vero360.app'
-          : 'Admin init failed — fix FIREBASE_PRIVATE_KEY (keep \\n escapes, wrap in quotes).',
+          : 'Admin init failed. Fix FIREBASE_PRIVATE_KEY (keep \\n escapes, wrap in quotes).',
       },
       { status: status.ok ? 200 : 503 },
     )

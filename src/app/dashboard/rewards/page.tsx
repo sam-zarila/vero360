@@ -182,7 +182,7 @@ function RewardsAdminInner() {
       <DashboardBackLink />
       <DashboardPageHeader
         sectionId="rewards"
-        description="Track points and coins users earn in the app — outstanding liability, pending vs withdrawable, and wallet cash-outs."
+        description="Track points and coins users earn in the app: outstanding liability, pending vs withdrawable, and wallet cash-outs."
         actions={
           <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
         }

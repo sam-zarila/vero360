@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import DashboardShell from './DashboardShell'
 
 export const metadata: Metadata = {
-  title: 'Admin Dashboard — Vero360',
+  title: 'Admin Dashboard · Vero360',
   description: 'Vero360 admin dashboard',
   robots: { index: false, follow: false },
 }

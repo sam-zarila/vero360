@@ -32,7 +32,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       }
       if (body.imageUrl !== undefined) {
         return NextResponse.json(
-          { error: 'Upload a photo file — image links are not allowed' },
+          { error: 'Upload a photo file. Image links are not allowed' },
           { status: 400 },
         )
       }

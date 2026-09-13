@@ -90,7 +90,7 @@ export async function syncMalawiJobs(opts?: {
       const body = await readJsonSafe(res)
       if (!res.ok) {
         errors.push(
-          `${draft.source}:${draft.externalId} — ${apiErrorMessage(body, 'create failed')}`,
+          `${draft.source}:${draft.externalId}: ${apiErrorMessage(body, 'create failed')}`,
         )
         continue
       }
@@ -99,7 +99,7 @@ export async function syncMalawiJobs(opts?: {
       knownLinks.add(link)
     } catch (err) {
       errors.push(
-        `${draft.source}:${draft.externalId} — ${
+        `${draft.source}:${draft.externalId}: ${
           err instanceof Error ? err.message : 'create failed'
         }`,
       )

@@ -431,8 +431,8 @@ export default function MerchantReportsAdminPage() {
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>
                           {(item.proofUrls.length || (item.proofUrl ? 1 : 0))} screenshot
-                          {(item.proofUrls.length || (item.proofUrl ? 1 : 0)) === 1 ? '' : 's'} —
-                          click to enlarge
+                          {(item.proofUrls.length || (item.proofUrl ? 1 : 0)) === 1 ? '' : 's'}.
+                          Click to enlarge
                         </div>
                       </div>
                     ) : null}

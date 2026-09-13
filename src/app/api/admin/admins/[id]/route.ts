@@ -136,9 +136,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
       admin,
       message:
         action === 'suspend'
-          ? 'Admin suspended — cannot sign in to the panel.'
+          ? 'Admin suspended. Cannot sign in to the panel.'
           : action === 'activate'
-            ? 'Admin activated — can sign in again.'
+            ? 'Admin activated. Can sign in again.'
             : `Role updated to ${
                 admin.role === 'super_admin'
                   ? 'super admin'

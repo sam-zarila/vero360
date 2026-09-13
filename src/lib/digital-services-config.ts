@@ -54,7 +54,7 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
     {
       key: 'netflix',
       name: 'Netflix',
-      subtitle: 'Choose a plan (hub — not sold alone)',
+      subtitle: 'Choose a plan (hub only, not sold alone)',
       category: 'streaming',
       brandTag: 'Netflix',
       fixedMwkPrice: null,

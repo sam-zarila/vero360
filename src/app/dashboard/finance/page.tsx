@@ -324,7 +324,7 @@ function FinanceAdminInner() {
               </option>
               {payoutMerchants.map(m => (
                 <option key={m.key} value={m.key}>
-                  {m.name} — {m.count} · {formatMwk(m.total)}
+                  {m.name} · {m.count} · {formatMwk(m.total)}
                 </option>
               ))}
             </select>
@@ -493,7 +493,7 @@ function Overview({
     {
       label: 'Auto-released (7-day window)',
       value: formatMwk(summary.escrowAutoReleasedAmount),
-      sub: 'No buyer confirm — released after hold window',
+      sub: 'No buyer confirm. Released after hold window',
       go: 'escrow',
     },
     {
@@ -795,7 +795,7 @@ function EscrowCard({ row }: { row: EscrowRow }) {
         <div style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.45 }}>{explain.detail}</div>
         {row.refundAfterRelease ? (
           <div style={{ marginTop: 6, fontSize: 12, color: '#B91C1C', fontWeight: 600 }}>
-            Refund requested after release — ops clawback may be needed.
+            Refund requested after release. Ops clawback may be needed.
           </div>
         ) : null}
       </div>

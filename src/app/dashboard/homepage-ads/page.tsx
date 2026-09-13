@@ -196,7 +196,7 @@ export default function HomepageAdsAdminPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Could not publish advert')
-      setNotice(`Published “${form.title.trim()}” — live on the app homepage (no payment).`)
+      setNotice(`Published “${form.title.trim()}”. Live on the app homepage (no payment).`)
       setForm(emptyForm())
       setFormOpen(false)
       await load()
@@ -242,7 +242,7 @@ export default function HomepageAdsAdminPage() {
     const ad = items.find(a => a.id === id)
     const ok = await confirm({
       title: 'Credit full amount to platform?',
-      message: `Credit the full ${formatMwk(ad?.amountPaid || 0)} from “${ad?.title || id}” into the platform wallet (100% — no percentage cut).`,
+      message: `Credit the full ${formatMwk(ad?.amountPaid || 0)} from “${ad?.title || id}” into the platform wallet (100%, no percentage cut).`,
       confirmLabel: 'Credit full amount',
       cancelLabel: 'Cancel',
     })
@@ -275,7 +275,7 @@ export default function HomepageAdsAdminPage() {
     }
     const ok = await confirm({
       title: 'Credit all pending advert payments?',
-      message: `This credits the full package price for ${counts.feePending} advert(s) into the platform wallet (100% each — no percentage cut).`,
+      message: `This credits the full package price for ${counts.feePending} advert(s) into the platform wallet (100% each, no percentage cut).`,
       confirmLabel: 'Credit all full amounts',
       cancelLabel: 'Cancel',
     })
@@ -336,7 +336,7 @@ export default function HomepageAdsAdminPage() {
 
       <DashboardPageHeader
         sectionId="homepage-ads"
-        description="Post complimentary homepage slider ads from the panel (no PayChangu) — or manage paid ads from the app."
+        description="Post complimentary homepage slider ads from the panel (no PayChangu), or manage paid ads from the app."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
@@ -396,7 +396,7 @@ export default function HomepageAdsAdminPage() {
             <div>
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Post free homepage ad</h2>
               <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 13 }}>
-                Goes live immediately in the app slider — no payment required.
+                Goes live immediately in the app slider. No payment required.
               </p>
             </div>
             <button type="button" onClick={() => setFormOpen(false)} style={outlineBtn}>

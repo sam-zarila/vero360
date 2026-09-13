@@ -49,7 +49,7 @@ export async function PUT(request: Request) {
       config,
       message: config.cashOutEnabled
         ? 'Vero Coin cash-outs are ON.'
-        : 'Vero Coin cash-outs are PAUSED — users cannot redeem to wallet.',
+        : 'Vero Coin cash-outs are PAUSED. Users cannot redeem to wallet.',
     })
   } catch (err) {
     const auth = authErrorResponse(err)

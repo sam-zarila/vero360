@@ -358,7 +358,7 @@ export async function creditDigitalOrderPlatformFee(orderId: string): Promise<{
     if (amount <= 0) throw new Error('Order has no paid amount to credit')
 
     if (order.status === 'pending_payment') {
-      throw new Error('Order is still pending payment — amount not credited yet')
+      throw new Error('Order is still pending payment. Amount not credited yet')
     }
 
     const walletRef = db.collection(WALLETS_COLLECTION).doc(PLATFORM_WALLET_DOC_ID)

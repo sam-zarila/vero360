@@ -116,7 +116,7 @@ export default function PromotionsPricingPanel() {
       )}
 
       <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
-        Price presets (MWK) — comma or new-line separated
+        Price presets (MWK): comma or new-line separated
       </label>
       <textarea
         value={presetsText}

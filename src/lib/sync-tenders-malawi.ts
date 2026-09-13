@@ -46,7 +46,7 @@ export async function syncMalawiTenders(opts?: {
       else skipped += 1
     } catch (err) {
       errors.push(
-        `${draft.source}:${draft.externalId} — ${
+        `${draft.source}:${draft.externalId}: ${
           err instanceof Error ? err.message : 'upsert failed'
         }`,
       )

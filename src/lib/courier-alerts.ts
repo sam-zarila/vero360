@@ -111,8 +111,8 @@ export function useCourierAlerts(enabled = true): CourierAlertState {
               : ''
           const message =
             fresh.length === 1
-              ? `New Vero Courier order #${fresh[0]}${est} — Accept or Reject`
-              : `${fresh.length} new Vero Courier orders — Accept or Reject`
+              ? `New Vero Courier order #${fresh[0]}${est}. Accept or Reject`
+              : `${fresh.length} new Vero Courier orders. Accept or Reject`
           setToast(message)
           notifyBrowser('New Vero Courier order', message)
           writeKnownIds([...new Set([...known, ...pendingIds])])

@@ -124,7 +124,7 @@ export default function AgentOnboardPage() {
               geoLng: String(lng),
               geoLabel: f.geoLabel === 'Resolving address…' ? '' : f.geoLabel,
             }))
-            setError(data.error || 'Could not resolve street name — enter location manually')
+            setError(data.error || 'Could not resolve street name. Enter location manually')
           }
         } catch {
           setForm(f => ({
@@ -133,13 +133,13 @@ export default function AgentOnboardPage() {
             geoLng: String(lng),
             geoLabel: f.geoLabel === 'Resolving address…' ? '' : f.geoLabel,
           }))
-          setError('Could not resolve street name — enter location manually')
+          setError('Could not resolve street name. Enter location manually')
         } finally {
           setGeoBusy(false)
         }
       },
       () => {
-        setError('Could not read location — enter it manually')
+        setError('Could not read location. Enter it manually')
         setGeoBusy(false)
       },
       { enableHighAccuracy: true, timeout: 12000 },
@@ -559,7 +559,7 @@ export default function AgentOnboardPage() {
                 if (on) setForm(f => ({ ...f, password: '', confirmPassword: '' }))
               }}
             />
-            User not present — generate temporary password
+            User not present. Generate temporary password
           </label>
 
           {!useTempPassword ? (

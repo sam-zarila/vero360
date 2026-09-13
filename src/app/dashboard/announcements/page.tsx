@@ -123,7 +123,7 @@ export default function AnnouncementsAdminPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!editingId && !form.imageFile) {
-      setError('Upload a photo — image links are not allowed')
+      setError('Upload a photo. Image links are not allowed')
       return
     }
     if (editingId && !form.imageFile && !form.existingImageUrl) {

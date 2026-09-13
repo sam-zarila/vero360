@@ -226,7 +226,7 @@ export default function DigitalServicesAdminPage() {
     }
     const ok = await confirm({
       title: 'Credit all pending digital payments?',
-      message: `This credits the full paid amount for ${counts.feePending} order(s) into the platform wallet (100% each — no percentage cut).`,
+      message: `This credits the full paid amount for ${counts.feePending} order(s) into the platform wallet (100% each, no percentage cut).`,
       confirmLabel: 'Credit all full amounts',
       cancelLabel: 'Cancel',
     })
@@ -294,7 +294,7 @@ export default function DigitalServicesAdminPage() {
 
       <DashboardPageHeader
         sectionId="digital-services"
-        description="Spotify, Apple Music, Netflix plans (Mobile / Basic / Standard / Premium), ChatGPT, and gift cards — set monthly prices here; revenue goes to the Vero platform wallet."
+        description="Spotify, Apple Music, Netflix plans (Mobile / Basic / Standard / Premium), ChatGPT, and gift cards. Set monthly prices here; revenue goes to the Vero platform wallet."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button

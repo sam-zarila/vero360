@@ -235,7 +235,7 @@ export default function GetStartedClient({ videos }: { videos: GetStartedVideosM
                 </svg>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500 }}>
-                Tutorial video for {activeRole.title.toLowerCase()}s — coming soon
+                Tutorial video for {activeRole.title.toLowerCase()}s. Coming soon
               </p>
             </div>
             )}

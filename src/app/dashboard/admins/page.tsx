@@ -301,7 +301,7 @@ export default function AdminsPage() {
         </p>
       ) : bootstrap ? (
         <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#B45309' }}>
-          No admins yet — create the first <strong>super admin</strong> below, then sign in at{' '}
+          No admins yet. Create the first <strong>super admin</strong> below, then sign in at{' '}
           <Link href="/panel">/panel</Link>.
         </p>
       ) : needsSignIn ? (

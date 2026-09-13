@@ -91,7 +91,7 @@ export default function AdminAgentRegistrationsInner() {
       <DashboardPageHeader
         sectionId="agents"
         title="Agent registrations"
-        description="All users onboarded by agents — email, phone, registered date, verified status, and geo."
+        description="All users onboarded by agents: email, phone, registered date, verified status, and geo."
         actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
       />
 

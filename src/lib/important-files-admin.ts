@@ -180,12 +180,12 @@ export async function deleteImportantFolder(id: string): Promise<void> {
 
   const childFolders = await listImportantFolders(id)
   if (childFolders.length > 0) {
-    throw new Error('Folder is not empty — delete subfolders first')
+    throw new Error('Folder is not empty. Delete subfolders first')
   }
 
   const files = await listImportantFiles(id)
   if (files.length > 0) {
-    throw new Error('Folder is not empty — delete files first')
+    throw new Error('Folder is not empty. Delete files first')
   }
 
   await getAdminDb().collection(IMPORTANT_FOLDERS_COLLECTION).doc(id).delete()

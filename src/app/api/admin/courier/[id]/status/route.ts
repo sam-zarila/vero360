@@ -73,7 +73,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
   const cancelReason =
     status === 'CANCELLED'
-      ? cancelReasonRaw.replace(/\s*\|\s*/g, ' — ').slice(0, 500)
+      ? cancelReasonRaw.replace(/\s*\|\s*/g, ' · ').slice(0, 500)
       : undefined
 
   try {
@@ -164,7 +164,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
         }
       } else {
         notifyError =
-          'Could not resolve sender Firebase UID — open the delivery in Nest/app and confirm SenderUid is saved'
+          'Could not resolve sender Firebase UID. Open the delivery in Nest/app and confirm SenderUid is saved'
       }
     } catch (err) {
       notifyError = err instanceof Error ? err.message : 'Push notification failed'

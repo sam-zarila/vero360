@@ -44,7 +44,7 @@ function PaymentReturnInner() {
         if (tries >= 8) {
           setStatus('pending')
           setMessage(
-            'We’re still waiting for PayChangu confirmation. If you paid, keep this reference and contact support — your order will update automatically.',
+            'We’re still waiting for PayChangu confirmation. If you paid, keep this reference and contact support. Your order will update automatically.',
           )
           return
         }

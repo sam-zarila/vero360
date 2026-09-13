@@ -149,7 +149,7 @@ export async function fetchJobSearchMalawi(limit = 40): Promise<MalawiJobDraft[]
     const remote = meta._remote_position === 1 || meta._remote_position === '1'
     const description =
       stripHtml(row.content?.rendered || '') ||
-      [title, company, location].filter(Boolean).join(' — ')
+      [title, company, location].filter(Boolean).join(' · ')
 
     return [
       {
@@ -199,7 +199,7 @@ export async function fetchMwayi(limit = 60): Promise<MalawiJobDraft[]> {
     const link = String(row.job_Link || '').trim() || `https://mwayi.mw/jobs?id=${id}`
     const description =
       stripHtml(row.job_Content || '') ||
-      [title, row.organization_Title, row.job_Location].filter(Boolean).join(' — ')
+      [title, row.organization_Title, row.job_Location].filter(Boolean).join(' · ')
     const photoUrl =
       row.organization_ID && row.organization_Logo
         ? `https://console.mwayi.mw/files/organizations/${row.organization_ID}/${row.organization_Logo}`

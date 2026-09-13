@@ -127,8 +127,8 @@ export default function TendersAdminPage() {
           )
           .join(' · ')
         const message = opts?.quiet
-          ? `Auto-sync — fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, updated ${data.updated ?? 0}.`
-          : `Malawi sync done — fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, updated ${data.updated ?? 0}${
+          ? `Auto-sync: fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, updated ${data.updated ?? 0}.`
+          : `Malawi sync done: fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, updated ${data.updated ?? 0}${
               parts ? ` (${parts})` : ''
             }.`
         setNotice(message)
@@ -261,7 +261,7 @@ export default function TendersAdminPage() {
       <DashboardBackLink />
       <DashboardPageHeader
         sectionId="tenders"
-        description={`Sync Malawi procurement notices from malawitenders.com, maneps.mw, and ppda.mw — auto-syncs when you open this page (every ${AUTO_SYNC_INTERVAL_MS / (60 * 60 * 1000)}h), or post one manually.`}
+        description={`Sync Malawi procurement notices from malawitenders.com, maneps.mw, and ppda.mw. Auto-syncs when you open this page (every ${AUTO_SYNC_INTERVAL_MS / (60 * 60 * 1000)}h), or post one manually.`}
         actions={
           <>
             <button
