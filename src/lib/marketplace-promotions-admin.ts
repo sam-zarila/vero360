@@ -59,6 +59,11 @@ export function parseMarketplacePromotion(
     itemImage: str(data.itemImage),
     merchantId: str(data.merchantId),
     merchantName: str(data.merchantName),
+    vertical: str(data.vertical) || (str(data.channel).startsWith('food')
+      ? 'food'
+      : str(data.channel).startsWith('accommodation')
+        ? 'accommodation'
+        : 'marketplace'),
     planId: str(data.planId),
     channel,
     amountMwk: num(data.amountMwk ?? data.amount),
@@ -85,7 +90,7 @@ export function buildPromotionCounts(items: MarketplacePromotion[]): Marketplace
 
   for (const p of items) {
     if (p.status === 'pending_payment') pendingPayment += 1
-    if (p.channel === 'marketplace_top') {
+    if (String(p.channel || '').endsWith('_top')) {
       if (isMarketplaceBoostLive(p, now)) marketplaceActive += 1
       else if (p.status !== 'pending_payment') marketplaceExpired += 1
     } else if (p.channel === 'facebook_ads') {

@@ -15,6 +15,7 @@ import {
 import {
   isMarketplaceBoostLive,
   planLabel,
+  verticalLabel,
   type MarketplacePromotion,
   type MarketplacePromotionCounts,
 } from '@/lib/marketplace-promotions'
@@ -64,7 +65,9 @@ export default function MarketplacePromotionsAdminPage() {
 
   const filtered = useMemo(() => {
     if (tab === 'marketplace') {
-      return items.filter(p => p.channel === 'marketplace_top' && p.status !== 'pending_payment')
+      return items.filter(
+        p => String(p.channel || '').endsWith('_top') && p.status !== 'pending_payment',
+      )
     }
     if (tab === 'facebook') {
       return items.filter(p => p.channel === 'facebook_ads' && p.status !== 'pending_payment')
@@ -140,7 +143,7 @@ export default function MarketplacePromotionsAdminPage() {
           {(
             [
               ['facebook', `Facebook ads (${counts.facebookQueued + counts.facebookRunning})`],
-              ['marketplace', `Marketplace boosts (${counts.marketplaceActive})`],
+              ['marketplace', `Feed boosts (${counts.marketplaceActive})`],
               ['all', `All (${counts.all})`],
             ] as const
           ).map(([id, label]) => (
@@ -190,6 +193,8 @@ export default function MarketplacePromotionsAdminPage() {
                     ? { label: 'Pending payment', bg: '#FFF7ED', color: '#C2410C' }
                     : { label: 'Expired', bg: '#F1F5F9', color: '#475569' }
 
+              const isFeedBoost = String(promo.channel || '').endsWith('_top')
+
               return (
                 <article
                   key={promo.id}
@@ -227,6 +232,18 @@ export default function MarketplacePromotionsAdminPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                       <strong style={{ fontSize: 15 }}>{promo.itemName}</strong>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          padding: '3px 8px',
+                          borderRadius: 999,
+                          background: '#F1F5F9',
+                          color: '#334155',
+                        }}
+                      >
+                        {verticalLabel(promo.vertical)}
+                      </span>
                       <span
                         style={{
                           fontSize: 11,
@@ -275,7 +292,7 @@ export default function MarketplacePromotionsAdminPage() {
                     </div>
                   ) : (
                     <div style={{ color: '#94a3b8', fontSize: 12, textAlign: 'right' }}>
-                      {promo.channel === 'marketplace_top' ? 'Auto boost' : promo.status}
+                      {isFeedBoost ? 'Auto boost' : promo.status}
                     </div>
                   )}
                 </article>

@@ -21,6 +21,8 @@ export type MarketplacePromotion = {
   itemImage: string
   merchantId: string
   merchantName: string
+  /** marketplace | food | accommodation */
+  vertical: string
   planId: string
   channel: MarketplacePromotionChannel
   amountMwk: number
@@ -46,7 +48,7 @@ export type MarketplacePromotionCounts = {
 }
 
 export function isMarketplaceBoostLive(promo: MarketplacePromotion, now = Date.now()): boolean {
-  if (promo.channel !== 'marketplace_top') return false
+  if (!String(promo.channel || '').endsWith('_top')) return false
   if (promo.status === 'expired') return false
   if (promo.status !== 'active' && promo.status !== 'paid') return false
   if (!promo.expiresAt) return promo.status === 'active'
@@ -60,11 +62,31 @@ export function planLabel(planId: string): string {
       return '24h marketplace top'
     case 'mp_7d':
       return '1 week marketplace top'
+    case 'food_24h':
+      return '24h food top'
+    case 'food_7d':
+      return '1 week food top'
+    case 'stay_24h':
+      return '24h stay top'
+    case 'stay_7d':
+      return '1 week stay top'
     case 'fb_3d_local':
       return 'Facebook · 3 days local'
     case 'fb_7d_wider':
       return 'Facebook · 7 days wider'
     default:
       return planId || '—'
+  }
+}
+
+export function verticalLabel(vertical: string): string {
+  switch ((vertical || '').toLowerCase()) {
+    case 'food':
+      return 'Food'
+    case 'accommodation':
+    case 'stay':
+      return 'Stay'
+    default:
+      return 'Marketplace'
   }
 }
