@@ -12,8 +12,10 @@ import {
   DashboardRefreshButton,
   DashboardThumbFallback,
 } from '@/app/dashboard/DashboardChrome'
+import { useConfirm } from '../ConfirmDialog'
 import {
   isMarketplaceBoostLive,
+  isPromotionPaid,
   planLabel,
   verticalLabel,
   type MarketplacePromotion,
@@ -32,13 +34,19 @@ const emptyCounts: MarketplacePromotionCounts = {
   facebookRunning: 0,
   facebookDone: 0,
   pendingPayment: 0,
+  feeCredited: 0,
+  feePending: 0,
+  revenuePaid: 0,
+  revenueCredited: 0,
 }
 
 export default function MarketplacePromotionsAdminPage() {
+  const confirm = useConfirm()
   const [items, setItems] = useState<MarketplacePromotion[]>([])
   const [counts, setCounts] = useState<MarketplacePromotionCounts>(emptyCounts)
   const [tab, setTab] = useState<Tab>('facebook')
   const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
   const [busyId, setBusyId] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -75,6 +83,62 @@ export default function MarketplacePromotionsAdminPage() {
     return items
   }, [items, tab])
 
+  const creditOneFee = async (id: string) => {
+    setBusyId(id)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(`/api/admin/marketplace-promotions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'credit_platform_fee' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Credit failed')
+      setNotice(data.message || 'Platform fee credited')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Credit failed')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  const creditAllPending = async () => {
+    if (counts.feePending <= 0) {
+      setNotice('No pending promote fees to credit')
+      return
+    }
+    const ok = await confirm({
+      title: 'Credit all pending promote payments?',
+      message: `This credits the full package price for ${counts.feePending} promotion(s) into the Vero360 platform wallet (100% each).`,
+      confirmLabel: 'Credit all full amounts',
+      cancelLabel: 'Cancel',
+    })
+    if (!ok) return
+
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch('/api/admin/marketplace-promotions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'credit_pending_fees' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Bulk credit failed')
+      setNotice(
+        `Credited ${data.credited || 0} promote fee(s) · ${formatMwk(data.totalAmount || 0)} → platform wallet`,
+      )
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bulk credit failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const setFulfillment = async (
     id: string,
     fulfillmentStatus: 'queued' | 'running' | 'done',
@@ -109,8 +173,17 @@ export default function MarketplacePromotionsAdminPage() {
 
       <DashboardPageHeader
         sectionId="marketplace-promotions"
-        description="Marketplace top boosts and Facebook ad orders merchants bought in the app."
-        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+        description="Promote payments from Marketplace, Food, and Stay — credited to the Vero360 platform wallet."
+        actions={
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {counts.feePending > 0 ? (
+              <button type="button" onClick={() => void creditAllPending()} disabled={busy} style={primaryBtn}>
+                {busy ? 'Crediting…' : `Credit ${counts.feePending} pending`}
+              </button>
+            ) : null}
+            <DashboardRefreshButton onClick={() => void load()} disabled={loading || busy} />
+          </div>
+        }
       />
 
       {(error || notice) && (
@@ -128,6 +201,20 @@ export default function MarketplacePromotionsAdminPage() {
           {error || notice}
         </div>
       )}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+          marginBottom: 18,
+        }}
+      >
+        <Metric label="Paid promote revenue" value={formatMwk(counts.revenuePaid)} />
+        <Metric label="In platform wallet" value={formatMwk(counts.revenueCredited)} />
+        <Metric label="Fees still pending" value={String(counts.feePending)} />
+        <Metric label="Active feed boosts" value={String(counts.marketplaceActive)} />
+      </div>
 
       <section
         style={{
@@ -181,6 +268,7 @@ export default function MarketplacePromotionsAdminPage() {
             {filtered.map(promo => {
               const live = isMarketplaceBoostLive(promo)
               const fb = promo.channel === 'facebook_ads'
+              const paid = isPromotionPaid(promo)
               const tone = fb
                 ? promo.fulfillmentStatus === 'done'
                   ? { label: 'Done', bg: '#ECFDF5', color: '#166534' }
@@ -194,6 +282,7 @@ export default function MarketplacePromotionsAdminPage() {
                     : { label: 'Expired', bg: '#F1F5F9', color: '#475569' }
 
               const isFeedBoost = String(promo.channel || '').endsWith('_top')
+              const feePending = paid && promo.amountMwk > 0 && !promo.platformFeeCredited
 
               return (
                 <article
@@ -232,36 +321,19 @@ export default function MarketplacePromotionsAdminPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                       <strong style={{ fontSize: 15 }}>{promo.itemName}</strong>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 800,
-                          padding: '3px 8px',
-                          borderRadius: 999,
-                          background: '#F1F5F9',
-                          color: '#334155',
-                        }}
-                      >
-                        {verticalLabel(promo.vertical)}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 800,
-                          padding: '3px 8px',
-                          borderRadius: 999,
-                          background: tone.bg,
-                          color: tone.color,
-                        }}
-                      >
-                        {tone.label}
-                      </span>
+                      <span style={badgeStyle('#F1F5F9', '#334155')}>{verticalLabel(promo.vertical)}</span>
+                      <span style={badgeStyle(tone.bg, tone.color)}>{tone.label}</span>
+                      {promo.platformFeeCredited ? (
+                        <span style={badgeStyle('#ECFDF5', '#166534')}>In platform wallet</span>
+                      ) : feePending ? (
+                        <span style={badgeStyle('#FFF7ED', '#C2410C')}>Fee pending</span>
+                      ) : null}
                     </div>
                     <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
                       {planLabel(promo.planId)}
                       {promo.reachLabel ? ` · ${promo.reachLabel}` : ''}
                       {' · '}
-                      {formatMwk(promo.amountMwk)}
+                      <strong>{formatMwk(promo.amountMwk)}</strong>
                     </p>
                     <p style={{ margin: '2px 0 0', color: '#94a3b8', fontSize: 12 }}>
                       {promo.merchantName || promo.merchantId || 'Merchant'}
@@ -271,30 +343,44 @@ export default function MarketplacePromotionsAdminPage() {
                     </p>
                   </div>
 
-                  {fb && promo.status !== 'pending_payment' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
+                    {feePending ? (
                       <button
                         type="button"
-                        disabled={busyId === promo.id || promo.fulfillmentStatus === 'running'}
-                        onClick={() => void setFulfillment(promo.id, 'running')}
-                        style={btnStyle}
+                        disabled={busyId === promo.id || busy}
+                        onClick={() => void creditOneFee(promo.id)}
+                        style={{ ...btnStyle, background: '#FFF7ED', borderColor: '#FDBA74', color: '#C2410C' }}
                       >
-                        Mark running
+                        Credit {formatMwk(promo.amountMwk)}
                       </button>
-                      <button
-                        type="button"
-                        disabled={busyId === promo.id || promo.fulfillmentStatus === 'done'}
-                        onClick={() => void setFulfillment(promo.id, 'done')}
-                        style={{ ...btnStyle, background: '#166534', borderColor: '#166534', color: '#fff' }}
-                      >
-                        Mark done
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ color: '#94a3b8', fontSize: 12, textAlign: 'right' }}>
-                      {isFeedBoost ? 'Auto boost' : promo.status}
-                    </div>
-                  )}
+                    ) : promo.platformFeeCredited ? (
+                      <span style={{ fontSize: 11, color: '#166534', fontWeight: 700, textAlign: 'right' }}>
+                        Wallet ✓
+                      </span>
+                    ) : null}
+                    {fb && promo.status !== 'pending_payment' ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={busyId === promo.id || promo.fulfillmentStatus === 'running'}
+                          onClick={() => void setFulfillment(promo.id, 'running')}
+                          style={btnStyle}
+                        >
+                          Mark running
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === promo.id || promo.fulfillmentStatus === 'done'}
+                          onClick={() => void setFulfillment(promo.id, 'done')}
+                          style={{ ...btnStyle, background: '#166534', borderColor: '#166534', color: '#fff' }}
+                        >
+                          Mark done
+                        </button>
+                      </>
+                    ) : isFeedBoost && !feePending && !promo.platformFeeCredited ? (
+                      <span style={{ color: '#94a3b8', fontSize: 12, textAlign: 'right' }}>Auto boost</span>
+                    ) : null}
+                  </div>
                 </article>
               )
             })}
@@ -303,6 +389,34 @@ export default function MarketplacePromotionsAdminPage() {
       </section>
     </div>
   )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid var(--border)',
+        borderRadius: 14,
+        padding: '14px 16px',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 900, marginTop: 4, color: 'var(--text-1)' }}>{value}</div>
+    </div>
+  )
+}
+
+function badgeStyle(bg: string, color: string): CSSProperties {
+  return {
+    fontSize: 11,
+    fontWeight: 800,
+    padding: '3px 8px',
+    borderRadius: 999,
+    background: bg,
+    color,
+  }
 }
 
 const btnStyle: CSSProperties = {
@@ -314,4 +428,15 @@ const btnStyle: CSSProperties = {
   fontWeight: 700,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
+}
+
+const primaryBtn: CSSProperties = {
+  border: 'none',
+  background: '#F59E0B',
+  color: '#fff',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontSize: 13,
+  fontWeight: 800,
+  cursor: 'pointer',
 }

@@ -35,6 +35,9 @@ export type MarketplacePromotion = {
   createdAt: string | null
   paidAt: string | null
   expiresAt: string | null
+  platformFeeCredited: boolean
+  platformFeeTxId: string | null
+  platformFeeAmount: number
 }
 
 export type MarketplacePromotionCounts = {
@@ -45,6 +48,21 @@ export type MarketplacePromotionCounts = {
   facebookRunning: number
   facebookDone: number
   pendingPayment: number
+  feeCredited: number
+  feePending: number
+  revenuePaid: number
+  revenueCredited: number
+}
+
+export function isPromotionPaid(promo: MarketplacePromotion): boolean {
+  if (promo.status === 'pending_payment') return false
+  if (promo.paidAt) return true
+  return (
+    promo.status === 'paid' ||
+    promo.status === 'active' ||
+    promo.status === 'fulfilled' ||
+    promo.status === 'expired'
+  )
 }
 
 export function isMarketplaceBoostLive(promo: MarketplacePromotion, now = Date.now()): boolean {

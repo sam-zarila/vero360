@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
-import { updateFacebookFulfillment } from '@/lib/marketplace-promotions-admin'
+import {
+  creditPromotionPlatformFee,
+  updateFacebookFulfillment,
+} from '@/lib/marketplace-promotions-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +16,14 @@ export async function PATCH(request: Request, ctx: Ctx) {
   try {
     const { id } = await ctx.params
     const body = (await request.json().catch(() => ({}))) as {
+      action?: string
       fulfillmentStatus?: string
       adminNotes?: string
+    }
+
+    if (body.action === 'credit_platform_fee') {
+      const result = await creditPromotionPlatformFee(id)
+      return NextResponse.json({ success: true, ...result })
     }
 
     const status = (body.fulfillmentStatus || '').trim().toLowerCase()
