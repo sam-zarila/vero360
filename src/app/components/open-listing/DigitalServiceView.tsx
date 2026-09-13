@@ -20,6 +20,9 @@ export type DigitalServicePublicDetail = {
   usdToMwkRate: number
   unitLabel?: string | null
   isFixedPrice: boolean
+  /** Back link — Netflix plans return to Choose your plan. */
+  backHref?: string
+  backLabel?: string
 }
 
 const page: CSSProperties = {
@@ -164,7 +167,7 @@ export default function DigitalServiceView({
             <Logo />
           </Link>
           <Link
-            href="/browse/digital-services"
+            href={product.backHref || '/browse/digital-services'}
             style={{
               color: '#fff',
               fontWeight: 700,
@@ -172,7 +175,7 @@ export default function DigitalServiceView({
               textDecoration: 'none',
             }}
           >
-            All digital
+            {product.backLabel || 'All digital'}
           </Link>
         </div>
       </header>

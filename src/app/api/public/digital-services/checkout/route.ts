@@ -74,6 +74,12 @@ export async function POST(request: Request) {
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
+    if (product.key === 'netflix') {
+      return NextResponse.json(
+        { error: 'Choose a Netflix plan first (Mobile, Basic, Standard, or Premium).' },
+        { status: 400 },
+      )
+    }
 
     const selectedUsd =
       selectedUsdRaw === null || selectedUsdRaw === undefined || selectedUsdRaw === ''

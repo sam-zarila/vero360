@@ -24,7 +24,9 @@ export function digitalBrandImage(
 ): string | null {
   const custom = (imageUrl || '').trim()
   if (custom) return custom
-  return DIGITAL_BRAND_IMAGES[key] || null
+  const k = key.trim().toLowerCase()
+  if (k.startsWith('netflix')) return DIGITAL_BRAND_IMAGES.netflix || null
+  return DIGITAL_BRAND_IMAGES[k] || DIGITAL_BRAND_IMAGES[key] || null
 }
 
 export function formatDigitalPriceLabel(opts: {
