@@ -21,8 +21,10 @@ import {
   type MarketplacePromotion,
   type MarketplacePromotionCounts,
 } from '@/lib/marketplace-promotions'
+import PromotePackagesPricingPanel from './PromotePackagesPricingPanel'
 
 type Tab = 'marketplace' | 'facebook' | 'all'
+type ViewMode = 'orders' | 'pricing'
 
 const SECTION = DASHBOARD_SECTION_MAP['marketplace-promotions']
 
@@ -42,6 +44,7 @@ const emptyCounts: MarketplacePromotionCounts = {
 
 export default function MarketplacePromotionsAdminPage() {
   const confirm = useConfirm()
+  const [view, setView] = useState<ViewMode>('orders')
   const [items, setItems] = useState<MarketplacePromotion[]>([])
   const [counts, setCounts] = useState<MarketplacePromotionCounts>(emptyCounts)
   const [tab, setTab] = useState<Tab>('facebook')
@@ -68,8 +71,8 @@ export default function MarketplacePromotionsAdminPage() {
   }, [])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    if (view === 'orders') void load()
+  }, [load, view])
 
   const filtered = useMemo(() => {
     if (tab === 'marketplace') {
@@ -173,19 +176,57 @@ export default function MarketplacePromotionsAdminPage() {
 
       <DashboardPageHeader
         sectionId="marketplace-promotions"
-        description="Promote payments from Marketplace, Food, and Stay — credited to the Vero360 platform wallet."
+        description="Set 24h / 1 week / Facebook promote prices, and manage paid boost orders."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {counts.feePending > 0 ? (
+            <button
+              type="button"
+              onClick={() => setView('pricing')}
+              style={{
+                border: view === 'pricing' ? 'none' : '1px solid var(--border)',
+                background: view === 'pricing' ? SECTION.color : '#fff',
+                color: view === 'pricing' ? '#fff' : '#334155',
+                borderRadius: 999,
+                padding: '8px 14px',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              Set prices
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('orders')}
+              style={{
+                border: view === 'orders' ? 'none' : '1px solid var(--border)',
+                background: view === 'orders' ? SECTION.color : '#fff',
+                color: view === 'orders' ? '#fff' : '#334155',
+                borderRadius: 999,
+                padding: '8px 14px',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              Orders
+            </button>
+            {view === 'orders' && counts.feePending > 0 ? (
               <button type="button" onClick={() => void creditAllPending()} disabled={busy} style={primaryBtn}>
                 {busy ? 'Crediting…' : `Credit ${counts.feePending} pending`}
               </button>
             ) : null}
-            <DashboardRefreshButton onClick={() => void load()} disabled={loading || busy} />
+            {view === 'orders' && (
+              <DashboardRefreshButton onClick={() => void load()} disabled={loading || busy} />
+            )}
           </div>
         }
       />
 
+      {view === 'pricing' ? (
+        <PromotePackagesPricingPanel />
+      ) : (
+        <>
       {(error || notice) && (
         <div
           style={{
@@ -387,6 +428,8 @@ export default function MarketplacePromotionsAdminPage() {
           </div>
         )}
       </section>
+        </>
+      )}
     </div>
   )
 }
