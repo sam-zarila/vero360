@@ -39,9 +39,9 @@ export type PublicCatalogCard = {
   externalUrl: string | null
 }
 
-function clampLimit(raw: number | undefined, fallback = 500) {
+function clampLimit(raw: number | undefined, fallback = 500, max = 2000) {
   if (!Number.isFinite(raw as number)) return fallback
-  return Math.min(Math.max(Math.floor(raw as number), 1), 500)
+  return Math.min(Math.max(Math.floor(raw as number), 1), max)
 }
 
 function media(url: string | null | undefined) {
@@ -61,37 +61,47 @@ function foodHref(item: FoodItem) {
   return item.rawId ? `/food/${item.rawId}` : null
 }
 
-async function loadMarketplaceRaw(limit = 500): Promise<MarketplaceListing[]> {
-  const take = clampLimit(limit)
+async function loadMarketplaceRaw(limit = 2000): Promise<MarketplaceListing[]> {
+  const take = clampLimit(limit, 2000, 2000)
   const previewOnly = take <= 48
 
-  let firestoreItems: MarketplaceListing[] = []
+  const byId = new Map<string, MarketplaceListing>()
+
+  const ingestDocs = (
+    docs: Array<{ id: string; data: () => Record<string, unknown> }>,
+  ) => {
+    for (const doc of docs) {
+      const item = parseFirestoreMarketplaceListing(doc.id, doc.data())
+      if (item) byId.set(doc.id, item)
+    }
+  }
+
   try {
+    // Newest first (docs with createdAt).
     const snap = await getAdminDb()
       .collection(MARKETPLACE_ITEMS_COLLECTION)
       .orderBy('createdAt', 'desc')
       .limit(take)
       .get()
-    firestoreItems = snap.docs
-      .map(doc =>
-        parseFirestoreMarketplaceListing(doc.id, doc.data() as Record<string, unknown>),
-      )
-      .filter((item): item is MarketplaceListing => !!item)
+    ingestDocs(snap.docs)
   } catch {
+    // fall through to unordered fetch
+  }
+
+  // Fill gaps: orderBy(createdAt) skips docs missing createdAt.
+  if (byId.size < take) {
     try {
       const snap = await getAdminDb()
         .collection(MARKETPLACE_ITEMS_COLLECTION)
         .limit(take)
         .get()
-      firestoreItems = snap.docs
-        .map(doc =>
-          parseFirestoreMarketplaceListing(doc.id, doc.data() as Record<string, unknown>),
-        )
-        .filter((item): item is MarketplaceListing => !!item)
+      ingestDocs(snap.docs)
     } catch (err) {
       console.warn('Public marketplace Firestore:', err)
     }
   }
+
+  const firestoreItems = [...byId.values()]
 
   // Landing previews: Firestore is enough — skip slow Nest round-trip.
   if (previewOnly && firestoreItems.length >= Math.min(take, 8)) {
@@ -135,8 +145,8 @@ async function loadMarketplaceRaw(limit = 500): Promise<MarketplaceListing[]> {
 }
 
 /** Main marketplace browse — excludes food (food strip owns those). */
-export async function listPublicMarketplace(limit = 500): Promise<PublicCatalogCard[]> {
-  const take = clampLimit(limit)
+export async function listPublicMarketplace(limit = 2000): Promise<PublicCatalogCard[]> {
+  const take = clampLimit(limit, 2000, 2000)
   try {
     const items = (await loadMarketplaceRaw(take))
       .filter(i => i.isActive !== false)

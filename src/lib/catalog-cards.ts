@@ -31,7 +31,7 @@ export const BROWSE_CATALOGS: Record<
   marketplace: {
     title: 'Marketplace',
     subtitle: 'All products from verified merchants',
-    endpoint: '/api/public/marketplace?limit=120',
+    endpoint: '/api/public/marketplace?limit=2000',
     itemLabel: 'products',
   },
   food: {
