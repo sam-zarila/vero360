@@ -79,16 +79,37 @@ function normalizePackage(
 ): PromotePackageConfig {
   const kindRaw = String(raw.kind || fallback.kind).trim()
   const kind = kindRaw === 'facebook_ads' ? 'facebook_ads' : 'feed_top'
+  const subtitle =
+    String(raw.subtitle ?? fallback.subtitle ?? '').trim() || undefined
+  const reachLabel =
+    String(raw.reachLabel ?? fallback.reachLabel ?? '').trim() || undefined
   return {
     key: String(raw.key || fallback.key).trim() || fallback.key,
     label: String(raw.label || fallback.label).trim() || fallback.label,
-    subtitle: String(raw.subtitle ?? fallback.subtitle ?? '').trim() || fallback.subtitle,
+    ...(subtitle ? { subtitle } : {}),
     kind,
     priceMwk: asPositiveInt(raw.priceMwk, fallback.priceMwk),
     durationHours: Math.max(1, asPositiveInt(raw.durationHours, fallback.durationHours)),
-    reachLabel: String(raw.reachLabel ?? fallback.reachLabel ?? '').trim() || fallback.reachLabel,
+    ...(reachLabel ? { reachLabel } : {}),
     active: raw.active !== false,
   }
+}
+
+/** Firestore rejects `undefined` field values. */
+function packageForFirestore(p: PromotePackageConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    key: p.key,
+    label: p.label,
+    kind: p.kind === 'facebook_ads' ? 'facebook_ads' : 'feed_top',
+    priceMwk: Math.max(0, Math.round(Number(p.priceMwk) || 0)),
+    durationHours: Math.max(1, Math.round(Number(p.durationHours) || 1)),
+    active: p.active !== false,
+  }
+  const subtitle = (p.subtitle || '').trim()
+  if (subtitle) out.subtitle = subtitle
+  const reachLabel = (p.reachLabel || '').trim()
+  if (reachLabel) out.reachLabel = reachLabel
+  return out
 }
 
 export function normalizePromotePackagesConfig(
@@ -151,8 +172,8 @@ export async function savePromotePackagesConfig(input: {
   const db = getAdminDb()
   await db.doc(PROMOTE_PACKAGES_CONFIG_DOC).set(
     {
-      packages: config.packages,
-      updatedByEmail: config.updatedByEmail,
+      packages: config.packages.map(packageForFirestore),
+      updatedByEmail: (config.updatedByEmail || '').trim() || null,
       updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true },
