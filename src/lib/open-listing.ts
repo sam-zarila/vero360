@@ -223,7 +223,7 @@ export async function listingFromProps(
       if (stay.price > 0) price = String(stay.price)
       period = periodSuffix(stay.pricingPeriod)
       const cover = (stay.image || '').trim()
-      image = resolveVeroMediaUrl(cover) || ''
+      image = resolveVeroMediaUrl(cover) || image
       gallery = stay.gallery
         .map(src => src.trim())
         .filter(src => src && src !== cover)
@@ -244,7 +244,7 @@ export async function listingFromProps(
       location = product.location && product.location !== '—' ? product.location : location
       if (product.price > 0) price = String(Math.round(product.price))
       const cover = (product.image || '').trim()
-      image = resolveVeroMediaUrl(cover) || ''
+      image = resolveVeroMediaUrl(cover) || image
       gallery = product.gallery
         .map(src => src.trim())
         .filter(src => src && src !== cover)
@@ -285,7 +285,7 @@ export async function listingFromProps(
       location = dish.location || location
       if (dish.price > 0) price = String(Math.round(dish.price))
       const cover = (dish.image || '').trim()
-      image = resolveVeroMediaUrl(cover) || ''
+      image = resolveVeroMediaUrl(cover) || image
       gallery = dish.gallery
         .map(src => src.trim())
         .filter(src => src && src !== cover)
@@ -367,19 +367,36 @@ export async function listingMetadata(
         : kind === 'food'
           ? `/food/${listing.id}`
           : `/accommodation/${listing.id}`
-  const imageOk =
-    listing.image.startsWith('http') || listing.image.startsWith('/api/media')
+
+  const rawImage = (listing.image || '').trim()
+  let imageUrl = ''
+  if (/^https?:\/\//i.test(rawImage)) {
+    imageUrl = rawImage.replace(/^http:\/\//i, 'https://')
+  } else if (rawImage.startsWith('/')) {
+    imageUrl = `https://vero360.app${rawImage}`
+  }
+
+  const canonical = `https://vero360.app${path}`
 
   return {
     title: `${listing.title} · Vero360`,
     description: listing.subtitle,
+    alternates: { canonical },
     openGraph: {
       title: listing.title,
       description: listing.subtitle,
-      url: `https://vero360.app${path}`,
+      url: canonical,
       siteName: 'Vero360',
       type: 'website',
-      images: imageOk ? [{ url: listing.image }] : undefined,
+      images: imageUrl
+        ? [{ url: imageUrl, width: 1200, height: 630, alt: listing.title }]
+        : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: listing.title,
+      description: listing.subtitle,
+      images: imageUrl ? [imageUrl] : undefined,
     },
   }
 }
