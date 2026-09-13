@@ -54,10 +54,50 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
     {
       key: 'netflix',
       name: 'Netflix',
-      subtitle: '1-month subscription',
+      subtitle: 'Choose a plan (hub — not sold alone)',
+      category: 'streaming',
+      brandTag: 'Netflix',
+      fixedMwkPrice: null,
+      active: true,
+    },
+    {
+      key: 'netflix_mobile',
+      name: 'Netflix Mobile 480p',
+      subtitle:
+        'Fair · 480p · Phone/tablet · 1 stream · 1 download',
+      category: 'streaming',
+      brandTag: 'Netflix',
+      fixedMwkPrice: 8000,
+      active: true,
+    },
+    {
+      key: 'netflix_basic',
+      name: 'Netflix Basic 720p',
+      subtitle:
+        'Good · 720p HD · TV/computer/phone/tablet · 1 stream · 1 download',
+      category: 'streaming',
+      brandTag: 'Netflix',
+      fixedMwkPrice: 12000,
+      active: true,
+    },
+    {
+      key: 'netflix_standard',
+      name: 'Netflix Standard 1080p',
+      subtitle:
+        'Great · 1080p Full HD · TV/computer/phone/tablet · 2 streams · 2 downloads',
       category: 'streaming',
       brandTag: 'Netflix',
       fixedMwkPrice: 15000,
+      active: true,
+    },
+    {
+      key: 'netflix_premium',
+      name: 'Netflix Premium 4K + HDR',
+      subtitle:
+        'Most popular · Best · 4K+HDR · Spatial audio · 4 streams · 6 downloads',
+      category: 'streaming',
+      brandTag: 'Popular',
+      fixedMwkPrice: 20000,
       active: true,
     },
     {

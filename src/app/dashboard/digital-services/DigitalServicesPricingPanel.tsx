@@ -49,7 +49,9 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
     category: p.category,
     brandTag: (p.brandTag || '').trim() || undefined,
     fixedMwkPrice: isSub
-      ? Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
+      ? p.key === 'netflix'
+        ? null
+        : Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
       : null,
     usdAmounts: isSub ? [] : amounts,
     mwkPerUnit:
@@ -59,6 +61,21 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
     unitLabel: !isSub ? (p.unitLabel || '').trim() || undefined : undefined,
     imageUrl: (p.imageUrl || '').trim() || undefined,
     active: p.active !== false,
+  }
+}
+
+function netflixPlanHint(key: string): string {
+  switch (key) {
+    case 'netflix_mobile':
+      return 'Fair · 480p · Phone/tablet · 1 stream · 1 download'
+    case 'netflix_basic':
+      return 'Good · 720p HD · TV/computer/phone/tablet · 1 stream · 1 download'
+    case 'netflix_standard':
+      return 'Great · 1080p Full HD · TV/computer/phone/tablet · 2 streams · 2 downloads'
+    case 'netflix_premium':
+      return 'Most popular · Best · 4K+HDR · Spatial audio · 4 streams · 6 downloads'
+    default:
+      return ''
   }
 }
 
@@ -285,6 +302,8 @@ export function DigitalServicesPricingPanel() {
   const subs = products.filter(
     (p) => p.category === 'streaming' || p.category === 'subscription',
   )
+  const netflixPlans = subs.filter((p) => p.key.startsWith('netflix_'))
+  const otherSubs = subs.filter((p) => !p.key.startsWith('netflix'))
   const cryptos = products.filter((p) => p.category === 'crypto')
   const gifts = products.filter(
     (p) =>
@@ -659,9 +678,92 @@ export function DigitalServicesPricingPanel() {
             </>
           )}
 
-          <h3 style={sectionTitle}>Subscriptions (fixed MWK)</h3>
+          <h3 style={sectionTitle}>Netflix plans (MWK / month)</h3>
+          <p style={{ margin: '0 0 10px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.45 }}>
+            App users tap Netflix → Choose your plan. Set each monthly price here.
+            Turn a plan off when out of stock. Premium is marked Most popular in the app.
+          </p>
+          <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+            {netflixPlans.map((p) => (
+              <article
+                key={p.key}
+                style={{
+                  ...cardStyle,
+                  opacity: p.active === false ? 0.72 : 1,
+                  borderColor:
+                    p.key === 'netflix_premium'
+                      ? '#FDBA74'
+                      : p.active === false
+                        ? '#FECACA'
+                        : '#E5E7EB',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <strong style={{ fontSize: 14 }}>
+                    {p.name}
+                    {p.key === 'netflix_premium' ? (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: '#EA580C',
+                        }}
+                      >
+                        Most popular
+                      </span>
+                    ) : null}
+                  </strong>
+                  <label style={checkLabel} title="When off, this plan is hidden in the app">
+                    <input
+                      type="checkbox"
+                      checked={p.active !== false}
+                      disabled={saving}
+                      onChange={(e) => void toggleActive(p.key, e.target.checked)}
+                    />
+                    {p.active !== false ? 'Active in app' : 'Out of stock'}
+                  </label>
+                </div>
+                <p style={{ margin: '6px 0 0', color: '#6B7280', fontSize: 12.5, lineHeight: 1.4 }}>
+                  {p.subtitle || netflixPlanHint(p.key)}
+                </p>
+                <div style={rowStyle}>
+                  <label style={fieldLabel}>
+                    Display name
+                    <input
+                      value={p.name}
+                      onChange={(e) => updateProduct(p.key, { name: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={fieldLabel}>
+                    MWK price / month
+                    <input
+                      type="number"
+                      min={0}
+                      value={p.fixedMwkPrice ?? 0}
+                      onChange={(e) =>
+                        updateProduct(p.key, {
+                          fixedMwkPrice: Number(e.target.value) || 0,
+                        })
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </article>
+            ))}
+            {netflixPlans.length === 0 ? (
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+                Netflix plans will appear after you reload prices (defaults: Mobile, Basic,
+                Standard, Premium).
+              </p>
+            ) : null}
+          </div>
+
+          <h3 style={sectionTitle}>Other subscriptions (fixed MWK)</h3>
           <div style={{ display: 'grid', gap: 10 }}>
-            {subs.map((p) => (
+            {otherSubs.map((p) => (
               <article
                 key={p.key}
                 style={{
@@ -693,20 +795,26 @@ export function DigitalServicesPricingPanel() {
                       style={inputStyle}
                     />
                   </label>
-                  <label style={fieldLabel}>
-                    MWK price / month
-                    <input
-                      type="number"
-                      min={0}
-                      value={p.fixedMwkPrice ?? 0}
-                      onChange={(e) =>
-                        updateProduct(p.key, {
-                          fixedMwkPrice: Number(e.target.value) || 0,
-                        })
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
+                  {p.key === 'netflix' ? (
+                    <p style={{ margin: 0, fontSize: 12.5, color: '#6B7280', alignSelf: 'end', paddingBottom: 10 }}>
+                      Hub only — prices are on the Netflix plans above.
+                    </p>
+                  ) : (
+                    <label style={fieldLabel}>
+                      MWK price / month
+                      <input
+                        type="number"
+                        min={0}
+                        value={p.fixedMwkPrice ?? 0}
+                        onChange={(e) =>
+                          updateProduct(p.key, {
+                            fixedMwkPrice: Number(e.target.value) || 0,
+                          })
+                        }
+                        style={inputStyle}
+                      />
+                    </label>
+                  )}
                 </div>
                 <label style={fieldLabel}>
                   Subtitle

@@ -294,7 +294,7 @@ export default function DigitalServicesAdminPage() {
 
       <DashboardPageHeader
         sectionId="digital-services"
-        description="Spotify, Apple Music, Netflix, ChatGPT subscriptions (monthly) and gift-card purchases — set prices here; revenue goes to the Vero platform wallet."
+        description="Spotify, Apple Music, Netflix plans (Mobile / Basic / Standard / Premium), ChatGPT, and gift cards — set monthly prices here; revenue goes to the Vero platform wallet."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
