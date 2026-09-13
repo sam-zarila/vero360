@@ -96,6 +96,12 @@ async function loadMarketplaceRaw(limit = 500): Promise<MarketplaceListing[]> {
   // Landing previews: Firestore is enough — skip slow Nest round-trip.
   if (previewOnly && firestoreItems.length >= Math.min(take, 8)) {
     return firestoreItems.sort((a, b) => {
+      const now = Date.now()
+      const aPromo = a.promotedUntil ? new Date(a.promotedUntil).getTime() : 0
+      const bPromo = b.promotedUntil ? new Date(b.promotedUntil).getTime() : 0
+      const aLive = aPromo > now ? 1 : 0
+      const bLive = bPromo > now ? 1 : 0
+      if (aLive !== bLive) return bLive - aLive
       const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
       const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
       return bt - at
@@ -116,6 +122,12 @@ async function loadMarketplaceRaw(limit = 500): Promise<MarketplaceListing[]> {
   }
 
   return mergeMarketplaceListings(firestoreItems, apiItems).sort((a, b) => {
+    const now = Date.now()
+    const aPromo = a.promotedUntil ? new Date(a.promotedUntil).getTime() : 0
+    const bPromo = b.promotedUntil ? new Date(b.promotedUntil).getTime() : 0
+    const aLive = aPromo > now ? 1 : 0
+    const bLive = bPromo > now ? 1 : 0
+    if (aLive !== bLive) return bLive - aLive
     const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
     const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
     return bt - at

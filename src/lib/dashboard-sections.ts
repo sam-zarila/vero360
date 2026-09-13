@@ -10,6 +10,7 @@ export type DashboardSectionId =
   | 'stay'
   | 'promotion'
   | 'homepage-ads'
+  | 'marketplace-promotions'
   | 'digital-services'
   | 'marketing'
   | 'latest-arrivals'
@@ -104,6 +105,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'megaphone',
     color: '#EA580C',
     bg: '#FFF7ED',
+  },
+  {
+    id: 'marketplace-promotions',
+    title: 'Promoted ads',
+    desc: 'Marketplace top boosts and Facebook ad orders',
+    icon: 'megaphone',
+    color: '#F59E0B',
+    bg: '#FFFBEB',
   },
   {
     id: 'digital-services',
@@ -311,6 +320,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: 'flag', badgeKey: 'reports' },
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
       { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
+      { href: '/dashboard/marketplace-promotions', label: 'Promoted ads', icon: 'megaphone' },
       { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
       { href: '/dashboard/marketing/tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
       {
