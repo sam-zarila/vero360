@@ -41,6 +41,8 @@ export async function sendBroadcastToTopics(opts: {
   const isAdminBroadcast =
     type === 'admin_broadcast' ||
     type === 'admin' ||
+    type === 'vero_team' ||
+    type === 'app_update' ||
     target === 'all' ||
     target === 'everyone'
 

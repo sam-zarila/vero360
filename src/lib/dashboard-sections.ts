@@ -157,7 +157,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'push',
     title: 'Push notification',
-    desc: 'Send a push to everyone with the Vero360 app',
+    desc: 'Vero360 Team chat messages and pushes to everyone',
     icon: 'bell',
     color: '#EA580C',
     bg: '#FFF7ED',

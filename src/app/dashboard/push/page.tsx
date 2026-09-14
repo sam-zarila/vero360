@@ -30,6 +30,8 @@ type OpenTarget =
   | 'marketplace'
   | 'app_update'
 
+type DeliveryChannel = 'push' | 'vero_team'
+
 const OPEN_OPTIONS: { value: OpenTarget; label: string }[] = [
   { value: 'notifications', label: 'In-app Notifications page' },
   { value: 'quick_promotions', label: 'Promotions' },
@@ -40,6 +42,16 @@ const OPEN_OPTIONS: { value: OpenTarget; label: string }[] = [
     label: 'App update (Play Store / App Store)',
   },
 ]
+
+type TeamBroadcastItem = {
+  id: string
+  title: string
+  body: string
+  kind: string
+  createdAt: string | null
+  createdByEmail: string | null
+  fcmSent: boolean
+}
 
 function formatWhen(iso: string | null) {
   if (!iso) return '—'
@@ -52,23 +64,30 @@ export default function AdminPushPage() {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [badgeRoute, setBadgeRoute] = useState<OpenTarget>('notifications')
+  const [channel, setChannel] = useState<DeliveryChannel>('vero_team')
   const [confirmSend, setConfirmSend] = useState(false)
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [items, setItems] = useState<PushItem[]>([])
+  const [teamItems, setTeamItems] = useState<TeamBroadcastItem[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await adminFetch('/api/admin/push', { cache: 'no-store' })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to load history')
+      const [pushRes, teamRes] = await Promise.all([
+        adminFetch('/api/admin/push', { cache: 'no-store' }),
+        adminFetch('/api/admin/vero-team/broadcast', { cache: 'no-store' }),
+      ])
+      const pushData = await pushRes.json().catch(() => ({}))
+      const teamData = await teamRes.json().catch(() => ({}))
+      if (!pushRes.ok) {
+        throw new Error(pushData?.error || 'Failed to load history')
       }
-      setItems(Array.isArray(data.items) ? data.items : [])
+      setItems(Array.isArray(pushData.items) ? pushData.items : [])
+      setTeamItems(Array.isArray(teamData.items) ? teamData.items : [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
     } finally {
@@ -96,25 +115,43 @@ export default function AdminPushPage() {
 
     setSending(true)
     try {
-      const isAppUpdate = badgeRoute === 'app_update'
-      const res = await adminFetch('/api/admin/push', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: title.trim(),
-          body: body.trim(),
-          badgeRoute: isAppUpdate ? 'app_update' : badgeRoute,
-          target: 'all',
-          type: isAppUpdate ? 'app_update' : 'admin_broadcast',
-        }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(data?.error || 'Send failed')
+      if (channel === 'vero_team') {
+        const kind =
+          badgeRoute === 'app_update' ? 'app_update' : 'general'
+        const res = await adminFetch('/api/admin/vero-team/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: title.trim() || 'Vero360 Team',
+            body: body.trim(),
+            kind,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.error || 'Send failed')
+        }
+        setNotice(
+          data?.message ||
+            'Posted in Vero360 Team chat and pushed to everyone.',
+        )
+      } else {
+        const isAppUpdate = badgeRoute === 'app_update'
+        const res = await adminFetch('/api/admin/push', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: title.trim(),
+            body: body.trim(),
+            badgeRoute: isAppUpdate ? 'app_update' : badgeRoute,
+            target: 'all',
+            type: isAppUpdate ? 'app_update' : 'admin_broadcast',
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.error || 'Send failed')
+        }
+        setNotice(data?.message || 'Push sent to everyone on Vero360.')
       }
-      setNotice(
-        data?.message ||
-          'Push sent to everyone on Vero360.',
-      )
       setTitle('')
       setBody('')
       setConfirmSend(false)
@@ -155,7 +192,7 @@ export default function AdminPushPage() {
       <DashboardBackLink />
       <DashboardPageHeader
         sectionId="push"
-        description="Send a push to everyone who has the Vero360 app installed and notifications enabled."
+        description="Message everyone on Vero360: Vero360 Team chat (recommended) or a system push only."
         actions={<DashboardRefreshButton onClick={() => void load()} />}
       />
 
@@ -172,9 +209,8 @@ export default function AdminPushPage() {
           fontWeight: 600,
         }}
       >
-        This sends immediately via Firebase to <strong>all app users</strong> subscribed to
-        topic <code>vero360_all</code> (and <code>vero360_engagement</code> for older
-        installs). Use it for important updates, not for spam.
+        <strong>Vero360 Team</strong> posts the message in the app chat and
+        sends a push. Tap opens Team chat. Use this for updates and announcements.
       </div>
 
       <form
@@ -191,12 +227,28 @@ export default function AdminPushPage() {
         }}
       >
         <label style={labelStyle}>
+          Send as
+          <select
+            value={channel}
+            onChange={(e) => setChannel(e.target.value as DeliveryChannel)}
+            style={inputStyle}
+          >
+            <option value="vero_team">Vero360 Team chat + push</option>
+            <option value="push">System push only</option>
+          </select>
+        </label>
+
+        <label style={labelStyle}>
           Title
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
-            placeholder="e.g. New marketplace feature"
+            placeholder={
+              channel === 'vero_team'
+                ? 'e.g. New update available'
+                : 'e.g. New marketplace feature'
+            }
             style={inputStyle}
             required
           />
@@ -207,45 +259,79 @@ export default function AdminPushPage() {
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            maxLength={500}
+            maxLength={channel === 'vero_team' ? 2000 : 500}
             rows={4}
-            placeholder="Short message users will see on their phone…"
+            placeholder={
+              channel === 'vero_team'
+                ? 'Message that appears in Vero360 Team chat…'
+                : 'Short message users will see on their phone…'
+            }
             style={{ ...inputStyle, resize: 'vertical', minHeight: 96 }}
             required
           />
           <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500 }}>
-            {body.length}/500
+            {body.length}/{channel === 'vero_team' ? 2000 : 500}
           </span>
         </label>
 
-        <label style={labelStyle}>
-          When tapped, open
-          <select
-            value={badgeRoute}
-            onChange={(e) => {
-              const next = e.target.value as OpenTarget
-              setBadgeRoute(next)
-              if (next === 'app_update') {
-                if (!title.trim()) setTitle('New update available')
-                if (!body.trim()) {
-                  setBody('Tap to download the latest Vero360 for your phone.')
+        {channel === 'push' ? (
+          <label style={labelStyle}>
+            When tapped, open
+            <select
+              value={badgeRoute}
+              onChange={(e) => {
+                const next = e.target.value as OpenTarget
+                setBadgeRoute(next)
+                if (next === 'app_update') {
+                  if (!title.trim()) setTitle('New update available')
+                  if (!body.trim()) {
+                    setBody('Tap to download the latest Vero360 for your phone.')
+                  }
                 }
-              }
-            }}
-            style={inputStyle}
-          >
-            {OPEN_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          {badgeRoute === 'app_update' ? (
+              }}
+              style={inputStyle}
+            >
+              {OPEN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {badgeRoute === 'app_update' ? (
+              <span style={{ fontSize: 12, color: '#9A3412', fontWeight: 600 }}>
+                Android users open Google Play. iPhone users open the App Store.
+              </span>
+            ) : null}
+          </label>
+        ) : (
+          <label style={labelStyle}>
+            Message type
+            <select
+              value={badgeRoute === 'app_update' ? 'app_update' : 'general'}
+              onChange={(e) => {
+                if (e.target.value === 'app_update') {
+                  setBadgeRoute('app_update')
+                  if (!title.trim()) setTitle('New update available')
+                  if (!body.trim()) {
+                    setBody(
+                      'A new Vero360 update is ready. Open this chat and tap Update to download.',
+                    )
+                  }
+                } else {
+                  setBadgeRoute('notifications')
+                }
+              }}
+              style={inputStyle}
+            >
+              <option value="general">General Team message</option>
+              <option value="app_update">App update notice</option>
+            </select>
             <span style={{ fontSize: 12, color: '#9A3412', fontWeight: 600 }}>
-              Android users open Google Play. iPhone users open the App Store.
+              Push opens Vero360 Team chat. Update notices include a download
+              button in the chat.
             </span>
-          ) : null}
-        </label>
+          </label>
+        )}
 
         <label
           style={{
@@ -265,7 +351,7 @@ export default function AdminPushPage() {
             style={{ marginTop: 3, width: 16, height: 16 }}
           />
           <span>
-            I confirm this push should go to <strong>everyone</strong> with the
+            I confirm this should go to <strong>everyone</strong> with the
             Vero360 app.
           </span>
         </label>
@@ -296,7 +382,11 @@ export default function AdminPushPage() {
             cursor: sending ? 'wait' : 'pointer',
           }}
         >
-          {sending ? 'Sending…' : 'Send push to everyone'}
+          {sending
+            ? 'Sending…'
+            : channel === 'vero_team'
+              ? 'Send via Vero360 Team'
+              : 'Send push to everyone'}
         </button>
       </form>
 
@@ -309,7 +399,76 @@ export default function AdminPushPage() {
           color: '#111827',
         }}
       >
-        Recent pushes
+        Recent Vero360 Team messages
+      </h2>
+      {loading ? (
+        <p style={{ color: '#6B7280' }}>Loading…</p>
+      ) : teamItems.length === 0 ? (
+        <p style={{ color: '#6B7280' }}>No Team messages yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 10, marginBottom: 28 }}>
+          {teamItems.map((item) => (
+            <article
+              key={item.id}
+              style={{
+                background: '#fff',
+                border: '1px solid #E5E7EB',
+                borderRadius: 14,
+                padding: 14,
+              }}
+            >
+              <div style={{ fontWeight: 900, color: '#111827' }}>
+                {item.title || 'Vero360 Team'}
+                {item.kind === 'app_update' ? (
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#9A3412',
+                    }}
+                  >
+                    Update
+                  </span>
+                ) : null}
+              </div>
+              <div
+                style={{
+                  marginTop: 4,
+                  color: '#4B5563',
+                  fontSize: 13.5,
+                  lineHeight: 1.4,
+                }}
+              >
+                {item.body}
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  color: '#6B7280',
+                  fontWeight: 600,
+                }}
+              >
+                {formatWhen(item.createdAt)}
+                {item.createdByEmail ? ` · ${item.createdByEmail}` : ''}
+                {item.fcmSent ? ' · Push sent' : ' · Push pending/failed'}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <h2
+        style={{
+          marginTop: 12,
+          marginBottom: 12,
+          fontSize: 17,
+          fontWeight: 900,
+          color: '#111827',
+        }}
+      >
+        Recent system pushes
       </h2>
 
       {loading ? (
