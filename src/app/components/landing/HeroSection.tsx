@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import DownloadAppModal from './DownloadAppModal'
 import LandingCrawlTicker, { type LandingCrawlItem } from './LandingCrawlTicker'
-import { IconBadge, VeroIcon, type VeroIconName } from './icons'
+import { VeroIcon, type VeroIconName } from './icons'
 
 const stats = [
   { value: '8+', label: 'Services in one app' },
@@ -229,7 +229,7 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Phone mockup — Vero360 super app home */}
+        {/* Phone mockup */}
         <div className="hero-phone" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <div className="hero-phone-scale">
           <div ref={phoneRef} style={{ position: 'relative' }}>

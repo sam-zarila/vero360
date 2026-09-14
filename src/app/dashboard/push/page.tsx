@@ -23,13 +23,22 @@ type PushItem = {
   createdByEmail: string
 }
 
-type OpenTarget = 'notifications' | 'quick_promotions' | 'quick_post_arrival' | 'marketplace'
+type OpenTarget =
+  | 'notifications'
+  | 'quick_promotions'
+  | 'quick_post_arrival'
+  | 'marketplace'
+  | 'app_update'
 
 const OPEN_OPTIONS: { value: OpenTarget; label: string }[] = [
   { value: 'notifications', label: 'In-app Notifications page' },
   { value: 'quick_promotions', label: 'Promotions' },
   { value: 'quick_post_arrival', label: "Today's arrivals" },
   { value: 'marketplace', label: 'Marketplace' },
+  {
+    value: 'app_update',
+    label: 'App update (Play Store / App Store)',
+  },
 ]
 
 function formatWhen(iso: string | null) {
@@ -87,14 +96,15 @@ export default function AdminPushPage() {
 
     setSending(true)
     try {
+      const isAppUpdate = badgeRoute === 'app_update'
       const res = await adminFetch('/api/admin/push', {
         method: 'POST',
         body: JSON.stringify({
           title: title.trim(),
           body: body.trim(),
-          badgeRoute,
+          badgeRoute: isAppUpdate ? 'app_update' : badgeRoute,
           target: 'all',
-          type: 'admin_broadcast',
+          type: isAppUpdate ? 'app_update' : 'admin_broadcast',
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -212,7 +222,16 @@ export default function AdminPushPage() {
           When tapped, open
           <select
             value={badgeRoute}
-            onChange={(e) => setBadgeRoute(e.target.value as OpenTarget)}
+            onChange={(e) => {
+              const next = e.target.value as OpenTarget
+              setBadgeRoute(next)
+              if (next === 'app_update') {
+                if (!title.trim()) setTitle('New update available')
+                if (!body.trim()) {
+                  setBody('Tap to download the latest Vero360 for your phone.')
+                }
+              }
+            }}
             style={inputStyle}
           >
             {OPEN_OPTIONS.map((o) => (
@@ -221,6 +240,11 @@ export default function AdminPushPage() {
               </option>
             ))}
           </select>
+          {badgeRoute === 'app_update' ? (
+            <span style={{ fontSize: 12, color: '#9A3412', fontWeight: 600 }}>
+              Android users open Google Play. iPhone users open the App Store.
+            </span>
+          ) : null}
         </label>
 
         <label

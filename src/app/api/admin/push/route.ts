@@ -160,15 +160,24 @@ export async function POST(request: Request) {
 
     const badgeRoute = String(json.badgeRoute || 'notifications').trim()
     const extra = stringifyData(json.data)
-    const type = 'admin_broadcast'
+    const requestedType = String(json.type || '').trim().toLowerCase()
+    const isAppUpdate =
+      badgeRoute === 'app_update' ||
+      badgeRoute === 'quick_app_update' ||
+      requestedType === 'app_update' ||
+      requestedType === 'store_update'
+    const type = isAppUpdate ? 'app_update' : 'admin_broadcast'
     const target = 'all'
+    const resolvedBadgeRoute = isAppUpdate
+      ? 'app_update'
+      : badgeRoute || 'notifications'
 
     const doc = {
       title,
       body,
       type,
       target,
-      badgeRoute: badgeRoute || 'notifications',
+      badgeRoute: resolvedBadgeRoute,
       ...extra,
       createdAt: FieldValue.serverTimestamp(),
       createdByUid: admin.uid,
@@ -183,7 +192,7 @@ export async function POST(request: Request) {
       title,
       body,
       type,
-      badgeRoute,
+      badgeRoute: resolvedBadgeRoute,
       target,
       extra,
     })
