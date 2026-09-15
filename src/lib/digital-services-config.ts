@@ -15,8 +15,10 @@ export type DigitalProductPriceConfig = {
   usdAmounts?: number[]
   /** Custom MWK per unit (USDT/CNY/BNB). When set, overrides global USD rate. */
   mwkPerUnit?: number | null
-  /** Unit label shown in app, e.g. USDT, CNY, BNB. */
+  /** Unit label shown in app, e.g. USDT, CNY, BNB, RMB. */
   unitLabel?: string
+  /** Max custom ("other") amount in unitLabel (or USD). Per-card admin limit. */
+  maxOtherAmount?: number | null
   /** Product picture (Firebase Storage / HTTPS URL). */
   imageUrl?: string
   active?: boolean
@@ -243,6 +245,11 @@ function parseProduct(raw: unknown): DigitalProductPriceConfig | null {
       : Math.max(0, Math.round(num(mwkPerUnitRaw)))
   const unitLabel = String(d.unitLabel || '').trim() || undefined
   const imageUrl = String(d.imageUrl || '').trim() || undefined
+  const maxOtherRaw = d.maxOtherAmount
+  const maxOtherAmount =
+    maxOtherRaw === null || maxOtherRaw === undefined || maxOtherRaw === ''
+      ? null
+      : Math.max(0, Math.round(num(maxOtherRaw) * 100) / 100)
 
   return {
     key,
@@ -255,6 +262,7 @@ function parseProduct(raw: unknown): DigitalProductPriceConfig | null {
     usdAmounts: isSub ? [] : usdAmounts?.length ? usdAmounts : [],
     mwkPerUnit: isSub ? null : mwkPerUnit,
     unitLabel: isSub ? undefined : unitLabel,
+    maxOtherAmount: isSub ? null : maxOtherAmount,
     imageUrl,
     active: d.active === false ? false : true,
   }
@@ -294,6 +302,11 @@ function productForFirestore(p: DigitalProductPriceConfig): Record<string, unkno
     }
     const unitLabel = (p.unitLabel || '').trim()
     if (unitLabel) out.unitLabel = unitLabel
+    if (p.maxOtherAmount != null && Number(p.maxOtherAmount) > 0) {
+      out.maxOtherAmount = Math.max(1, Math.round(Number(p.maxOtherAmount) * 100) / 100)
+    } else {
+      out.maxOtherAmount = null
+    }
   }
   const imageUrl = (p.imageUrl || '').trim()
   if (imageUrl) out.imageUrl = imageUrl

@@ -13,6 +13,7 @@ type DigitalProductPriceConfig = {
   usdAmounts?: number[]
   mwkPerUnit?: number | null
   unitLabel?: string
+  maxOtherAmount?: number | null
   imageUrl?: string
   active?: boolean
 }
@@ -59,6 +60,10 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
         ? Math.round(Number(p.mwkPerUnit))
         : null,
     unitLabel: !isSub ? (p.unitLabel || '').trim() || undefined : undefined,
+    maxOtherAmount:
+      !isSub && p.maxOtherAmount != null && Number(p.maxOtherAmount) > 0
+        ? Math.round(Number(p.maxOtherAmount) * 100) / 100
+        : null,
     imageUrl: (p.imageUrl || '').trim() || undefined,
     active: p.active !== false,
   }
@@ -103,6 +108,7 @@ export function DigitalServicesPricingPanel() {
   const [newUnit, setNewUnit] = useState('USDT')
   const [newAmounts, setNewAmounts] = useState('10, 50, 100')
   const [newRate, setNewRate] = useState(4700)
+  const [newMaxOther, setNewMaxOther] = useState(1000)
   const [newImageUrl, setNewImageUrl] = useState('')
 
   const load = useCallback(async () => {
@@ -258,6 +264,11 @@ export function DigitalServicesPricingPanel() {
       setError('Rate (MWK per unit) must be at least 1.')
       return
     }
+    const maxOther = Math.round(Number(newMaxOther) || 0)
+    if (maxOther < 1) {
+      setError('Max other amount must be at least 1.')
+      return
+    }
 
     let key = slugKey(name)
     const existing = new Set(products.map((p) => p.key))
@@ -273,6 +284,7 @@ export function DigitalServicesPricingPanel() {
       brandTag: unit,
       unitLabel: unit,
       mwkPerUnit,
+      maxOtherAmount: maxOther,
       usdAmounts: amounts,
       usdAmountsText: amounts.join(', '),
       imageUrl: newImageUrl.trim() || undefined,
@@ -287,6 +299,7 @@ export function DigitalServicesPricingPanel() {
       setNewUnit('USDT')
       setNewAmounts('10, 50, 100')
       setNewRate(4700)
+      setNewMaxOther(1000)
       setNewImageUrl('')
       setNotice(`${name} created and live in the app.`)
     }
@@ -453,6 +466,22 @@ export function DigitalServicesPricingPanel() {
                   style={inputStyle}
                 />
               </label>
+            </div>
+            <div style={rowStyle}>
+              <label style={fieldLabel}>
+                Max other amount ({newUnit.trim() || 'unit'})
+                <input
+                  type="number"
+                  min={1}
+                  value={newMaxOther}
+                  onChange={(e) => setNewMaxOther(Number(e.target.value) || 0)}
+                  placeholder="1000"
+                  style={inputStyle}
+                />
+              </label>
+              <p style={{ margin: 0, fontSize: 12.5, color: '#6B7280', alignSelf: 'end', paddingBottom: 10 }}>
+                App “other amount” field uses this unit + max (not a fixed $500).
+              </p>
             </div>
             <div style={rowStyle}>
               <label style={fieldLabel}>
@@ -636,6 +665,26 @@ export function DigitalServicesPricingPanel() {
                                 onChange={(e) =>
                                   updateProduct(p.key, {
                                     mwkPerUnit: Number(e.target.value) || 0,
+                                  })
+                                }
+                                style={inputStyle}
+                              />
+                            </label>
+                          </div>
+                          <div style={rowStyle}>
+                            <label style={fieldLabel}>
+                              Max other amount ({p.unitLabel || 'unit'})
+                              <input
+                                type="number"
+                                min={1}
+                                value={p.maxOtherAmount ?? ''}
+                                placeholder="e.g. 1000"
+                                onChange={(e) =>
+                                  updateProduct(p.key, {
+                                    maxOtherAmount:
+                                      e.target.value === ''
+                                        ? null
+                                        : Number(e.target.value) || 0,
                                   })
                                 }
                                 style={inputStyle}
@@ -880,6 +929,37 @@ export function DigitalServicesPricingPanel() {
                       style={inputStyle}
                     />
                   </label>
+                </div>
+                <div style={rowStyle}>
+                  <label style={fieldLabel}>
+                    Max other amount (USD)
+                    <input
+                      type="number"
+                      min={1}
+                      value={p.maxOtherAmount ?? ''}
+                      placeholder="e.g. 500"
+                      onChange={(e) =>
+                        updateProduct(p.key, {
+                          maxOtherAmount:
+                            e.target.value === ''
+                              ? null
+                              : Number(e.target.value) || 0,
+                        })
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 12.5,
+                      color: '#6B7280',
+                      alignSelf: 'end',
+                      paddingBottom: 10,
+                    }}
+                  >
+                    Caps the app “other amount” field for this card only.
+                  </p>
                 </div>
               </article>
             ))}
