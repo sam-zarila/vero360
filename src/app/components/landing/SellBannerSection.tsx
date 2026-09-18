@@ -1,15 +1,19 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { listPublicSellBanners } from '@/lib/sell-banners-admin'
+import { resolveSellBannerImage } from '@/lib/sell-banners'
 
 const FALLBACK = {
   title: 'Start selling on Vero360',
   body: 'Create a merchant account in the Vero360 app, list your products or services, and reach customers across Malawi.',
   ctaLabel: 'Sell now',
+  imageUrl: null as string | null,
 }
 
 export default async function SellBannerSection() {
   const banners = await listPublicSellBanners(6)
   const banner = banners[0] ?? FALLBACK
+  const imageSrc = resolveSellBannerImage(banner.imageUrl)
 
   return (
     <section
@@ -89,7 +93,38 @@ export default async function SellBannerSection() {
             ) : null}
           </div>
 
-          <div style={{ position: 'relative', flex: '0 0 auto' }}>
+          <div
+            style={{
+              position: 'relative',
+              flex: '0 0 auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            {imageSrc ? (
+              <div
+                style={{
+                  position: 'relative',
+                  width: 120,
+                  height: 120,
+                  borderRadius: 18,
+                  overflow: 'hidden',
+                  border: '2px solid rgba(255,255,255,0.35)',
+                  boxShadow: '0 10px 28px rgba(0,0,0,0.2)',
+                  background: 'rgba(255,255,255,0.12)',
+                }}
+              >
+                <Image
+                  src={imageSrc}
+                  alt=""
+                  fill
+                  sizes="120px"
+                  style={{ objectFit: 'cover' }}
+                />
+              </div>
+            ) : null}
             <Link
               href="/get-started?role=merchant"
               style={{

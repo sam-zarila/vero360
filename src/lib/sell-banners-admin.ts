@@ -1,13 +1,23 @@
 import 'server-only'
 
+import { randomUUID } from 'crypto'
 import { FieldValue, type DocumentData } from 'firebase-admin/firestore'
 import { unstable_noStore as noStore } from 'next/cache'
-import { getAdminDb } from '@/lib/firebase-admin'
+import { getAdminDb, getAdminStorage, getAdminStorageBucket } from '@/lib/firebase-admin'
 import type { SellBanner } from '@/lib/sell-banners'
 
 export type { SellBanner } from '@/lib/sell-banners'
 
 export const SELL_BANNERS_COLLECTION = 'sell_banners'
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+])
 
 function str(v: unknown): string {
   return v == null ? '' : String(v).trim()
@@ -29,6 +39,30 @@ function tsToIso(value: unknown): string | null {
   return null
 }
 
+function firebaseDownloadUrl(bucketName: string, objectPath: string, token: string) {
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`
+}
+
+function imageExt(contentType: string, fileName: string): string {
+  const fromName = (fileName.split('.').pop() || '').toLowerCase()
+  if (fromName === 'png' || fromName === 'webp' || fromName === 'gif' || fromName === 'jpg' || fromName === 'jpeg') {
+    return fromName === 'jpeg' ? 'jpg' : fromName
+  }
+  if (contentType.includes('png')) return 'png'
+  if (contentType.includes('webp')) return 'webp'
+  if (contentType.includes('gif')) return 'gif'
+  return 'jpg'
+}
+
+function normalizeImageUrl(value: unknown): string | null {
+  const url = str(value)
+  if (!url) return null
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
+    return url
+  }
+  throw new Error('Image URL must be an http(s) link')
+}
+
 export function parseSellBanner(
   id: string,
   data: DocumentData | Record<string, unknown>,
@@ -38,6 +72,7 @@ export function parseSellBanner(
     title: str(data.title) || 'Start selling on Vero360',
     body: str(data.body || data.subtitle || data.description),
     ctaLabel: str(data.ctaLabel) || 'Sell now',
+    imageUrl: str(data.imageUrl) || null,
     active: data.active !== false,
     sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
     createdAt: tsToIso(data.createdAt),
@@ -81,10 +116,46 @@ export async function listPublicSellBanners(limit = 8): Promise<SellBanner[]> {
   }
 }
 
+export async function uploadSellBannerImage(file: File): Promise<string> {
+  if (file.size <= 0) throw new Error('Empty file')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('Image must be 8MB or smaller')
+
+  const contentType = (file.type || 'application/octet-stream').toLowerCase()
+  if (!contentType.startsWith('image/')) {
+    throw new Error('Only image files are allowed')
+  }
+  if (
+    ALLOWED_IMAGE_TYPES.size > 0 &&
+    !ALLOWED_IMAGE_TYPES.has(contentType) &&
+    contentType !== 'image/jpg'
+  ) {
+    throw new Error('Use JPEG, PNG, WebP, or GIF')
+  }
+
+  const ext = imageExt(contentType, file.name)
+  const objectPath = `sell_banners/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const bucket = getAdminStorage().bucket(getAdminStorageBucket())
+  const token = randomUUID()
+
+  await bucket.file(objectPath).save(buffer, {
+    resumable: false,
+    metadata: {
+      contentType,
+      metadata: {
+        firebaseStorageDownloadTokens: token,
+      },
+    },
+  })
+
+  return firebaseDownloadUrl(bucket.name, objectPath, token)
+}
+
 export async function createSellBanner(input: {
   title: string
   body?: string
   ctaLabel?: string
+  imageUrl?: string | null
   active?: boolean
   sortOrder?: number
   createdByEmail?: string
@@ -92,11 +163,15 @@ export async function createSellBanner(input: {
   const title = str(input.title)
   if (!title) throw new Error('Title is required')
 
+  const imageUrl =
+    input.imageUrl === undefined ? null : normalizeImageUrl(input.imageUrl)
+
   const ref = getAdminDb().collection(SELL_BANNERS_COLLECTION).doc()
   const payload = {
     title,
     body: str(input.body),
     ctaLabel: str(input.ctaLabel) || 'Sell now',
+    imageUrl,
     active: input.active !== false,
     sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : Date.now(),
     createdAt: FieldValue.serverTimestamp(),
@@ -115,6 +190,7 @@ export async function updateSellBanner(
     title: string
     body: string
     ctaLabel: string
+    imageUrl: string | null
     active: boolean
     sortOrder: number
   }>,
@@ -133,6 +209,7 @@ export async function updateSellBanner(
   }
   if (patch.body !== undefined) next.body = str(patch.body)
   if (patch.ctaLabel !== undefined) next.ctaLabel = str(patch.ctaLabel) || 'Sell now'
+  if (patch.imageUrl !== undefined) next.imageUrl = normalizeImageUrl(patch.imageUrl)
   if (patch.active !== undefined) next.active = !!patch.active
   if (patch.sortOrder !== undefined) next.sortOrder = Number(patch.sortOrder) || 0
 

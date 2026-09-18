@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
-import { deleteSellBanner, updateSellBanner } from '@/lib/sell-banners-admin'
+import {
+  deleteSellBanner,
+  updateSellBanner,
+  uploadSellBannerImage,
+} from '@/lib/sell-banners-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +15,35 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (denied) return denied
   try {
     const { id } = await ctx.params
+    const contentType = request.headers.get('content-type') || ''
+
+    if (contentType.includes('multipart/form-data')) {
+      const form = await request.formData()
+      const patch: {
+        title?: string
+        body?: string
+        ctaLabel?: string
+        imageUrl?: string | null
+        active?: boolean
+      } = {}
+      if (form.has('title')) patch.title = String(form.get('title') ?? '')
+      if (form.has('body')) patch.body = String(form.get('body') ?? '')
+      if (form.has('ctaLabel')) patch.ctaLabel = String(form.get('ctaLabel') ?? '')
+      if (form.has('active')) patch.active = String(form.get('active')) !== 'false'
+
+      const file = form.get('image')
+      if (file instanceof File && file.size > 0) {
+        patch.imageUrl = await uploadSellBannerImage(file)
+      } else if (form.has('imageUrl')) {
+        patch.imageUrl = String(form.get('imageUrl') ?? '').trim() || null
+      } else if (String(form.get('clearImage') ?? '') === 'true') {
+        patch.imageUrl = null
+      }
+
+      const item = await updateSellBanner(id, patch)
+      return NextResponse.json({ success: true, item })
+    }
+
     const body = (await request.json().catch(() => null)) as Record<
       string,
       unknown
@@ -27,6 +60,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
             ? String(body.subtitle)
             : undefined,
       ctaLabel: body.ctaLabel !== undefined ? String(body.ctaLabel) : undefined,
+      imageUrl:
+        body.clearImage === true
+          ? null
+          : body.imageUrl !== undefined
+            ? String(body.imageUrl || '') || null
+            : undefined,
       active: body.active !== undefined ? !!body.active : undefined,
       sortOrder:
         body.sortOrder !== undefined ? Number(body.sortOrder) : undefined,
