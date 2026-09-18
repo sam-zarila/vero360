@@ -1,6 +1,7 @@
 import Navbar from '@/app/components/landing/navbar'
 import HeroSection from './components/landing/HeroSection'
 import TrustBar from './components/landing/TrustBar'
+import SellBannerSection from './components/landing/SellBannerSection'
 import AnnouncementsSection from './components/landing/AnnouncementsSection'
 import HowItWorks from './components/landing/HowItWorks'
 import ServicesSection from './components/landing/ServicesSection'
@@ -17,6 +18,7 @@ export default function Page() {
       <Navbar />
       <HeroSection />
       <TrustBar />
+      <SellBannerSection />
       <AnnouncementsSection />
       <ServicesSection />
       <HowItWorks /> 

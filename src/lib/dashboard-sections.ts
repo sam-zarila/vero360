@@ -16,6 +16,7 @@ export type DashboardSectionId =
   | 'latest-arrivals'
   | 'announcements'
   | 'home-crawl'
+  | 'sell-banners'
   | 'push'
   | 'important-files'
   | 'marketplace'
@@ -152,6 +153,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     desc: 'Scrolling messages under the app home search bar',
     icon: 'megaphone',
     color: '#EA580C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'sell-banners',
+    title: 'Sell banners',
+    desc: 'Homepage banners that invite people to start selling',
+    icon: 'shop',
+    color: '#C2410C',
     bg: '#FFF7ED',
   },
   {
@@ -341,6 +350,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
       { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
       { href: '/dashboard/home-crawl', label: 'Home crawl', icon: 'megaphone' },
+      { href: '/dashboard/sell-banners', label: 'Sell banners', icon: 'shop' },
       { href: '/dashboard/push', label: 'Push notification', icon: 'bell' },
       { href: '/dashboard/important-files', label: 'Important files', icon: 'file-text' },
     ],
