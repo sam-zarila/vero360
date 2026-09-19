@@ -11,6 +11,8 @@ type GuideConfig = {
   eyebrow: string
   title: string
   subtitle: string
+  /** Shown under the phone mock — the exact app selection for this page. */
+  selectedLabel: string
   steps: Array<{ n: string; title: string; body: string }>
   screenshot: string
   screenshotAlt: string
@@ -23,7 +25,8 @@ const GUIDES: Record<SellBannerAudienceKey, GuideConfig> = {
     eyebrow: 'Marketplace merchant',
     title: 'Start selling on Marketplace',
     subtitle:
-      'Register as a Merchant in the app, then choose Marketplace to list products for customers across Malawi.',
+      'Register as a Merchant in the app, then choose Marketplace under Select your services.',
+    selectedLabel: 'Select your services → Marketplace',
     steps: [
       {
         n: '1',
@@ -38,11 +41,11 @@ const GUIDES: Record<SellBannerAudienceKey, GuideConfig> = {
       {
         n: '3',
         title: 'Select Marketplace',
-        body: 'Open the service menu and choose Marketplace, then finish signup.',
+        body: 'Tap Select your services and choose Marketplace, then finish signup.',
       },
     ],
-    screenshot: '/sell-guide/merchant-service-select.png',
-    screenshotAlt: 'Vero360 app: Merchant with Marketplace selected in the service menu',
+    screenshot: '/sell-guide/marketplace-register.png',
+    screenshotAlt: 'Vero360 app: Merchant with Marketplace selected under Select your services',
     videoHref: '/get-started?role=merchant',
     videoLabel: 'Watch merchant get started video',
   },
@@ -50,7 +53,8 @@ const GUIDES: Record<SellBannerAudienceKey, GuideConfig> = {
     eyebrow: 'Food & Restaurants',
     title: 'Sell food on Vero360',
     subtitle:
-      'Register as a Merchant, then choose Food & Restaurants to list your menu and take orders.',
+      'Register as a Merchant, then choose Food & Restaurants under Select your services.',
+    selectedLabel: 'Select your services → Food & Restaurants',
     steps: [
       {
         n: '1',
@@ -65,11 +69,11 @@ const GUIDES: Record<SellBannerAudienceKey, GuideConfig> = {
       {
         n: '3',
         title: 'Select Food & Restaurants',
-        body: 'Open the service menu and choose Food & Restaurants, then finish signup.',
+        body: 'Tap Select your services and choose Food & Restaurants, then finish signup.',
       },
     ],
     screenshot: '/sell-guide/food-register.png',
-    screenshotAlt: 'Vero360 app: Merchant with Food & Restaurants selected',
+    screenshotAlt: 'Vero360 app: Merchant with Food & Restaurants selected under Select your services',
     videoHref: '/get-started?role=merchant',
     videoLabel: 'Watch merchant get started video',
   },
@@ -77,7 +81,8 @@ const GUIDES: Record<SellBannerAudienceKey, GuideConfig> = {
     eyebrow: 'Accommodation',
     title: 'List stays on Vero360',
     subtitle:
-      'Register as a Merchant, then choose Accommodation to list rooms and guest bookings.',
+      'Register as a Merchant, then choose Accommodation under Select your services.',
+    selectedLabel: 'Select your services → Accommodation',
     steps: [
       {
         n: '1',
@@ -92,18 +97,19 @@ const GUIDES: Record<SellBannerAudienceKey, GuideConfig> = {
       {
         n: '3',
         title: 'Select Accommodation',
-        body: 'Open the service menu and choose Accommodation, then finish signup.',
+        body: 'Tap Select your services and choose Accommodation, then finish signup.',
       },
     ],
     screenshot: '/sell-guide/accommodation-register.png',
-    screenshotAlt: 'Vero360 app: Merchant with Accommodation selected',
+    screenshotAlt: 'Vero360 app: Merchant with Accommodation selected under Select your services',
     videoHref: '/get-started?role=merchant',
     videoLabel: 'Watch merchant get started video',
   },
   driver: {
     eyebrow: 'Driver',
     title: 'Become a Vero360 driver',
-    subtitle: 'Create a driver account in the app to accept rides and deliveries on your schedule.',
+    subtitle: 'On Create your account, tap Driver — not Customer or Merchant.',
+    selectedLabel: 'Account type → Driver',
     steps: [
       {
         n: '1',
@@ -270,29 +276,42 @@ export function SignupGuidePage({ audience }: { audience: SellBannerAudience | S
             </div>
           </div>
 
-          <div
-            style={{
-              position: 'relative',
-              borderRadius: 24,
-              overflow: 'hidden',
-              border: '1px solid var(--border)',
-              boxShadow: '0 18px 40px rgba(0,0,0,0.12)',
-              background: '#F9FAFB',
-              aspectRatio: '9 / 16',
-              maxWidth: 300,
-              margin: '0 auto',
-              width: '100%',
-            }}
-          >
-            <Image
-              src={guide.screenshot}
-              alt={guide.screenshotAlt}
-              fill
-              unoptimized
-              priority
-              style={{ objectFit: 'cover', objectPosition: 'top center' }}
-              sizes="300px"
-            />
+          <div style={{ maxWidth: 300, margin: '0 auto', width: '100%' }}>
+            <p
+              style={{
+                margin: '0 0 10px',
+                fontSize: 13,
+                fontWeight: 800,
+                color: '#9A3412',
+                textAlign: 'center',
+                lineHeight: 1.35,
+              }}
+            >
+              {guide.selectedLabel}
+            </p>
+            <div
+              style={{
+                position: 'relative',
+                borderRadius: 24,
+                overflow: 'hidden',
+                border: '1px solid var(--border)',
+                boxShadow: '0 18px 40px rgba(0,0,0,0.12)',
+                background: '#FFF7ED',
+                aspectRatio: '9 / 19',
+                width: '100%',
+              }}
+            >
+              <Image
+                key={guide.screenshot}
+                src={`${guide.screenshot}?v=3`}
+                alt={guide.screenshotAlt}
+                fill
+                unoptimized
+                priority
+                style={{ objectFit: 'contain', objectPosition: 'top center' }}
+                sizes="300px"
+              />
+            </div>
           </div>
         </div>
 
