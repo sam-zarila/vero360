@@ -145,6 +145,7 @@ export default function SellBannerClient({ banners }: Props) {
                         letterSpacing: '-0.4px',
                         fontFamily: 'var(--font-display)',
                         lineHeight: 1.15,
+                        color: '#ffffff',
                       }}
                     >
                       {slide.title}
