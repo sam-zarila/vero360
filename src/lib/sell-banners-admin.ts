@@ -71,9 +71,21 @@ export function parseSellBanner(
   const audience = parseSellBannerAudience(data.audience || data.role || data.target)
   return {
     id,
-    title: str(data.title) || (audience === 'driver' ? 'Drive with Vero360' : 'Start selling on Vero360'),
+    title: str(data.title) || (audience === 'driver'
+      ? 'Drive with Vero360'
+      : audience === 'food'
+        ? 'Sell food on Vero360'
+        : audience === 'accommodation'
+          ? 'List stays on Vero360'
+          : 'Start selling on Vero360'),
     body: str(data.body || data.subtitle || data.description),
-    ctaLabel: str(data.ctaLabel) || (audience === 'driver' ? 'Join as driver' : 'Sell now'),
+    ctaLabel: str(data.ctaLabel) || (audience === 'driver'
+      ? 'Join as driver'
+      : audience === 'food'
+        ? 'Sell food'
+        : audience === 'accommodation'
+          ? 'List stays'
+          : 'Sell now'),
     imageUrl: str(data.imageUrl) || null,
     audience,
     active: data.active !== false,
@@ -176,7 +188,14 @@ export async function createSellBanner(input: {
     title,
     body: str(input.body),
     ctaLabel:
-      str(input.ctaLabel) || (audience === 'driver' ? 'Join as driver' : 'Sell now'),
+      str(input.ctaLabel) ||
+      (audience === 'driver'
+        ? 'Join as driver'
+        : audience === 'food'
+          ? 'Sell food'
+          : audience === 'accommodation'
+            ? 'List stays'
+            : 'Sell now'),
     imageUrl,
     audience,
     active: input.active !== false,

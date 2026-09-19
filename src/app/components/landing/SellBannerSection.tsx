@@ -8,7 +8,7 @@ const FALLBACK: SellBannerSlide = {
     'Create a merchant account in the Vero360 app, list your products or services, and reach customers across Malawi.',
   ctaLabel: 'Sell now',
   imageUrl: null,
-  audience: 'merchant',
+  audience: 'marketplace',
 }
 
 /** Public sell banners from admin (`sell_banners`) — slides like the mobile app. */

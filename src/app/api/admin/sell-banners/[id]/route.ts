@@ -25,7 +25,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
         body?: string
         ctaLabel?: string
         imageUrl?: string | null
-        audience?: 'merchant' | 'driver'
+        audience?: ReturnType<typeof parseSellBannerAudience>
         active?: boolean
       } = {}
       if (form.has('title')) patch.title = String(form.get('title') ?? '')

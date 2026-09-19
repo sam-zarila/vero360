@@ -71,8 +71,15 @@ export default function SellBannerClient({ banners }: Props) {
         >
           {slides.map(slide => {
             const imageSrc = resolveSellBannerImage(slide.imageUrl)
-            const href = sellBannerHref(slide.audience || 'merchant')
-            const eyebrow = slide.audience === 'driver' ? 'Drive with Vero360' : 'Sell on Vero360'
+            const href = sellBannerHref(slide.audience || 'marketplace')
+            const eyebrow =
+              slide.audience === 'driver'
+                ? 'Drive with Vero360'
+                : slide.audience === 'food'
+                  ? 'Food & Restaurants'
+                  : slide.audience === 'accommodation'
+                    ? 'Accommodation'
+                    : 'Marketplace'
             return (
               <div
                 key={slide.id}

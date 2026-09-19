@@ -17,7 +17,15 @@ import {
   DashboardRefreshButton,
 } from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
-import { resolveSellBannerImage, type SellBanner, type SellBannerAudience } from '@/lib/sell-banners'
+import type { SellBanner, SellBannerAudienceKey } from '@/lib/sell-banners'
+import {
+  parseSellBannerAudience,
+  resolveSellBannerImage,
+  sellBannerAudienceLabel,
+  sellBannerDefaultCta,
+  sellBannerDefaultTitle,
+  sellBannerHref,
+} from '@/lib/sell-banners'
 
 type FormState = {
   title: string
@@ -25,17 +33,17 @@ type FormState = {
   ctaLabel: string
   imageUrl: string
   imageFile: File | null
-  audience: SellBannerAudience
+  audience: SellBannerAudienceKey
   active: boolean
 }
 
 const emptyForm = (): FormState => ({
-  title: 'Start selling on Vero360',
+  title: sellBannerDefaultTitle('marketplace'),
   body: 'Open the Vero360 app, create a merchant account, list your products, and reach customers across Malawi.',
-  ctaLabel: 'Sell now',
+  ctaLabel: sellBannerDefaultCta('marketplace'),
   imageUrl: '',
   imageFile: null,
-  audience: 'merchant',
+  audience: 'marketplace',
   active: true,
 })
 
@@ -94,10 +102,10 @@ export default function SellBannersAdminPage() {
     setForm({
       title: item.title,
       body: item.body,
-      ctaLabel: item.ctaLabel || (item.audience === 'driver' ? 'Join as driver' : 'Sell now'),
+      ctaLabel: item.ctaLabel || sellBannerDefaultCta(item.audience),
       imageUrl: item.imageUrl || '',
       imageFile: null,
-      audience: item.audience === 'driver' ? 'driver' : 'merchant',
+      audience: parseSellBannerAudience(item.audience),
       active: item.active,
     })
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -160,9 +168,7 @@ export default function SellBannersAdminPage() {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Create failed')
         setNotice(
-          form.audience === 'driver'
-            ? 'Driver banner created. CTA opens driver signup.'
-            : 'Merchant banner created. CTA opens sell signup guide.',
+          `${sellBannerAudienceLabel(form.audience)} banner created → ${sellBannerHref(form.audience)}`,
         )
       } else {
         const res = await adminFetch('/api/admin/sell-banners', {
@@ -179,9 +185,7 @@ export default function SellBannersAdminPage() {
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Create failed')
         setNotice(
-          form.audience === 'driver'
-            ? 'Driver banner created. CTA opens driver signup.'
-            : 'Merchant banner created. CTA opens sell signup guide.',
+          `${sellBannerAudienceLabel(form.audience)} banner created → ${sellBannerHref(form.audience)}`,
         )
       }
       resetForm()
@@ -227,7 +231,7 @@ export default function SellBannersAdminPage() {
       <DashboardBackLink />
       <DashboardPageHeader
         sectionId="sell-banners"
-        description="Homepage banners for merchants (sell) or drivers. CTA opens the matching signup guide."
+        description="One banner per service: Marketplace, Food, Accommodation, or Driver. Each CTA opens that service’s signup guide with the matching screenshot."
         actions={<DashboardRefreshButton onClick={() => void load()} />}
       />
 
@@ -244,8 +248,9 @@ export default function SellBannersAdminPage() {
           lineHeight: 1.4,
         }}
       >
-        Choose <strong>Merchant</strong> → <code>/start-selling</code>, or <strong>Driver</strong> →{' '}
-        <code>/start-driving</code> (create driver account). Same banners show on the website and app home.
+        Marketplace → <code>/start-selling/marketplace</code> · Food →{' '}
+        <code>/start-selling/food</code> · Accommodation → <code>/start-selling/accommodation</code> ·
+        Driver → <code>/start-driving</code>
       </div>
 
       {error ? (
@@ -282,32 +287,32 @@ export default function SellBannersAdminPage() {
           />
         </label>
         <label style={labelStyle}>
-          Audience *
+          Service *
           <select
-            value={form.audience}
+            value={parseSellBannerAudience(form.audience)}
             onChange={e => {
-              const audience = e.target.value === 'driver' ? 'driver' : 'merchant'
+              const audience = parseSellBannerAudience(e.target.value)
               setForm(f => ({
                 ...f,
                 audience,
-                ctaLabel:
-                  f.ctaLabel === 'Sell now' || f.ctaLabel === 'Join as driver' || !f.ctaLabel
-                    ? audience === 'driver'
-                      ? 'Join as driver'
-                      : 'Sell now'
-                    : f.ctaLabel,
-                title:
-                  f.title === 'Start selling on Vero360' || f.title === 'Drive with Vero360'
-                    ? audience === 'driver'
-                      ? 'Drive with Vero360'
-                      : 'Start selling on Vero360'
-                    : f.title,
+                ctaLabel: sellBannerDefaultCta(audience),
+                title: sellBannerDefaultTitle(audience),
+                body:
+                  audience === 'driver'
+                    ? 'Open the Vero360 app, tap Driver on Create your account, and finish signup to start earning.'
+                    : audience === 'food'
+                      ? 'Open the app, select Merchant, then choose Food & Restaurants to list your menu.'
+                      : audience === 'accommodation'
+                        ? 'Open the app, select Merchant, then choose Accommodation to list stays.'
+                        : 'Open the Vero360 app, create a merchant account, choose Marketplace, and list your products.',
               }))
             }}
             style={inputStyle}
           >
-            <option value="merchant">Merchant — sell signup</option>
-            <option value="driver">Driver — create driver account</option>
+            <option value="marketplace">Marketplace</option>
+            <option value="food">Food & Restaurants</option>
+            <option value="accommodation">Accommodation</option>
+            <option value="driver">Driver</option>
           </select>
         </label>
         <label style={labelStyle}>
@@ -316,7 +321,7 @@ export default function SellBannersAdminPage() {
             value={form.ctaLabel}
             onChange={e => setForm(f => ({ ...f, ctaLabel: e.target.value }))}
             maxLength={40}
-            placeholder={form.audience === 'driver' ? 'Join as driver' : 'Sell now'}
+            placeholder={sellBannerDefaultCta(form.audience)}
             style={inputStyle}
           />
         </label>
@@ -484,9 +489,9 @@ export default function SellBannersAdminPage() {
                       </p>
                     ) : null}
                     <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#9A3412', fontWeight: 700 }}>
-                      {item.audience === 'driver' ? 'Driver' : 'Merchant'} · CTA:{' '}
-                      {item.ctaLabel || (item.audience === 'driver' ? 'Join as driver' : 'Sell now')} →{' '}
-                      {item.audience === 'driver' ? '/start-driving' : '/start-selling'}
+                      {sellBannerAudienceLabel(item.audience)} · CTA:{' '}
+                      {item.ctaLabel || sellBannerDefaultCta(item.audience)} →{' '}
+                      {sellBannerHref(item.audience)}
                       {item.imageUrl ? ' · photo attached' : ''}
                     </p>
                   </div>
