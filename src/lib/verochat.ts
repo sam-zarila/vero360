@@ -163,6 +163,7 @@ export async function ensureSession(
       updatedAt: serverTimestamp(),
       lastMessage: '',
       unreadForAgent: 0,
+      unreadForVisitor: 0,
       source,
       type,
     })
@@ -290,7 +291,7 @@ export async function sendAgentMessage(
   await appendMessage(
     sessionId,
     { text: trimmed, sender: 'agent', agentName, kind: 'text', replyTo },
-    { unreadForAgent: 0 },
+    { unreadForAgent: 0, unreadForVisitor: increment(1) },
   )
 }
 
@@ -312,12 +313,16 @@ export async function sendAgentImage(
       imageUrl,
       replyTo: options?.replyTo,
     },
-    { unreadForAgent: 0 },
+    { unreadForAgent: 0, unreadForVisitor: increment(1) },
   )
 }
 
 export async function markSessionRead(sessionId: string) {
   await updateDoc(sessionRef(sessionId), { unreadForAgent: 0 })
+}
+
+export async function markVisitorSessionRead(sessionId: string) {
+  await updateDoc(sessionRef(sessionId), { unreadForVisitor: 0 })
 }
 
 export function subscribeToMessages(
