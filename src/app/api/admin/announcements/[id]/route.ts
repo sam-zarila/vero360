@@ -123,6 +123,18 @@ export async function PATCH(request: Request, ctx: Ctx) {
           patch.videoKind = parsed.kind
           patch.videoFileName = null
         }
+      } else {
+        const directUrl = String(form.get('videoUrl') ?? '').trim()
+        if (directUrl) {
+          patch.videoUrl = directUrl
+          patch.videoEmbedUrl = String(form.get('videoEmbedUrl') ?? '').trim() || directUrl
+          const kindRaw = String(form.get('videoKind') ?? 'file').trim()
+          patch.videoKind =
+            kindRaw === 'youtube' || kindRaw === 'vimeo' || kindRaw === 'link' || kindRaw === 'file'
+              ? kindRaw
+              : 'file'
+          patch.videoFileName = String(form.get('videoFileName') ?? '').trim() || null
+        }
       }
     }
 

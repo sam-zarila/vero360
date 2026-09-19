@@ -54,6 +54,50 @@ function firebaseDownloadUrl(bucketName: string, objectPath: string, token: stri
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`
 }
 
+/** Map Firebase / GCS quota errors to a clear admin-facing message. */
+export function mapAnnouncementStorageError(err: unknown): Error {
+  const raw =
+    err && typeof err === 'object' && 'message' in err
+      ? String((err as { message: unknown }).message)
+      : String(err ?? '')
+  const code =
+    err && typeof err === 'object' && 'code' in err ? String((err as { code: unknown }).code) : ''
+  const blob = `${code} ${raw}`.toLowerCase()
+  if (
+    /usage_exceeded|quota.?exceeded|storage\/quota|access_bucket|billing.?disabled|402/.test(blob)
+  ) {
+    return new Error(
+      'Firebase Storage quota exceeded (usage_exceeded). Paste a YouTube/Vimeo link instead, free space in Firebase Storage, or upgrade the project to the Blaze plan.',
+    )
+  }
+  return err instanceof Error ? err : new Error(raw || 'Storage upload failed')
+}
+
+async function ensureAnnouncementUploadCors(origin?: string) {
+  const bucket = getAdminStorage().bucket(getAdminStorageBucket())
+  const origins = [
+    'https://vero360.app',
+    'https://www.vero360.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ]
+  if (origin && /^https?:\/\//.test(origin) && !origins.includes(origin)) {
+    origins.push(origin)
+  }
+  try {
+    await bucket.setCorsConfiguration([
+      {
+        origin: origins,
+        method: ['GET', 'PUT', 'HEAD', 'OPTIONS'],
+        responseHeader: ['Content-Type', 'x-goog-content-length-range'],
+        maxAgeSeconds: 3600,
+      },
+    ])
+  } catch (err) {
+    console.warn('announcement video CORS skipped:', err)
+  }
+}
+
 function imageExt(contentType: string, fileName: string): string {
   const fromName = (fileName.split('.').pop() || '').toLowerCase()
   if (fromName === 'png' || fromName === 'webp' || fromName === 'gif' || fromName === 'jpg' || fromName === 'jpeg') {
@@ -306,17 +350,97 @@ export async function uploadAnnouncementImage(file: File): Promise<string> {
   const bucket = getAdminStorage().bucket(getAdminStorageBucket())
   const token = randomUUID()
 
-  await bucket.file(objectPath).save(buffer, {
-    resumable: false,
-    metadata: {
+  try {
+    await bucket.file(objectPath).save(buffer, {
+      resumable: false,
+      metadata: {
+        contentType,
+        metadata: {
+          firebaseStorageDownloadTokens: token,
+        },
+      },
+    })
+  } catch (err) {
+    throw mapAnnouncementStorageError(err)
+  }
+
+  return firebaseDownloadUrl(bucket.name, objectPath, token)
+}
+
+export async function createAnnouncementVideoUploadUrl(opts: {
+  contentType: string
+  fileName: string
+  size: number
+  origin?: string
+}) {
+  const contentType = (opts.contentType || '').toLowerCase()
+  if (!ALLOWED_VIDEO_TYPES.has(contentType)) {
+    throw new Error('Upload an MP4, WebM, or MOV video')
+  }
+  if (opts.size <= 0 || opts.size > MAX_VIDEO_BYTES) {
+    throw new Error('Video must be 100MB or smaller')
+  }
+
+  await ensureAnnouncementUploadCors(opts.origin)
+
+  const ext = videoExt(contentType, opts.fileName)
+  const objectPath = `site_announcement_videos/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`
+  const bucket = getAdminStorage().bucket(getAdminStorageBucket())
+  const file = bucket.file(objectPath)
+
+  try {
+    const [uploadUrl] = await file.getSignedUrl({
+      version: 'v4',
+      action: 'write',
+      expires: Date.now() + 20 * 60 * 1000,
       contentType,
+    })
+    return { uploadUrl, objectPath, contentType }
+  } catch (err) {
+    throw mapAnnouncementStorageError(err)
+  }
+}
+
+export async function completeAnnouncementVideoUpload(opts: {
+  objectPath: string
+  fileName: string
+  contentType: string
+}): Promise<{
+  url: string
+  embedUrl: string
+  kind: AnnouncementVideoKind
+  fileName: string
+}> {
+  if (!opts.objectPath.startsWith('site_announcement_videos/')) {
+    throw new Error('Invalid upload path')
+  }
+
+  const bucket = getAdminStorage().bucket(getAdminStorageBucket())
+  const file = bucket.file(opts.objectPath)
+  try {
+    const [exists] = await file.exists()
+    if (!exists) {
+      throw new Error('Upload did not finish. Try again, or paste a YouTube / Vimeo link.')
+    }
+
+    const token = randomUUID()
+    await file.setMetadata({
+      contentType: opts.contentType || 'video/mp4',
       metadata: {
         firebaseStorageDownloadTokens: token,
       },
-    },
-  })
+    })
 
-  return firebaseDownloadUrl(bucket.name, objectPath, token)
+    const url = firebaseDownloadUrl(bucket.name, opts.objectPath, token)
+    return {
+      url,
+      embedUrl: url,
+      kind: 'file',
+      fileName: (opts.fileName || 'announcement.mp4').slice(0, 180),
+    }
+  } catch (err) {
+    throw mapAnnouncementStorageError(err)
+  }
 }
 
 export async function uploadAnnouncementVideo(file: File): Promise<{
@@ -339,15 +463,19 @@ export async function uploadAnnouncementVideo(file: File): Promise<{
   const bucket = getAdminStorage().bucket(getAdminStorageBucket())
   const token = randomUUID()
 
-  await bucket.file(objectPath).save(buffer, {
-    resumable: false,
-    metadata: {
-      contentType,
+  try {
+    await bucket.file(objectPath).save(buffer, {
+      resumable: false,
       metadata: {
-        firebaseStorageDownloadTokens: token,
+        contentType,
+        metadata: {
+          firebaseStorageDownloadTokens: token,
+        },
       },
-    },
-  })
+    })
+  } catch (err) {
+    throw mapAnnouncementStorageError(err)
+  }
 
   const url = firebaseDownloadUrl(bucket.name, objectPath, token)
   return {

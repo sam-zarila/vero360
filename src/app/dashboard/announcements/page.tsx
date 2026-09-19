@@ -1,5 +1,5 @@
 'use client'
-import { adminFetch } from '@/lib/panel-client-auth'
+import { adminFetch, panelAuthHeaders } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import Image from 'next/image'
@@ -27,6 +27,17 @@ function fromLocalInputValue(value: string) {
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return null
   return d.toISOString()
+}
+
+function storageUploadErrorMessage(status: number, bodyText: string) {
+  const lower = bodyText.toLowerCase()
+  if (
+    status === 402 ||
+    /usage_exceeded|quota.?exceeded|access_bucket|billing/.test(lower)
+  ) {
+    return 'Firebase Storage quota exceeded (usage_exceeded). Paste a YouTube/Vimeo link instead, free space in Firebase Storage, or upgrade to the Blaze plan.'
+  }
+  return 'Upload to storage failed. Try again, or paste a YouTube / Vimeo link.'
 }
 
 type FormState = {
@@ -63,6 +74,7 @@ export default function AnnouncementsAdminPage() {
   const [items, setItems] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [form, setForm] = useState<FormState>(emptyForm)
@@ -135,6 +147,62 @@ export default function AnnouncementsAdminPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const uploadVideoViaSignedUrl = async (file: File) => {
+    const startHeaders = await panelAuthHeaders(true)
+    const startRes = await adminFetch('/api/admin/announcements/upload', {
+      method: 'POST',
+      headers: startHeaders,
+      body: JSON.stringify({
+        action: 'start',
+        contentType: file.type || 'video/mp4',
+        fileName: file.name,
+        size: file.size,
+      }),
+    })
+    const startData = await startRes.json()
+    if (!startRes.ok) throw new Error(startData.error || 'Could not start video upload')
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('PUT', startData.uploadUrl)
+      xhr.setRequestHeader('Content-Type', file.type || 'video/mp4')
+      xhr.upload.onprogress = ev => {
+        if (!ev.lengthComputable) return
+        setUploadProgress(Math.round((ev.loaded / ev.total) * 100))
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve()
+          return
+        }
+        reject(new Error(storageUploadErrorMessage(xhr.status, xhr.responseText || '')))
+      }
+      xhr.onerror = () =>
+        reject(new Error(storageUploadErrorMessage(0, xhr.responseText || '')))
+      xhr.send(file)
+    })
+
+    const doneHeaders = await panelAuthHeaders(true)
+    const doneRes = await adminFetch('/api/admin/announcements/upload', {
+      method: 'POST',
+      headers: doneHeaders,
+      body: JSON.stringify({
+        action: 'complete',
+        objectPath: startData.objectPath,
+        fileName: file.name,
+        contentType: startData.contentType || file.type || 'video/mp4',
+      }),
+    })
+    const doneData = await doneRes.json()
+    if (!doneRes.ok) throw new Error(doneData.error || 'Could not finish video upload')
+    return doneData.video as {
+      url: string
+      embedUrl: string
+      kind: string
+      fileName: string
+    }
+  }
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const hasImage = Boolean(form.imageFile || form.existingImageUrl)
@@ -148,9 +216,20 @@ export default function AnnouncementsAdminPage() {
       return
     }
     setSaving(true)
+    setUploadProgress(0)
     setError('')
     setNotice('')
     try {
+      let uploadedVideo: {
+        url: string
+        embedUrl: string
+        kind: string
+        fileName: string
+      } | null = null
+      if (!form.clearVideo && form.videoFile) {
+        uploadedVideo = await uploadVideoViaSignedUrl(form.videoFile)
+      }
+
       const body = new FormData()
       body.set('title', form.title.trim())
       body.set('description', form.description.trim())
@@ -160,8 +239,11 @@ export default function AnnouncementsAdminPage() {
       if (form.imageFile) body.set('image', form.imageFile)
       if (form.clearVideo) {
         body.set('clearVideo', 'true')
-      } else if (form.videoFile) {
-        body.set('video', form.videoFile)
+      } else if (uploadedVideo) {
+        body.set('videoUrl', uploadedVideo.url)
+        body.set('videoEmbedUrl', uploadedVideo.embedUrl)
+        body.set('videoKind', uploadedVideo.kind || 'file')
+        body.set('videoFileName', uploadedVideo.fileName || form.videoFile?.name || '')
       } else if (form.videoLink.trim()) {
         body.set('videoLink', form.videoLink.trim())
       }
@@ -182,6 +264,7 @@ export default function AnnouncementsAdminPage() {
       setError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
+      setUploadProgress(0)
     }
   }
 
@@ -394,7 +477,8 @@ export default function AnnouncementsAdminPage() {
             Announcement video (recommended)
           </div>
           <p style={{ margin: 0, fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
-            Same as Get started videos: paste a YouTube / Vimeo / MP4 link, or upload an MP4 / WebM / MOV
+            Same as Get started videos: paste a YouTube / Vimeo / MP4 link (recommended if Storage
+            quota is full), or upload an MP4 / WebM / MOV up to 100MB.
             (max 100MB).
           </p>
           <label style={{ display: 'grid', gap: 6 }}>
@@ -481,7 +565,13 @@ export default function AnnouncementsAdminPage() {
             cursor: saving ? 'wait' : 'pointer',
           }}
         >
-          {saving ? 'Saving…' : editingId ? 'Save changes' : 'Publish announcement'}
+          {saving
+            ? uploadProgress > 0
+              ? `Uploading video ${uploadProgress}%…`
+              : 'Saving…'
+            : editingId
+              ? 'Save changes'
+              : 'Publish announcement'}
         </button>
       </form>
 

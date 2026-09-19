@@ -70,6 +70,18 @@ export async function POST(request: Request) {
       videoUrl = parsed.url
       videoEmbedUrl = parsed.embedUrl
       videoKind = parsed.kind
+    } else {
+      const directUrl = String(form.get('videoUrl') ?? '').trim()
+      if (directUrl) {
+        videoUrl = directUrl
+        videoEmbedUrl = String(form.get('videoEmbedUrl') ?? '').trim() || directUrl
+        const kindRaw = String(form.get('videoKind') ?? 'file').trim()
+        videoKind =
+          kindRaw === 'youtube' || kindRaw === 'vimeo' || kindRaw === 'link' || kindRaw === 'file'
+            ? kindRaw
+            : 'file'
+        videoFileName = String(form.get('videoFileName') ?? '').trim() || null
+      }
     }
 
     const item = await createAnnouncement({
