@@ -18,6 +18,7 @@ import {
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
+import { FrontDeskContactPanel } from './FrontDeskContactPanel'
 
 const SECTION = DASHBOARD_SECTION_MAP['vero-ride']
 
@@ -127,6 +128,8 @@ export default function VeroRideDriversPage() {
           </div>
         }
       />
+
+      <FrontDeskContactPanel />
 
       <div
         style={{
