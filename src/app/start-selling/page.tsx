@@ -14,7 +14,7 @@ const STEPS = [
   {
     n: '2',
     title: 'Select Merchant',
-    body: 'On Create your account, tap Merchant (store icon) so you register as a seller ',
+    body: 'On Create your account, tap Merchant (store icon) so you register as a seller.',
   },
   {
     n: '3',
@@ -24,9 +24,24 @@ const STEPS = [
 ]
 
 const SERVICES = [
-  { name: 'Marketplace', desc: 'Sell products to customers across Malawi.' },
-  { name: 'Food & Restaurants', desc: 'List your menu and take food orders.' },
-  { name: 'Accommodation', desc: 'List stays, rooms, and guest bookings.' },
+  {
+    name: 'Marketplace',
+    desc: 'Sell products to customers across Malawi.',
+    image: '/sell-guide/merchant-service-select.png',
+    alt: 'Vero360 app: Merchant selected with Marketplace highlighted in the service menu',
+  },
+  {
+    name: 'Food & Restaurants',
+    desc: 'List your menu and take food orders.',
+    image: '/sell-guide/food-register.png',
+    alt: 'Vero360 app: Merchant selected with Food & Restaurants highlighted in the service menu',
+  },
+  {
+    name: 'Accommodation',
+    desc: 'List stays, rooms, and guest bookings.',
+    image: '/sell-guide/accommodation-register.png',
+    alt: 'Vero360 app: Merchant selected with Accommodation highlighted in the service menu',
+  },
 ]
 
 export default function StartSellingPage() {
@@ -38,7 +53,7 @@ export default function StartSellingPage() {
           padding: '40px 24px 72px',
         }}
       >
-        <div style={{ maxWidth: 880, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <Logo height={42} textColor="#fff" />
           <Link
             href="/"
@@ -80,7 +95,7 @@ export default function StartSellingPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 880, margin: '-40px auto 0', padding: '0 24px 80px' }}>
+      <div style={{ maxWidth: 1100, margin: '-40px auto 0', padding: '0 24px 80px' }}>
         <div
           style={{
             background: '#fff',
@@ -144,75 +159,68 @@ export default function StartSellingPage() {
           ))}
         </div>
 
+        <h2
+          style={{
+            margin: '36px 0 10px',
+            fontSize: 22,
+            fontWeight: 800,
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          Pick your merchant service
+        </h2>
+        <p style={{ margin: '0 0 20px', fontSize: 15, color: 'var(--text-2)', lineHeight: 1.6 }}>
+          After you tap Merchant, open the service menu and choose one. Screenshots match what you see
+          in the app:
+        </p>
+
         <div
           style={{
-            marginTop: 28,
             display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) minmax(240px, 320px)',
-            gap: 28,
-            alignItems: 'start',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 20,
           }}
-          className="sell-guide-grid"
+          className="sell-service-grid"
         >
-          <div>
-            <h2
+          {SERVICES.map(s => (
+            <article
+              key={s.name}
               style={{
-                margin: '0 0 10px',
-                fontSize: 22,
-                fontWeight: 800,
-                fontFamily: 'var(--font-display)',
+                background: '#fff',
+                borderRadius: 20,
+                border: '1px solid var(--border)',
+                overflow: 'hidden',
+                boxShadow: '0 10px 28px rgba(0,0,0,0.06)',
               }}
             >
-              Pick your merchant service
-            </h2>
-            <p style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--text-2)', lineHeight: 1.6 }}>
-              After you tap Merchant, open the service menu and choose one:
-            </p>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {SERVICES.map(s => (
-                <div
-                  key={s.name}
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: 14,
-                    border: '1px solid var(--border)',
-                    background: '#fff',
-                  }}
-                >
-                  <div style={{ fontWeight: 800, fontSize: 16 }}>{s.name}</div>
-                  <div style={{ marginTop: 4, fontSize: 14, color: 'var(--text-3)' }}>{s.desc}</div>
+              <div
+                style={{
+                  position: 'relative',
+                  aspectRatio: '9 / 16',
+                  background: '#F9FAFB',
+                }}
+              >
+                <Image
+                  src={s.image}
+                  alt={s.alt}
+                  fill
+                  unoptimized
+                  style={{ objectFit: 'cover', objectPosition: 'top center' }}
+                  sizes="(max-width: 900px) 100vw, 320px"
+                />
+              </div>
+              <div style={{ padding: '14px 16px 16px' }}>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>{s.name}</div>
+                <div style={{ marginTop: 4, fontSize: 14, color: 'var(--text-3)', lineHeight: 1.45 }}>
+                  {s.desc}
                 </div>
-              ))}
-            </div>
-            <div style={{ marginTop: 24 }}>
-              <StoreDownloadLinks maxWidth={360} />
-            </div>
-          </div>
+              </div>
+            </article>
+          ))}
+        </div>
 
-          <div
-            style={{
-              position: 'relative',
-              borderRadius: 24,
-              overflow: 'hidden',
-              border: '1px solid var(--border)',
-              boxShadow: '0 18px 40px rgba(0,0,0,0.12)',
-              background: '#F9FAFB',
-              aspectRatio: '9 / 16',
-              maxWidth: 320,
-              margin: '0 auto',
-              width: '100%',
-            }}
-          >
-            <Image
-              src="/sell-guide/merchant-service-select.png"
-              alt="Vero360 app: Create your account with Merchant selected and service menu open for Marketplace, Food & Restaurants, and Accommodation"
-              fill
-              unoptimized
-              style={{ objectFit: 'cover', objectPosition: 'top center' }}
-              sizes="320px"
-              priority
-            />
-          </div>
+        <div style={{ marginTop: 28, maxWidth: 360 }}>
+          <StoreDownloadLinks maxWidth={360} />
         </div>
 
         <p
@@ -231,9 +239,11 @@ export default function StartSellingPage() {
       </div>
 
       <style>{`
-        @media (max-width: 800px) {
-          .sell-guide-grid {
+        @media (max-width: 900px) {
+          .sell-service-grid {
             grid-template-columns: 1fr !important;
+            max-width: 360px;
+            margin: 0 auto;
           }
         }
       `}</style>

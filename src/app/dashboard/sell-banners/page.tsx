@@ -17,7 +17,7 @@ import {
   DashboardRefreshButton,
 } from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
-import { resolveSellBannerImage, type SellBanner } from '@/lib/sell-banners'
+import { resolveSellBannerImage, type SellBanner, type SellBannerAudience } from '@/lib/sell-banners'
 
 type FormState = {
   title: string
@@ -25,6 +25,7 @@ type FormState = {
   ctaLabel: string
   imageUrl: string
   imageFile: File | null
+  audience: SellBannerAudience
   active: boolean
 }
 
@@ -34,6 +35,7 @@ const emptyForm = (): FormState => ({
   ctaLabel: 'Sell now',
   imageUrl: '',
   imageFile: null,
+  audience: 'merchant',
   active: true,
 })
 
@@ -92,9 +94,10 @@ export default function SellBannersAdminPage() {
     setForm({
       title: item.title,
       body: item.body,
-      ctaLabel: item.ctaLabel || 'Sell now',
+      ctaLabel: item.ctaLabel || (item.audience === 'driver' ? 'Join as driver' : 'Sell now'),
       imageUrl: item.imageUrl || '',
       imageFile: null,
+      audience: item.audience === 'driver' ? 'driver' : 'merchant',
       active: item.active,
     })
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -115,6 +118,7 @@ export default function SellBannersAdminPage() {
           body.set('title', form.title)
           body.set('body', form.body)
           body.set('ctaLabel', form.ctaLabel || 'Sell now')
+          body.set('audience', form.audience)
           body.set('active', form.active ? 'true' : 'false')
           if (form.imageFile) body.set('image', form.imageFile)
           const res = await adminFetch(`/api/admin/sell-banners/${editingId}`, {
@@ -130,6 +134,7 @@ export default function SellBannersAdminPage() {
               title: form.title,
               body: form.body,
               ctaLabel: form.ctaLabel || 'Sell now',
+              audience: form.audience,
               active: form.active,
               imageUrl: clearImage ? '' : form.imageUrl.trim(),
               clearImage,
@@ -144,6 +149,7 @@ export default function SellBannersAdminPage() {
         body.set('title', form.title)
         body.set('body', form.body)
         body.set('ctaLabel', form.ctaLabel || 'Sell now')
+        body.set('audience', form.audience)
         body.set('active', form.active ? 'true' : 'false')
         if (form.imageUrl.trim()) body.set('imageUrl', form.imageUrl.trim())
         if (form.imageFile) body.set('image', form.imageFile)
@@ -153,7 +159,11 @@ export default function SellBannersAdminPage() {
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Create failed')
-        setNotice('Banner created. Sell now opens merchant signup.')
+        setNotice(
+          form.audience === 'driver'
+            ? 'Driver banner created. CTA opens driver signup.'
+            : 'Merchant banner created. CTA opens sell signup guide.',
+        )
       } else {
         const res = await adminFetch('/api/admin/sell-banners', {
           method: 'POST',
@@ -161,13 +171,18 @@ export default function SellBannersAdminPage() {
             title: form.title,
             body: form.body,
             ctaLabel: form.ctaLabel || 'Sell now',
+            audience: form.audience,
             active: form.active,
             imageUrl: form.imageUrl.trim() || null,
           }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Create failed')
-        setNotice('Banner created. Sell now opens merchant signup.')
+        setNotice(
+          form.audience === 'driver'
+            ? 'Driver banner created. CTA opens driver signup.'
+            : 'Merchant banner created. CTA opens sell signup guide.',
+        )
       }
       resetForm()
       await load()
@@ -212,7 +227,7 @@ export default function SellBannersAdminPage() {
       <DashboardBackLink />
       <DashboardPageHeader
         sectionId="sell-banners"
-        description="Create free-form banners that tell people how to start selling. Sell now always opens merchant signup."
+        description="Homepage banners for merchants (sell) or drivers. CTA opens the matching signup guide."
         actions={<DashboardRefreshButton onClick={() => void load()} />}
       />
 
@@ -229,9 +244,8 @@ export default function SellBannersAdminPage() {
           lineHeight: 1.4,
         }}
       >
-        Active banners appear on the website homepage and the Vero360 app home.
-        Add a photo via image URL or the gallery picker. Sell now opens the merchant signup steps
-        guide (<code>/start-selling</code>).
+        Choose <strong>Merchant</strong> → <code>/start-selling</code>, or <strong>Driver</strong> →{' '}
+        <code>/start-driving</code> (create driver account). Same banners show on the website and app home.
       </div>
 
       {error ? (
@@ -268,12 +282,41 @@ export default function SellBannersAdminPage() {
           />
         </label>
         <label style={labelStyle}>
+          Audience *
+          <select
+            value={form.audience}
+            onChange={e => {
+              const audience = e.target.value === 'driver' ? 'driver' : 'merchant'
+              setForm(f => ({
+                ...f,
+                audience,
+                ctaLabel:
+                  f.ctaLabel === 'Sell now' || f.ctaLabel === 'Join as driver' || !f.ctaLabel
+                    ? audience === 'driver'
+                      ? 'Join as driver'
+                      : 'Sell now'
+                    : f.ctaLabel,
+                title:
+                  f.title === 'Start selling on Vero360' || f.title === 'Drive with Vero360'
+                    ? audience === 'driver'
+                      ? 'Drive with Vero360'
+                      : 'Start selling on Vero360'
+                    : f.title,
+              }))
+            }}
+            style={inputStyle}
+          >
+            <option value="merchant">Merchant — sell signup</option>
+            <option value="driver">Driver — create driver account</option>
+          </select>
+        </label>
+        <label style={labelStyle}>
           Button label
           <input
             value={form.ctaLabel}
             onChange={e => setForm(f => ({ ...f, ctaLabel: e.target.value }))}
             maxLength={40}
-            placeholder="Sell now"
+            placeholder={form.audience === 'driver' ? 'Join as driver' : 'Sell now'}
             style={inputStyle}
           />
         </label>
@@ -441,7 +484,9 @@ export default function SellBannersAdminPage() {
                       </p>
                     ) : null}
                     <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#9A3412', fontWeight: 700 }}>
-                      CTA: {item.ctaLabel || 'Sell now'} → merchant signup
+                      {item.audience === 'driver' ? 'Driver' : 'Merchant'} · CTA:{' '}
+                      {item.ctaLabel || (item.audience === 'driver' ? 'Join as driver' : 'Sell now')} →{' '}
+                      {item.audience === 'driver' ? '/start-driving' : '/start-selling'}
                       {item.imageUrl ? ' · photo attached' : ''}
                     </p>
                   </div>

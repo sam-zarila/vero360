@@ -4,7 +4,8 @@ import { randomUUID } from 'crypto'
 import { FieldValue, type DocumentData } from 'firebase-admin/firestore'
 import { unstable_noStore as noStore } from 'next/cache'
 import { getAdminDb, getAdminStorage, getAdminStorageBucket } from '@/lib/firebase-admin'
-import type { SellBanner } from '@/lib/sell-banners'
+import type { SellBanner, SellBannerAudience } from '@/lib/sell-banners'
+import { parseSellBannerAudience } from '@/lib/sell-banners'
 
 export type { SellBanner } from '@/lib/sell-banners'
 
@@ -67,12 +68,14 @@ export function parseSellBanner(
   id: string,
   data: DocumentData | Record<string, unknown>,
 ): SellBanner {
+  const audience = parseSellBannerAudience(data.audience || data.role || data.target)
   return {
     id,
-    title: str(data.title) || 'Start selling on Vero360',
+    title: str(data.title) || (audience === 'driver' ? 'Drive with Vero360' : 'Start selling on Vero360'),
     body: str(data.body || data.subtitle || data.description),
-    ctaLabel: str(data.ctaLabel) || 'Sell now',
+    ctaLabel: str(data.ctaLabel) || (audience === 'driver' ? 'Join as driver' : 'Sell now'),
     imageUrl: str(data.imageUrl) || null,
+    audience,
     active: data.active !== false,
     sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
     createdAt: tsToIso(data.createdAt),
@@ -156,6 +159,7 @@ export async function createSellBanner(input: {
   body?: string
   ctaLabel?: string
   imageUrl?: string | null
+  audience?: SellBannerAudience
   active?: boolean
   sortOrder?: number
   createdByEmail?: string
@@ -163,6 +167,7 @@ export async function createSellBanner(input: {
   const title = str(input.title)
   if (!title) throw new Error('Title is required')
 
+  const audience = parseSellBannerAudience(input.audience)
   const imageUrl =
     input.imageUrl === undefined ? null : normalizeImageUrl(input.imageUrl)
 
@@ -170,8 +175,10 @@ export async function createSellBanner(input: {
   const payload = {
     title,
     body: str(input.body),
-    ctaLabel: str(input.ctaLabel) || 'Sell now',
+    ctaLabel:
+      str(input.ctaLabel) || (audience === 'driver' ? 'Join as driver' : 'Sell now'),
     imageUrl,
+    audience,
     active: input.active !== false,
     sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : Date.now(),
     createdAt: FieldValue.serverTimestamp(),
@@ -191,6 +198,7 @@ export async function updateSellBanner(
     body: string
     ctaLabel: string
     imageUrl: string | null
+    audience: SellBannerAudience
     active: boolean
     sortOrder: number
   }>,
@@ -210,6 +218,7 @@ export async function updateSellBanner(
   if (patch.body !== undefined) next.body = str(patch.body)
   if (patch.ctaLabel !== undefined) next.ctaLabel = str(patch.ctaLabel) || 'Sell now'
   if (patch.imageUrl !== undefined) next.imageUrl = normalizeImageUrl(patch.imageUrl)
+  if (patch.audience !== undefined) next.audience = parseSellBannerAudience(patch.audience)
   if (patch.active !== undefined) next.active = !!patch.active
   if (patch.sortOrder !== undefined) next.sortOrder = Number(patch.sortOrder) || 0
 

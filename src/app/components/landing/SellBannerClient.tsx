@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import type { SellBanner } from '@/lib/sell-banners'
-import { resolveSellBannerImage } from '@/lib/sell-banners'
+import { resolveSellBannerImage, sellBannerHref } from '@/lib/sell-banners'
 
 export type SellBannerSlide = Pick<
   SellBanner,
-  'id' | 'title' | 'body' | 'ctaLabel' | 'imageUrl'
+  'id' | 'title' | 'body' | 'ctaLabel' | 'imageUrl' | 'audience'
 >
 
 type Props = {
@@ -71,6 +71,8 @@ export default function SellBannerClient({ banners }: Props) {
         >
           {slides.map(slide => {
             const imageSrc = resolveSellBannerImage(slide.imageUrl)
+            const href = sellBannerHref(slide.audience || 'merchant')
+            const eyebrow = slide.audience === 'driver' ? 'Drive with Vero360' : 'Sell on Vero360'
             return (
               <div
                 key={slide.id}
@@ -135,7 +137,7 @@ export default function SellBannerClient({ banners }: Props) {
                         color: 'rgba(255,255,255,0.8)',
                       }}
                     >
-                      Sell on Vero360
+                      {eyebrow}
                     </p>
                     <h2
                       style={{
@@ -167,7 +169,7 @@ export default function SellBannerClient({ banners }: Props) {
 
                   <div style={{ flex: '0 0 auto' }}>
                     <Link
-                      href="/start-selling"
+                      href={href}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',

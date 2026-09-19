@@ -5,6 +5,7 @@ import {
   updateSellBanner,
   uploadSellBannerImage,
 } from '@/lib/sell-banners-admin'
+import { parseSellBannerAudience } from '@/lib/sell-banners'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,11 +25,15 @@ export async function PATCH(request: Request, ctx: Ctx) {
         body?: string
         ctaLabel?: string
         imageUrl?: string | null
+        audience?: 'merchant' | 'driver'
         active?: boolean
       } = {}
       if (form.has('title')) patch.title = String(form.get('title') ?? '')
       if (form.has('body')) patch.body = String(form.get('body') ?? '')
       if (form.has('ctaLabel')) patch.ctaLabel = String(form.get('ctaLabel') ?? '')
+      if (form.has('audience') || form.has('role')) {
+        patch.audience = parseSellBannerAudience(form.get('audience') || form.get('role'))
+      }
       if (form.has('active')) patch.active = String(form.get('active')) !== 'false'
 
       const file = form.get('image')
@@ -66,6 +71,10 @@ export async function PATCH(request: Request, ctx: Ctx) {
           : body.imageUrl !== undefined
             ? String(body.imageUrl || '') || null
             : undefined,
+      audience:
+        body.audience !== undefined || body.role !== undefined
+          ? parseSellBannerAudience(body.audience ?? body.role)
+          : undefined,
       active: body.active !== undefined ? !!body.active : undefined,
       sortOrder:
         body.sortOrder !== undefined ? Number(body.sortOrder) : undefined,

@@ -5,6 +5,7 @@ import {
   listSellBanners,
   uploadSellBannerImage,
 } from '@/lib/sell-banners-admin'
+import { parseSellBannerAudience } from '@/lib/sell-banners'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
         body: String(form.get('body') ?? form.get('subtitle') ?? ''),
         ctaLabel: String(form.get('ctaLabel') || 'Sell now'),
         imageUrl,
+        audience: parseSellBannerAudience(form.get('audience') || form.get('role')),
         active: String(form.get('active') ?? 'true') !== 'false',
         createdByEmail: admin.email,
       })
@@ -65,6 +67,7 @@ export async function POST(request: Request) {
       ctaLabel: String(body.ctaLabel || 'Sell now'),
       imageUrl:
         body.imageUrl !== undefined ? String(body.imageUrl || '') || null : null,
+      audience: parseSellBannerAudience(body.audience || body.role),
       active: body.active !== false,
       sortOrder:
         typeof body.sortOrder === 'number' ? body.sortOrder : undefined,
