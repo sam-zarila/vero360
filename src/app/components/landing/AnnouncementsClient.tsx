@@ -6,6 +6,7 @@ import Image from 'next/image'
 import {
   formatAnnouncementPostedAt,
   resolveAnnouncementImage,
+  resolveAnnouncementVideo,
   type Announcement,
 } from '@/lib/announcements'
 
@@ -50,6 +51,13 @@ export default function AnnouncementsClient({ items }: Props) {
   }
 
   const selectedImage = selected ? resolveAnnouncementImage(selected.imageUrl) : null
+  const selectedVideoEmbed = selected
+    ? resolveAnnouncementVideo(selected.videoEmbedUrl || selected.videoUrl)
+    : null
+  const selectedVideoFile =
+    selected?.videoKind === 'file' || selected?.videoKind === 'link'
+      ? resolveAnnouncementVideo(selected.videoUrl)
+      : null
 
   const detailModal =
     selected && mounted
@@ -121,7 +129,47 @@ export default function AnnouncementsClient({ items }: Props) {
                 </button>
               </div>
 
-              {selectedImage ? (
+              {selected?.videoKind === 'youtube' || selected?.videoKind === 'vimeo' ? (
+                selectedVideoEmbed ? (
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '100%',
+                      aspectRatio: '16 / 9',
+                      background: '#111827',
+                    }}
+                  >
+                    <iframe
+                      title={selected.title}
+                      src={selectedVideoEmbed}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                      }}
+                    />
+                  </div>
+                ) : null
+              ) : selectedVideoFile ? (
+                <div style={{ background: '#111827', padding: 0 }}>
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    src={selectedVideoFile}
+                    controls
+                    playsInline
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      maxHeight: 'min(56vh, 480px)',
+                      background: '#000',
+                    }}
+                  />
+                </div>
+              ) : selectedImage ? (
                 <button
                   type="button"
                   onClick={() => setShowFullImage(true)}
@@ -159,6 +207,28 @@ export default function AnnouncementsClient({ items }: Props) {
                   >
                     View image
                   </span>
+                </button>
+              ) : null}
+
+              {selectedImage && (selected.videoUrl || selectedVideoFile) ? (
+                <button
+                  type="button"
+                  onClick={() => setShowFullImage(true)}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    border: 'none',
+                    borderBottom: '1px solid var(--border)',
+                    background: '#FFF7ED',
+                    color: '#9A3412',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    padding: '10px 16px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  View announcement photo →
                 </button>
               ) : null}
 
@@ -305,6 +375,23 @@ export default function AnnouncementsClient({ items }: Props) {
               >
                 {img ? (
                   <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
+                ) : item.videoUrl ? (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'grid',
+                      placeItems: 'center',
+                      background: 'linear-gradient(135deg, #9A3412 0%, #EA580C 100%)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 14,
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: 28 }}>▶</span>
+                    Watch video
+                  </div>
                 ) : (
                   <div
                     style={{

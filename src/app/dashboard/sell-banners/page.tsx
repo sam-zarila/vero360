@@ -230,7 +230,8 @@ export default function SellBannersAdminPage() {
         }}
       >
         Active banners appear on the website homepage and the Vero360 app home.
-        Add a photo via image URL or the gallery picker. Sell now always opens merchant signup.
+        Add a photo via image URL or the gallery picker. Sell now opens the merchant signup steps
+        guide (<code>/start-selling</code>).
       </div>
 
       {error ? (

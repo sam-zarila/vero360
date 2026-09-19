@@ -37,6 +37,11 @@ type FormState = {
   /** Existing uploaded image when editing; never set from a pasted link. */
   existingImageUrl: string
   imageFile: File | null
+  videoLink: string
+  videoFile: File | null
+  existingVideoUrl: string
+  existingVideoKind: string
+  clearVideo: boolean
 }
 
 const emptyForm = (): FormState => ({
@@ -46,6 +51,11 @@ const emptyForm = (): FormState => ({
   active: true,
   existingImageUrl: '',
   imageFile: null,
+  videoLink: '',
+  videoFile: null,
+  existingVideoUrl: '',
+  existingVideoKind: '',
+  clearVideo: false,
 })
 
 export default function AnnouncementsAdminPage() {
@@ -116,18 +126,25 @@ export default function AnnouncementsAdminPage() {
       active: item.active,
       existingImageUrl: item.imageUrl || '',
       imageFile: null,
+      videoLink: '',
+      videoFile: null,
+      existingVideoUrl: item.videoUrl || '',
+      existingVideoKind: item.videoKind || '',
+      clearVideo: false,
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!editingId && !form.imageFile) {
-      setError('Upload a photo. Image links are not allowed')
-      return
-    }
-    if (editingId && !form.imageFile && !form.existingImageUrl) {
-      setError('Upload a photo for this announcement')
+    const hasImage = Boolean(form.imageFile || form.existingImageUrl)
+    const hasVideo = Boolean(
+      form.videoFile ||
+        form.videoLink.trim() ||
+        (form.existingVideoUrl && !form.clearVideo),
+    )
+    if (!hasImage && !hasVideo) {
+      setError('Add a photo and/or an announcement video')
       return
     }
     setSaving(true)
@@ -141,6 +158,13 @@ export default function AnnouncementsAdminPage() {
       const postedIso = fromLocalInputValue(form.postedAt)
       if (postedIso) body.set('postedAt', postedIso)
       if (form.imageFile) body.set('image', form.imageFile)
+      if (form.clearVideo) {
+        body.set('clearVideo', 'true')
+      } else if (form.videoFile) {
+        body.set('video', form.videoFile)
+      } else if (form.videoLink.trim()) {
+        body.set('videoLink', form.videoLink.trim())
+      }
 
       const url = editingId
         ? `/api/admin/announcements/${editingId}`
@@ -201,7 +225,7 @@ export default function AnnouncementsAdminPage() {
 
       <DashboardPageHeader
         sectionId="announcements"
-        description="Post website announcements with a picture, description, and posted date. They appear on the homepage after the stats bar."
+        description="Post website announcements with a photo and/or video (like Get started tutorials), description, and posted date."
         actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
       />
 
@@ -325,12 +349,11 @@ export default function AnnouncementsAdminPage() {
 
         <div style={{ display: 'grid', gap: 10 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
-            Photo {editingId ? '(upload a new file to replace)' : '(required)'}
+            Photo {editingId ? '(upload a new file to replace)' : '(optional if you add a video)'}
           </span>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
-            required={!editingId}
             onChange={e => {
               const file = e.target.files?.[0] || null
               setForm(f => ({ ...f, imageFile: file }))
@@ -354,6 +377,91 @@ export default function AnnouncementsAdminPage() {
             >
               <Image src={previewUrl} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
             </div>
+          ) : null}
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gap: 12,
+            padding: 16,
+            borderRadius: 14,
+            border: '1px solid #FED7AA',
+            background: '#FFF7ED',
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#9A3412' }}>
+            Announcement video (recommended)
+          </div>
+          <p style={{ margin: 0, fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
+            Same as Get started videos: paste a YouTube / Vimeo / MP4 link, or upload an MP4 / WebM / MOV
+            (max 100MB).
+          </p>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>Video link</span>
+            <input
+              value={form.videoLink}
+              onChange={e =>
+                setForm(f => ({
+                  ...f,
+                  videoLink: e.target.value,
+                  videoFile: null,
+                  clearVideo: false,
+                }))
+              }
+              placeholder="https://youtube.com/… or https://…"
+              style={inputStyle}
+            />
+          </label>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
+              Or upload video file
+            </span>
+            <input
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              onChange={e => {
+                const file = e.target.files?.[0] || null
+                setForm(f => ({
+                  ...f,
+                  videoFile: file,
+                  videoLink: file ? '' : f.videoLink,
+                  clearVideo: false,
+                }))
+              }}
+            />
+          </label>
+          {form.existingVideoUrl && !form.clearVideo && !form.videoFile && !form.videoLink ? (
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#166534' }}>
+              Current video attached ({form.existingVideoKind || 'video'})
+            </div>
+          ) : null}
+          {(form.existingVideoUrl || form.videoFile || form.videoLink) && !form.clearVideo ? (
+            <button
+              type="button"
+              onClick={() =>
+                setForm(f => ({
+                  ...f,
+                  clearVideo: true,
+                  videoFile: null,
+                  videoLink: '',
+                  existingVideoUrl: '',
+                }))
+              }
+              style={{
+                justifySelf: 'start',
+                padding: '8px 12px',
+                borderRadius: 10,
+                border: '1px solid #FECACA',
+                background: '#FEF2F2',
+                color: '#B91C1C',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              Remove video
+            </button>
           ) : null}
         </div>
 
@@ -457,6 +565,20 @@ export default function AnnouncementsAdminPage() {
                   <div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
                       <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{item.title}</h3>
+                      {item.videoUrl ? (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: 100,
+                            background: '#FFF7ED',
+                            color: '#C2410C',
+                          }}
+                        >
+                          Video
+                        </span>
+                      ) : null}
                       <span
                         style={{
                           fontSize: 11,

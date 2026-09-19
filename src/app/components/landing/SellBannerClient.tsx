@@ -167,7 +167,7 @@ export default function SellBannerClient({ banners }: Props) {
 
                   <div style={{ flex: '0 0 auto' }}>
                     <Link
-                      href="/get-started?role=merchant"
+                      href="/start-selling"
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',

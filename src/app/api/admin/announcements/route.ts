@@ -3,7 +3,9 @@ import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import {
   createAnnouncement,
   listAnnouncements,
+  resolveAnnouncementExternalVideo,
   uploadAnnouncementImage,
+  uploadAnnouncementVideo,
 } from '@/lib/announcements-admin'
 
 export const dynamic = 'force-dynamic'
@@ -35,10 +37,7 @@ export async function POST(request: Request) {
   try {
     const contentType = request.headers.get('content-type') || ''
     if (!contentType.includes('multipart/form-data')) {
-      return NextResponse.json(
-        { error: 'Upload a photo file. Image links are not allowed' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'Use multipart form data' }, { status: 400 })
     }
 
     const form = await request.formData()
@@ -46,20 +45,41 @@ export async function POST(request: Request) {
     const description = String(form.get('description') ?? '')
     const postedAtRaw = String(form.get('postedAt') ?? '').trim()
     const active = String(form.get('active') ?? 'true') !== 'false'
-    const file = form.get('image')
+    const imageFile = form.get('image')
+    const videoFile = form.get('video')
+    const videoLink = String(form.get('videoLink') ?? '').trim()
 
-    if (!(file instanceof File) || file.size <= 0) {
-      return NextResponse.json(
-        { error: 'A photo upload is required' },
-        { status: 400 },
-      )
+    let imageUrl: string | null = null
+    if (imageFile instanceof File && imageFile.size > 0) {
+      imageUrl = await uploadAnnouncementImage(imageFile)
     }
 
-    const imageUrl = await uploadAnnouncementImage(file)
+    let videoUrl: string | null = null
+    let videoEmbedUrl: string | null = null
+    let videoKind: 'file' | 'youtube' | 'vimeo' | 'link' | null = null
+    let videoFileName: string | null = null
+
+    if (videoFile instanceof File && videoFile.size > 0) {
+      const uploaded = await uploadAnnouncementVideo(videoFile)
+      videoUrl = uploaded.url
+      videoEmbedUrl = uploaded.embedUrl
+      videoKind = uploaded.kind
+      videoFileName = uploaded.fileName
+    } else if (videoLink) {
+      const parsed = resolveAnnouncementExternalVideo(videoLink)
+      videoUrl = parsed.url
+      videoEmbedUrl = parsed.embedUrl
+      videoKind = parsed.kind
+    }
+
     const item = await createAnnouncement({
       title,
       description,
       imageUrl,
+      videoUrl,
+      videoEmbedUrl,
+      videoKind,
+      videoFileName,
       postedAt: postedAtRaw || null,
       active,
     })

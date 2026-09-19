@@ -3,18 +3,25 @@ import 'server-only'
 import { randomUUID } from 'crypto'
 import { unstable_noStore as noStore } from 'next/cache'
 import { FieldValue, type DocumentData } from 'firebase-admin/firestore'
-import type { Announcement } from '@/lib/announcements'
+import type { Announcement, AnnouncementVideoKind } from '@/lib/announcements'
+import { parseExternalVideo } from '@/lib/get-started-videos'
 import { getAdminDb, getAdminStorage, getAdminStorageBucket } from '@/lib/firebase-admin'
 
 export const ANNOUNCEMENTS_COLLECTION = 'site_announcements'
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg',
   'image/jpg',
   'image/png',
   'image/webp',
   'image/gif',
+])
+const ALLOWED_VIDEO_TYPES = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
 ])
 
 function str(value: unknown): string {
@@ -58,16 +65,35 @@ function imageExt(contentType: string, fileName: string): string {
   return 'jpg'
 }
 
+function videoExt(contentType: string, fileName: string): string {
+  const fromName = (fileName.split('.').pop() || '').toLowerCase()
+  if (fromName === 'mp4' || fromName === 'webm' || fromName === 'mov') return fromName
+  if (contentType.includes('webm')) return 'webm'
+  if (contentType.includes('quicktime')) return 'mov'
+  return 'mp4'
+}
+
+function parseVideoKind(value: unknown): AnnouncementVideoKind | null {
+  return value === 'file' || value === 'youtube' || value === 'vimeo' || value === 'link'
+    ? value
+    : null
+}
+
 export function parseAnnouncement(id: string, data: DocumentData | Record<string, unknown>): Announcement {
   const postedAt =
     tsToIso(data.postedAt) ||
     tsToIso(data.createdAt) ||
     null
+  const videoUrl = str(data.videoUrl) || null
   return {
     id,
     title: str(data.title) || 'Announcement',
     description: str(data.description),
     imageUrl: str(data.imageUrl) || null,
+    videoUrl,
+    videoEmbedUrl: str(data.videoEmbedUrl) || videoUrl,
+    videoKind: videoUrl ? parseVideoKind(data.videoKind) : null,
+    videoFileName: str(data.videoFileName) || null,
     postedAt,
     createdAt: tsToIso(data.createdAt),
     updatedAt: tsToIso(data.updatedAt),
@@ -112,16 +138,23 @@ export async function getAnnouncement(id: string): Promise<Announcement | null> 
 export async function createAnnouncement(input: {
   title: string
   description: string
-  imageUrl: string
+  imageUrl?: string | null
+  videoUrl?: string | null
+  videoEmbedUrl?: string | null
+  videoKind?: AnnouncementVideoKind | null
+  videoFileName?: string | null
   postedAt?: string | null
   active?: boolean
 }): Promise<Announcement> {
   const title = str(input.title)
   const description = str(input.description)
-  const imageUrl = str(input.imageUrl)
+  const imageUrl = str(input.imageUrl) || null
+  const videoUrl = str(input.videoUrl) || null
   if (!title) throw new Error('Title is required')
   if (!description) throw new Error('Description is required')
-  if (!imageUrl) throw new Error('A photo upload is required')
+  if (!imageUrl && !videoUrl) {
+    throw new Error('Add a photo and/or an announcement video')
+  }
 
   const postedDate = input.postedAt ? new Date(input.postedAt) : new Date()
   if (Number.isNaN(postedDate.getTime())) throw new Error('Invalid posted date')
@@ -131,22 +164,22 @@ export async function createAnnouncement(input: {
     title,
     description,
     imageUrl,
+    videoUrl,
+    videoEmbedUrl: videoUrl ? str(input.videoEmbedUrl) || videoUrl : null,
+    videoKind: videoUrl ? input.videoKind || null : null,
+    videoFileName: videoUrl ? str(input.videoFileName) || null : null,
     postedAt: postedDate,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
     active: input.active !== false,
   }
   await ref.set(payload)
-  return {
-    id: ref.id,
-    title,
-    description,
-    imageUrl,
+  return parseAnnouncement(ref.id, {
+    ...payload,
     postedAt: postedDate.toISOString(),
     createdAt: postedDate.toISOString(),
     updatedAt: postedDate.toISOString(),
-    active: input.active !== false,
-  }
+  })
 }
 
 export async function updateAnnouncement(
@@ -155,6 +188,11 @@ export async function updateAnnouncement(
     title?: string
     description?: string
     imageUrl?: string | null
+    videoUrl?: string | null
+    videoEmbedUrl?: string | null
+    videoKind?: AnnouncementVideoKind | null
+    videoFileName?: string | null
+    clearVideo?: boolean
     postedAt?: string | null
     active?: boolean
   },
@@ -178,8 +216,22 @@ export async function updateAnnouncement(
   }
   if (input.imageUrl !== undefined) {
     const next = str(input.imageUrl)
-    if (!next) throw new Error('A photo upload is required')
-    patch.imageUrl = next
+    if (!next && !existing.videoUrl && !input.videoUrl && !input.clearVideo) {
+      throw new Error('A photo or video is required')
+    }
+    patch.imageUrl = next || null
+  }
+  if (input.clearVideo) {
+    patch.videoUrl = null
+    patch.videoEmbedUrl = null
+    patch.videoKind = null
+    patch.videoFileName = null
+  } else if (input.videoUrl !== undefined) {
+    const videoUrl = str(input.videoUrl) || null
+    patch.videoUrl = videoUrl
+    patch.videoEmbedUrl = videoUrl ? str(input.videoEmbedUrl) || videoUrl : null
+    patch.videoKind = videoUrl ? input.videoKind || null : null
+    patch.videoFileName = videoUrl ? str(input.videoFileName) || null : null
   }
   if (input.postedAt !== undefined) {
     if (!input.postedAt) throw new Error('Invalid posted date')
@@ -189,6 +241,17 @@ export async function updateAnnouncement(
   }
   if (input.active !== undefined) {
     patch.active = input.active
+  }
+
+  const nextImage =
+    input.imageUrl !== undefined ? str(input.imageUrl) || null : existing.imageUrl
+  const nextVideo = input.clearVideo
+    ? null
+    : input.videoUrl !== undefined
+      ? str(input.videoUrl) || null
+      : existing.videoUrl
+  if (!nextImage && !nextVideo) {
+    throw new Error('Add a photo and/or an announcement video')
   }
 
   await getAdminDb().collection(ANNOUNCEMENTS_COLLECTION).doc(id).set(patch, { merge: true })
@@ -201,9 +264,10 @@ export async function deleteAnnouncement(id: string): Promise<void> {
   const existing = await getAnnouncement(id)
   if (!existing) throw Object.assign(new Error('Announcement not found'), { status: 404 })
 
-  if (existing.imageUrl?.includes('firebasestorage.googleapis.com')) {
+  for (const url of [existing.imageUrl, existing.videoUrl]) {
+    if (!url?.includes('firebasestorage.googleapis.com')) continue
     try {
-      const u = new URL(existing.imageUrl)
+      const u = new URL(url)
       const objectMatch = u.pathname.match(/\/o\/(.+)$/)
       if (objectMatch) {
         const objectPath = decodeURIComponent(objectMatch[1])
@@ -253,4 +317,51 @@ export async function uploadAnnouncementImage(file: File): Promise<string> {
   })
 
   return firebaseDownloadUrl(bucket.name, objectPath, token)
+}
+
+export async function uploadAnnouncementVideo(file: File): Promise<{
+  url: string
+  embedUrl: string
+  kind: AnnouncementVideoKind
+  fileName: string
+}> {
+  if (file.size <= 0) throw new Error('Empty video file')
+  if (file.size > MAX_VIDEO_BYTES) throw new Error('Video must be 100MB or smaller')
+
+  const contentType = (file.type || 'application/octet-stream').toLowerCase()
+  if (!ALLOWED_VIDEO_TYPES.has(contentType)) {
+    throw new Error('Upload an MP4, WebM, or MOV video')
+  }
+
+  const ext = videoExt(contentType, file.name)
+  const objectPath = `site_announcement_videos/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const bucket = getAdminStorage().bucket(getAdminStorageBucket())
+  const token = randomUUID()
+
+  await bucket.file(objectPath).save(buffer, {
+    resumable: false,
+    metadata: {
+      contentType,
+      metadata: {
+        firebaseStorageDownloadTokens: token,
+      },
+    },
+  })
+
+  const url = firebaseDownloadUrl(bucket.name, objectPath, token)
+  return {
+    url,
+    embedUrl: url,
+    kind: 'file',
+    fileName: file.name || `announcement.${ext}`,
+  }
+}
+
+export function resolveAnnouncementExternalVideo(rawUrl: string) {
+  const parsed = parseExternalVideo(rawUrl)
+  if (!parsed) {
+    throw new Error('Paste a full https:// YouTube, Vimeo, or MP4 link')
+  }
+  return parsed
 }

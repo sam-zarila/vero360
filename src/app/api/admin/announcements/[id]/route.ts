@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import {
   deleteAnnouncement,
+  resolveAnnouncementExternalVideo,
   updateAnnouncement,
   uploadAnnouncementImage,
+  uploadAnnouncementVideo,
 } from '@/lib/announcements-admin'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +23,6 @@ export async function PATCH(request: Request, ctx: Ctx) {
   try {
     const contentType = request.headers.get('content-type') || ''
 
-    // JSON allowed only for visibility toggles (no imageUrl changes).
     if (contentType.includes('application/json')) {
       const body = (await request.json()) as {
         title?: string
@@ -29,6 +30,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
         imageUrl?: string | null
         postedAt?: string | null
         active?: boolean
+        clearVideo?: boolean
+        videoLink?: string
       }
       if (body.imageUrl !== undefined) {
         return NextResponse.json(
@@ -36,11 +39,34 @@ export async function PATCH(request: Request, ctx: Ctx) {
           { status: 400 },
         )
       }
+      let videoPatch: {
+        videoUrl?: string | null
+        videoEmbedUrl?: string | null
+        videoKind?: 'file' | 'youtube' | 'vimeo' | 'link' | null
+        videoFileName?: string | null
+        clearVideo?: boolean
+      } = {}
+      if (body.clearVideo) {
+        videoPatch = { clearVideo: true }
+      } else if (body.videoLink !== undefined) {
+        if (!String(body.videoLink || '').trim()) {
+          videoPatch = { clearVideo: true }
+        } else {
+          const parsed = resolveAnnouncementExternalVideo(String(body.videoLink))
+          videoPatch = {
+            videoUrl: parsed.url,
+            videoEmbedUrl: parsed.embedUrl,
+            videoKind: parsed.kind,
+            videoFileName: null,
+          }
+        }
+      }
       const item = await updateAnnouncement(id, {
         title: body.title,
         description: body.description,
         postedAt: body.postedAt,
         active: body.active,
+        ...videoPatch,
       })
       return NextResponse.json({ success: true, item })
     }
@@ -54,6 +80,11 @@ export async function PATCH(request: Request, ctx: Ctx) {
       title?: string
       description?: string
       imageUrl?: string
+      videoUrl?: string | null
+      videoEmbedUrl?: string | null
+      videoKind?: 'file' | 'youtube' | 'vimeo' | 'link' | null
+      videoFileName?: string | null
+      clearVideo?: boolean
       postedAt?: string | null
       active?: boolean
     } = {}
@@ -69,6 +100,30 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const file = form.get('image')
     if (file instanceof File && file.size > 0) {
       patch.imageUrl = await uploadAnnouncementImage(file)
+    }
+
+    if (String(form.get('clearVideo') ?? '') === 'true') {
+      patch.clearVideo = true
+    } else {
+      const videoFile = form.get('video')
+      const videoLink = String(form.get('videoLink') ?? '').trim()
+      if (videoFile instanceof File && videoFile.size > 0) {
+        const uploaded = await uploadAnnouncementVideo(videoFile)
+        patch.videoUrl = uploaded.url
+        patch.videoEmbedUrl = uploaded.embedUrl
+        patch.videoKind = uploaded.kind
+        patch.videoFileName = uploaded.fileName
+      } else if (form.has('videoLink')) {
+        if (!videoLink) {
+          patch.clearVideo = true
+        } else {
+          const parsed = resolveAnnouncementExternalVideo(videoLink)
+          patch.videoUrl = parsed.url
+          patch.videoEmbedUrl = parsed.embedUrl
+          patch.videoKind = parsed.kind
+          patch.videoFileName = null
+        }
+      }
     }
 
     const item = await updateAnnouncement(id, patch)
