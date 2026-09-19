@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import {
   creditPromotionPlatformFee,
+  settleMarketplacePromotionPayment,
   updateFacebookFulfillment,
 } from '@/lib/marketplace-promotions-admin'
 
@@ -19,10 +20,19 @@ export async function PATCH(request: Request, ctx: Ctx) {
       action?: string
       fulfillmentStatus?: string
       adminNotes?: string
+      force?: boolean
     }
 
     if (body.action === 'credit_platform_fee') {
       const result = await creditPromotionPlatformFee(id)
+      return NextResponse.json({ success: true, ...result })
+    }
+
+    if (body.action === 'confirm_payment' || body.action === 'verify_payment') {
+      const result = await settleMarketplacePromotionPayment({
+        promoId: id,
+        force: body.force === true,
+      })
       return NextResponse.json({ success: true, ...result })
     }
 

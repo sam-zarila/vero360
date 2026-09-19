@@ -96,10 +96,15 @@ export async function verifyPaychanguTransaction(txRef: string): Promise<{
     { headers: paychanguAuthHeaders(), cache: 'no-store' },
   )
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
-  const data = (body.data || body) as Record<string, unknown>
-  const status = String(
-    data.status || body.status || data.payment_status || '',
-  ).toLowerCase()
+  const data = (body.data || {}) as Record<string, unknown>
+  // Prefer nested payment status — top-level "success" often means API OK only.
+  const nested = String(data.status || data.payment_status || '').toLowerCase()
+  const top = String(body.status || '').toLowerCase()
+  const status = nested || top
   const paid = ['successful', 'success', 'paid', 'completed'].includes(status)
+  // If nested exists and is not a paid state, do not trust top-level "success".
+  if (nested && !paid) {
+    return { paid: false, status: nested, raw: body }
+  }
   return { paid, status, raw: body }
 }

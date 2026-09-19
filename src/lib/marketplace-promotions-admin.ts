@@ -1,7 +1,8 @@
 import 'server-only'
 
-import { FieldValue, type DocumentData } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp, type DocumentData } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { verifyPaychanguTransaction } from '@/lib/paychangu'
 import {
   MARKETPLACE_PROMOTIONS_COLLECTION,
   isMarketplaceBoostLive,
@@ -151,6 +152,165 @@ export async function listMarketplacePromotions(limit = 500): Promise<Marketplac
     .get()
 
   return snap.docs.map(doc => parseMarketplacePromotion(doc.id, doc.data()))
+}
+
+function verticalItemsCollection(vertical: string): string {
+  const v = vertical.trim().toLowerCase()
+  if (v === 'food') return 'food_menu_items'
+  if (v === 'accommodation' || v === 'stay') return 'accommodation_rooms'
+  return 'marketplace_items'
+}
+
+function parsePromoTimestampMs(raw: unknown): number {
+  if (!raw) return 0
+  if (typeof raw === 'object' && raw !== null && 'toDate' in raw) {
+    try {
+      return (raw as { toDate: () => Date }).toDate().getTime()
+    } catch {
+      return 0
+    }
+  }
+  if (typeof raw === 'object' && raw !== null) {
+    const seconds =
+      (raw as { _seconds?: number; seconds?: number })._seconds ??
+      (raw as { seconds?: number }).seconds
+    if (typeof seconds === 'number') return seconds * 1000
+  }
+  const n = Date.parse(String(raw))
+  return Number.isFinite(n) ? n : 0
+}
+
+export async function findMarketplacePromotionByTxRef(
+  txRef: string,
+): Promise<MarketplacePromotion | null> {
+  const clean = str(txRef)
+  if (!clean) return null
+  const snap = await getAdminDb()
+    .collection(MARKETPLACE_PROMOTIONS_COLLECTION)
+    .where('txRef', '==', clean)
+    .limit(1)
+    .get()
+  if (snap.empty) return null
+  const doc = snap.docs[0]
+  return parseMarketplacePromotion(doc.id, doc.data() || {})
+}
+
+/**
+ * Confirm PayChangu payment and activate a promote order.
+ * Fixes stuck `pending_payment` after the user already paid (CF activation missed).
+ */
+export async function settleMarketplacePromotionPayment(opts: {
+  promoId?: string
+  txRef?: string
+  /** Skip PayChangu verify (admin force-confirm). */
+  force?: boolean
+}): Promise<{
+  promo: MarketplacePromotion
+  alreadyPaid: boolean
+  paid: boolean
+  message: string
+}> {
+  const db = getAdminDb()
+  let promoId = str(opts.promoId)
+  const txHint = str(opts.txRef)
+
+  if (!promoId && txHint) {
+    const found = await findMarketplacePromotionByTxRef(txHint)
+    if (!found) throw new Error('Promotion not found for this payment reference')
+    promoId = found.id
+  }
+  if (!promoId) throw new Error('promoId or txRef is required')
+
+  const promoRef = db.collection(MARKETPLACE_PROMOTIONS_COLLECTION).doc(promoId)
+  const snap = await promoRef.get()
+  if (!snap.exists) throw new Error('Promotion not found')
+  const data = snap.data() || {}
+  const promo = parseMarketplacePromotion(snap.id, data)
+
+  if (isPromotionPaid(promo)) {
+    return {
+      promo,
+      alreadyPaid: true,
+      paid: true,
+      message: `Already marked ${promo.status}`,
+    }
+  }
+
+  const txRef = txHint || promo.txRef || ''
+  if (!txRef) throw new Error('This promotion has no payment reference (txRef)')
+
+  if (!opts.force) {
+    const verify = await verifyPaychanguTransaction(txRef)
+    if (!verify.paid) {
+      throw new Error(
+        `PayChangu still reports "${verify.status || 'pending'}". Wait for the bank/MoMo confirmation, then try again.`,
+      )
+    }
+  }
+
+  const channel = promo.channel
+  const isFeedTop = channel.endsWith('_top')
+  const hours = promo.durationHours > 0 ? promo.durationHours : 24
+  const now = new Date()
+  const ends = new Date(now.getTime() + hours * 60 * 60 * 1000)
+
+  if (isFeedTop && promo.itemId) {
+    const itemRef = db.collection(verticalItemsCollection(promo.vertical)).doc(promo.itemId)
+    const itemSnap = await itemRef.get()
+    let until = ends
+    if (itemSnap.exists) {
+      const existingMs = parsePromoTimestampMs(itemSnap.data()?.promotedUntil)
+      const baseMs = existingMs > now.getTime() ? existingMs : now.getTime()
+      until = new Date(baseMs + hours * 60 * 60 * 1000)
+      await itemRef.set(
+        {
+          promotedUntil: Timestamp.fromDate(until),
+          promotionPlanId: promo.planId,
+          promotionPaidAt: FieldValue.serverTimestamp(),
+          promotionTxRef: txRef,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      )
+    }
+    await promoRef.set(
+      {
+        status: 'active',
+        txRef,
+        paidAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromDate(until),
+        paymentVerifiedAt: FieldValue.serverTimestamp(),
+        paymentVerifiedBy: opts.force ? 'admin_force' : 'admin_paychangu_verify',
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    )
+  } else {
+    await promoRef.set(
+      {
+        status: 'paid',
+        fulfillmentStatus: channel === 'facebook_ads' ? 'queued' : FieldValue.delete(),
+        txRef,
+        paidAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromDate(ends),
+        paymentVerifiedAt: FieldValue.serverTimestamp(),
+        paymentVerifiedBy: opts.force ? 'admin_force' : 'admin_paychangu_verify',
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    )
+  }
+
+  const fresh = await promoRef.get()
+  const next = parseMarketplacePromotion(fresh.id, fresh.data() || {})
+  return {
+    promo: next,
+    alreadyPaid: false,
+    paid: true,
+    message: opts.force
+      ? 'Marked paid by admin'
+      : `Payment confirmed — status set to ${next.status}`,
+  }
 }
 
 async function ensurePlatformWallet(): Promise<string> {

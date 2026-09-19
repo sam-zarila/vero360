@@ -107,6 +107,27 @@ export default function MarketplacePromotionsAdminPage() {
     }
   }
 
+  const confirmPayment = async (id: string, force = false) => {
+    setBusyId(id)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(`/api/admin/marketplace-promotions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'confirm_payment', force }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not confirm payment')
+      setNotice(data.message || 'Payment confirmed')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not confirm payment')
+    } finally {
+      setBusyId('')
+    }
+  }
+
   const creditAllPending = async () => {
     if (counts.feePending <= 0) {
       setNotice('No pending promote fees to credit')
@@ -385,6 +406,26 @@ export default function MarketplacePromotionsAdminPage() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
+                    {promo.status === 'pending_payment' ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={busyId === promo.id || busy}
+                          onClick={() => void confirmPayment(promo.id, false)}
+                          style={{ ...btnStyle, background: '#EA580C', borderColor: '#EA580C', color: '#fff' }}
+                        >
+                          Verify & mark paid
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === promo.id || busy}
+                          onClick={() => void confirmPayment(promo.id, true)}
+                          style={btnStyle}
+                        >
+                          Force mark paid
+                        </button>
+                      </>
+                    ) : null}
                     {feePending ? (
                       <button
                         type="button"

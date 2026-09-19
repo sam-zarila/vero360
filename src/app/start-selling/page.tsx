@@ -14,7 +14,7 @@ const STEPS = [
   {
     n: '2',
     title: 'Select Merchant',
-    body: 'On Create your account, tap Merchant (store icon) so you register as a seller — not Customer or Driver.',
+    body: 'On Create your account, tap Merchant (store icon) so you register as a seller ',
   },
   {
     n: '3',
