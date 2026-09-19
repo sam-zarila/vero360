@@ -15,6 +15,7 @@ const navLinks = [
 const moreLinks = [
   { label: 'Privacy policy', href: '/privacy' },
   { label: 'Terms of service', href: '/terms' },
+  { label: 'Legal documents', href: '/legal' },
   { label: 'Business certificate', href: '/business-certificate' },
   { label: 'Admin panel', href: '/panel' },
 ]

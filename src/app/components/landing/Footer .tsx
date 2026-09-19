@@ -9,7 +9,7 @@ const links = {
     Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation', 'Digital Services', 'Jobs'],
     Company: ['About Vero360', 'Careers'],
     Partners: ['Become a merchant', 'Customers', 'Driver signup', 'Partner support'],
-    Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service'],
+    Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service', 'Legal documents'],
   }
 
 const linkHrefs: Record<string, string> = {
@@ -28,6 +28,7 @@ const linkHrefs: Record<string, string> = {
   'Contact us': '/#contact',
   'Privacy policy': '/privacy',
   'Terms of service': '/terms',
+  'Legal documents': '/legal',
 }
 
 function openHelpCenter() {
@@ -215,6 +216,7 @@ function openHelpCenter() {
               <Link href="/panel" className="footer-legal-link">Panel</Link>
               <Link href="/privacy" className="footer-legal-link">Privacy</Link>
               <Link href="/terms" className="footer-legal-link">Terms</Link>
+              <Link href="/legal" className="footer-legal-link">Legal</Link>
             </div>
           </div>
         </div>

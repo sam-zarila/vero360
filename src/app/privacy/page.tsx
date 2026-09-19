@@ -147,6 +147,69 @@ export default function PrivacyPage() {
             >
               Read more: Platform Agreement →
             </a>
+            <a
+              href="/legal/Vero360_Cybersecurity_Fraud_Prevention_Customer_Protection_Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Read more: Cybersecurity &amp; Fraud Prevention →
+            </a>
+            <a
+              href="/legal/Vero360_Refund_Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Read more: Refund Policy →
+            </a>
+            <a
+              href="/legal/Vero360_Subscription_Payment_Policy_v2.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Read more: Subscription &amp; Payment Policy →
+            </a>
+            <Link
+              href="/legal"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+                marginTop: 4,
+              }}
+            >
+              All legal documents →
+            </Link>
           </div>
         </article>
       </div>
