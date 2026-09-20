@@ -123,20 +123,39 @@ function parseVideoKind(value: unknown): AnnouncementVideoKind | null {
     : null
 }
 
+function inferAnnouncementVideoKind(
+  videoUrl: string | null,
+  videoEmbedUrl: string | null,
+  stored: unknown,
+): AnnouncementVideoKind | null {
+  const parsed = parseVideoKind(stored)
+  if (parsed) return parsed
+  const raw = (videoEmbedUrl || videoUrl || '').toLowerCase()
+  if (!raw) return null
+  if (raw.includes('youtube.com') || raw.includes('youtu.be') || raw.includes('youtube-nocookie')) {
+    return 'youtube'
+  }
+  if (raw.includes('vimeo.com')) return 'vimeo'
+  if (/\.(mp4|webm|mov)(\?|$)/i.test(raw) || raw.includes('firebasestorage')) return 'file'
+  if (raw.startsWith('http')) return 'link'
+  return null
+}
+
 export function parseAnnouncement(id: string, data: DocumentData | Record<string, unknown>): Announcement {
   const postedAt =
     tsToIso(data.postedAt) ||
     tsToIso(data.createdAt) ||
     null
   const videoUrl = str(data.videoUrl) || null
+  const videoEmbedUrl = str(data.videoEmbedUrl) || videoUrl
   return {
     id,
     title: str(data.title) || 'Announcement',
     description: str(data.description),
     imageUrl: str(data.imageUrl) || null,
     videoUrl,
-    videoEmbedUrl: str(data.videoEmbedUrl) || videoUrl,
-    videoKind: videoUrl ? parseVideoKind(data.videoKind) : null,
+    videoEmbedUrl,
+    videoKind: videoUrl ? inferAnnouncementVideoKind(videoUrl, videoEmbedUrl, data.videoKind) : null,
     videoFileName: str(data.videoFileName) || null,
     postedAt,
     createdAt: tsToIso(data.createdAt),
@@ -472,7 +491,7 @@ export async function uploadAnnouncementVideo(file: File): Promise<{
           firebaseStorageDownloadTokens: token,
         },
       },
-    })
+    })  
   } catch (err) {
     throw mapAnnouncementStorageError(err)
   }

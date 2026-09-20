@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import {
@@ -8,10 +8,209 @@ import {
   resolveAnnouncementImage,
   resolveAnnouncementVideo,
   type Announcement,
+  type AnnouncementVideoKind,
 } from '@/lib/announcements'
 
 type Props = {
   items: Announcement[]
+}
+
+function inferVideoKind(item: Announcement): AnnouncementVideoKind | null {
+  if (item.videoKind) return item.videoKind
+  const raw = (item.videoEmbedUrl || item.videoUrl || '').toLowerCase()
+  if (!raw) return null
+  if (raw.includes('youtube.com') || raw.includes('youtu.be') || raw.includes('youtube-nocookie')) {
+    return 'youtube'
+  }
+  if (raw.includes('vimeo.com')) return 'vimeo'
+  if (/\.(mp4|webm|mov)(\?|$)/i.test(raw) || raw.includes('firebasestorage')) return 'file'
+  if (raw.startsWith('http')) return 'link'
+  return null
+}
+
+function withEmbedAutoplay(embedUrl: string, kind: AnnouncementVideoKind | null) {
+  try {
+    const u = new URL(embedUrl)
+    if (kind === 'youtube') {
+      u.searchParams.set('autoplay', '1')
+      u.searchParams.set('mute', '1')
+      u.searchParams.set('playsinline', '1')
+      u.searchParams.set('rel', '0')
+      const id = u.pathname.split('/').pop()
+      if (id) u.searchParams.set('playlist', id)
+      u.searchParams.set('loop', '1')
+    } else if (kind === 'vimeo') {
+      u.searchParams.set('autoplay', '1')
+      u.searchParams.set('muted', '1')
+      u.searchParams.set('loop', '1')
+      u.searchParams.set('background', '1')
+    }
+    return u.toString()
+  } catch {
+    return embedUrl
+  }
+}
+
+function AnnouncementCardMedia({ item }: { item: Announcement }) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [inView, setInView] = useState(false)
+  const kind = inferVideoKind(item)
+
+  const img = resolveAnnouncementImage(item.imageUrl)
+  const fileUrl =
+    kind === 'file' || kind === 'link' ? resolveAnnouncementVideo(item.videoUrl) : null
+  const embedBase =
+    kind === 'youtube' || kind === 'vimeo'
+      ? resolveAnnouncementVideo(item.videoEmbedUrl || item.videoUrl)
+      : null
+
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setInView(Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.2))
+      },
+      { threshold: [0, 0.2, 0.35, 0.5, 0.75], rootMargin: '40px 0px 40px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !fileUrl) return
+
+    const tryPlay = () => {
+      video.muted = true
+      video.defaultMuted = true
+      video.setAttribute('muted', '')
+      video.playsInline = true
+      const play = video.play()
+      if (play && typeof play.catch === 'function') play.catch(() => {})
+    }
+
+    if (inView) {
+      tryPlay()
+      const onReady = () => tryPlay()
+      video.addEventListener('loadeddata', onReady)
+      video.addEventListener('canplay', onReady)
+      return () => {
+        video.removeEventListener('loadeddata', onReady)
+        video.removeEventListener('canplay', onReady)
+      }
+    }
+
+    video.pause()
+  }, [inView, fileUrl])
+
+  return (
+    <div
+      ref={wrapRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        aspectRatio: '16 / 10',
+        background: 'linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%)',
+        overflow: 'hidden',
+      }}
+    >
+      {fileUrl ? (
+        <>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            ref={videoRef}
+            src={fileUrl}
+            muted
+            autoPlay={inView}
+            loop
+            playsInline
+            preload={inView ? 'auto' : 'metadata'}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              background: '#111827',
+            }}
+          />
+          {!inView && img ? (
+            <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
+          ) : null}
+        </>
+      ) : embedBase && inView ? (
+        <iframe
+          title={item.title}
+          src={withEmbedAutoplay(embedBase, kind)}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; muted"
+          allowFullScreen
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            pointerEvents: 'none',
+          }}
+        />
+      ) : img ? (
+        <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
+      ) : item.videoUrl ? (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'grid',
+            placeItems: 'center',
+            background: 'linear-gradient(135deg, #9A3412 0%, #EA580C 100%)',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: 14,
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 28 }}>▶</span>
+          Watch video
+        </div>
+      ) : (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'grid',
+            placeItems: 'center',
+            color: '#9A3412',
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          Vero360
+        </div>
+      )}
+
+      {item.videoUrl ? (
+        <span
+          style={{
+            position: 'absolute',
+            left: 10,
+            bottom: 10,
+            padding: '5px 10px',
+            borderRadius: 100,
+            background: 'rgba(0,0,0,0.55)',
+            color: '#fff',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.02em',
+            pointerEvents: 'none',
+          }}
+        >
+          {inView ? 'Playing' : 'Video'}
+        </span>
+      ) : null}
+    </div>
+  )
 }
 
 export default function AnnouncementsClient({ items }: Props) {
@@ -19,6 +218,7 @@ export default function AnnouncementsClient({ items }: Props) {
   const [showFullImage, setShowFullImage] = useState(false)
   const [mounted, setMounted] = useState(false)
   const titleId = useId()
+  const modalVideoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -40,6 +240,15 @@ export default function AnnouncementsClient({ items }: Props) {
     }
   }, [selected, showFullImage])
 
+  useEffect(() => {
+    const video = modalVideoRef.current
+    if (!video || !selected) return
+    video.muted = true
+    video.defaultMuted = true
+    const play = video.play()
+    if (play && typeof play.catch === 'function') play.catch(() => {})
+  }, [selected])
+
   const open = (item: Announcement) => {
     setShowFullImage(false)
     setSelected(item)
@@ -50,13 +259,14 @@ export default function AnnouncementsClient({ items }: Props) {
     setSelected(null)
   }
 
+  const selectedKind = selected ? inferVideoKind(selected) : null
   const selectedImage = selected ? resolveAnnouncementImage(selected.imageUrl) : null
   const selectedVideoEmbed = selected
     ? resolveAnnouncementVideo(selected.videoEmbedUrl || selected.videoUrl)
     : null
   const selectedVideoFile =
-    selected?.videoKind === 'file' || selected?.videoKind === 'link'
-      ? resolveAnnouncementVideo(selected.videoUrl)
+    selectedKind === 'file' || selectedKind === 'link'
+      ? resolveAnnouncementVideo(selected?.videoUrl)
       : null
 
   const detailModal =
@@ -129,7 +339,7 @@ export default function AnnouncementsClient({ items }: Props) {
                 </button>
               </div>
 
-              {selected?.videoKind === 'youtube' || selected?.videoKind === 'vimeo' ? (
+              {selectedKind === 'youtube' || selectedKind === 'vimeo' ? (
                 selectedVideoEmbed ? (
                   <div
                     style={{
@@ -141,8 +351,8 @@ export default function AnnouncementsClient({ items }: Props) {
                   >
                     <iframe
                       title={selected.title}
-                      src={selectedVideoEmbed}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      src={withEmbedAutoplay(selectedVideoEmbed, selectedKind)}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; muted"
                       allowFullScreen
                       style={{
                         position: 'absolute',
@@ -158,9 +368,13 @@ export default function AnnouncementsClient({ items }: Props) {
                 <div style={{ background: '#111827', padding: 0 }}>
                   {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                   <video
+                    ref={modalVideoRef}
                     src={selectedVideoFile}
                     controls
+                    autoPlay
+                    muted
                     playsInline
+                    loop
                     style={{
                       display: 'block',
                       width: '100%',
@@ -335,143 +549,101 @@ export default function AnnouncementsClient({ items }: Props) {
           justifyContent: 'center',
         }}
       >
-        {items.map(item => {
-          const img = resolveAnnouncementImage(item.imageUrl)
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => open(item)}
-              className="announce-card"
-              aria-label={`Open announcement: ${item.title}`}
+        {items.map(item => (
+          <article
+            key={item.id}
+            className="announce-card"
+            role="button"
+            tabIndex={0}
+            aria-label={`Open announcement: ${item.title}`}
+            onClick={() => open(item)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                open(item)
+              }
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              width: '100%',
+              margin: 0,
+              padding: 0,
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              overflow: 'hidden',
+              background: 'var(--surface)',
+              boxShadow: 'var(--shadow-sm)',
+              textAlign: 'left',
+              cursor: 'pointer',
+              font: 'inherit',
+              color: 'inherit',
+              transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+            }}
+          >
+            <AnnouncementCardMedia item={item} />
+            <div
               style={{
+                padding: '20px 20px 22px',
                 display: 'flex',
                 flexDirection: 'column',
-                width: '100%',
-                margin: 0,
-                padding: 0,
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                overflow: 'hidden',
-                background: 'var(--surface)',
-                boxShadow: 'var(--shadow-sm)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                font: 'inherit',
-                color: 'inherit',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+                gap: 10,
+                flex: 1,
               }}
             >
-              <div
+              <time
+                dateTime={item.postedAt || undefined}
                 style={{
-                  position: 'relative',
-                  width: '100%',
-                  aspectRatio: '16 / 10',
-                  background: 'linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%)',
-                  pointerEvents: 'none',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--primary)',
+                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
                 }}
               >
-                {img ? (
-                  <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
-                ) : item.videoUrl ? (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'grid',
-                      placeItems: 'center',
-                      background: 'linear-gradient(135deg, #9A3412 0%, #EA580C 100%)',
-                      color: '#fff',
-                      fontWeight: 800,
-                      fontSize: 14,
-                      gap: 8,
-                    }}
-                  >
-                    <span style={{ fontSize: 28 }}>▶</span>
-                    Watch video
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'grid',
-                      placeItems: 'center',
-                      color: '#9A3412',
-                      fontWeight: 700,
-                      fontSize: 14,
-                    }}
-                  >
-                    Vero360
-                  </div>
-                )}
-              </div>
-              <div
+                {formatAnnouncementPostedAt(item.postedAt)}
+              </time>
+              <h3
                 style={{
-                  padding: '20px 20px 22px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                  flex: 1,
-                  pointerEvents: 'none',
+                  margin: 0,
+                  fontSize: 20,
+                  fontWeight: 800,
+                  letterSpacing: '-0.3px',
+                  lineHeight: 1.25,
+                  fontFamily: 'var(--font-display)',
                 }}
               >
-                <time
-                  dateTime={item.postedAt || undefined}
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: 'var(--primary)',
-                    letterSpacing: '0.02em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {formatAnnouncementPostedAt(item.postedAt)}
-                </time>
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 20,
-                    fontWeight: 800,
-                    letterSpacing: '-0.3px',
-                    lineHeight: 1.25,
-                    fontFamily: 'var(--font-display)',
-                  }}
-                >
-                  {item.title}
-                </h3>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 15,
-                    lineHeight: 1.55,
-                    color: 'var(--text-2)',
-                    whiteSpace: 'pre-wrap',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 4,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {item.description}
-                </p>
-                <span
-                  style={{
-                    marginTop: 'auto',
-                    paddingTop: 4,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: 'var(--primary)',
-                  }}
-                >
-                  Read more →
-                </span>
-              </div>
-            </button>
-          )
-        })}
+                {item.title}
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  color: 'var(--text-2)',
+                  whiteSpace: 'pre-wrap',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 4,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {item.description}
+              </p>
+              <span
+                style={{
+                  marginTop: 'auto',
+                  paddingTop: 4,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: 'var(--primary)',
+                }}
+              >
+                Read more →
+              </span>
+            </div>
+          </article>
+        ))}
       </div>
 
       {detailModal}
