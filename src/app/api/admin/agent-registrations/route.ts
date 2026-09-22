@@ -69,7 +69,12 @@ export async function POST(request: Request) {
     const auth = authErrorResponse(err)
     if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
     const message = err instanceof Error ? err.message : 'Failed to register user'
-    const status = /already exists|required|Valid email|Password/i.test(message) ? 400 : 500
+    const status =
+      /already exists|required|Valid email|Password|only register|not customers|OTP|code/i.test(
+        message,
+      )
+        ? 400
+        : 500
     console.error('Agent registrations POST:', err)
     return NextResponse.json({ error: message }, { status })
   }

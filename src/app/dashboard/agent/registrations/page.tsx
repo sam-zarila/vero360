@@ -157,7 +157,7 @@ export default function AgentMyRegistrationsPage() {
           icon="users"
           color="#047857"
           title="No registrations yet"
-          hint="Onboard a customer, merchant, or driver to see them here."
+          hint="Onboard a merchant or driver to see them here."
         />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>

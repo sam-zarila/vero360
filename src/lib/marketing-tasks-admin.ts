@@ -5,6 +5,7 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import {
   MARKETING_TASKS_COLLECTION,
   countMarketingTasks,
+  normalizeMarketingTaskPlatform,
   normalizeMarketingTaskStatus,
   type CreateMarketingTaskInput,
   type MarketingTask,
@@ -68,7 +69,7 @@ export function parseMarketingTask(
     marketerEmail: str(data.marketerEmail).toLowerCase(),
     taskTitle: str(data.taskTitle) || 'Untitled task',
     category: str(data.category) || 'Other',
-    platform: str(data.platform) || 'Other',
+    platform: normalizeMarketingTaskPlatform(data.platform),
     dueDate: dateOnlyToIso(data.dueDate),
     status: normalizeMarketingTaskStatus(data.status),
     dateCompleted: dateOnlyToIso(data.dateCompleted),
@@ -170,7 +171,7 @@ export async function createMarketingTask(
     marketerEmail: str(input.marketerEmail).toLowerCase(),
     taskTitle,
     category: str(input.category) || 'Other',
-    platform: str(input.platform) || 'Other',
+    platform: normalizeMarketingTaskPlatform(input.platform),
     dueDate: dateOnlyToIso(input.dueDate),
     status,
     dateCompleted: dateCompleted || null,
@@ -214,7 +215,7 @@ export async function updateMarketingTask(
     updates.taskTitle = title
   }
   if (patch.category !== undefined) updates.category = str(patch.category) || 'Other'
-  if (patch.platform !== undefined) updates.platform = str(patch.platform) || 'Other'
+  if (patch.platform !== undefined) updates.platform = normalizeMarketingTaskPlatform(patch.platform)
   if (patch.notes !== undefined) updates.notes = str(patch.notes)
   if (patch.datePosted !== undefined || patch.dateAssigned !== undefined) {
     const posted =

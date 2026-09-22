@@ -21,6 +21,7 @@ import {
 } from '@/app/dashboard/DashboardChrome'
 import { usePanelSession } from '../../PanelSessionProvider'
 import { MarketingSubNav } from '../MarketingSubNav'
+import { MarketingPrintButton, MarketingPrintMeta } from '../MarketingPrintButton'
 
 type KpiMode = 'demo' | 'live'
 
@@ -141,14 +142,29 @@ export default function MarketingKpiPage() {
 
   return (
     <div>
-      {!isMarketer ? <DashboardBackLink label="Back to dashboard" /> : null}
+      {!isMarketer ? (
+        <div className="no-print">
+          <DashboardBackLink label="Back to dashboard" />
+        </div>
+      ) : null}
 
       <DashboardPageHeader
         sectionId="marketing"
         title={title}
         description={description}
         actions={
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div
+            className="no-print"
+            style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}
+          >
+            <MarketingPrintButton
+              title={isMarketer ? 'My marketing KPI' : 'Marketing KPI / performance'}
+              subtitle={
+                isMarketer
+                  ? `Score ${personalProgress.score} · last ${dayCount} days${isDemo ? ' · Demo' : ''}`
+                  : `Team score ${teamProgress.score} · ${board.length} marketers · last ${dayCount} days${isDemo ? ' · Demo' : ''}`
+              }
+            />
             <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
               Window{' '}
               <select
@@ -170,8 +186,15 @@ export default function MarketingKpiPage() {
 
       <MarketingSubNav />
 
+      <MarketingPrintMeta>
+        {isMarketer
+          ? `Personal score ${personalProgress.score} · Posted ${personalProgress.totalPosted} · Avg/day ${personalProgress.avgPerDay} · Window ${dayCount} days${isDemo ? ' · Demo' : ' · Live'}`
+          : `Team score ${teamProgress.score} · Marketers ${board.length} · Posted ${teamProgress.totalPosted} · Avg/day ${teamProgress.avgPerDay} · Window ${dayCount} days${isDemo ? ' · Demo' : ' · Live'}`}
+      </MarketingPrintMeta>
+
       {!isMarketer ? (
         <div
+          className="no-print"
           style={{
             display: 'flex',
             flexWrap: 'wrap',
@@ -198,6 +221,7 @@ export default function MarketingKpiPage() {
 
       {isDemo ? (
         <div
+          className="no-print"
           style={{
             marginBottom: 16,
             padding: '12px 14px',
@@ -386,11 +410,51 @@ export default function MarketingKpiPage() {
               hint="Once marketers log tasks, their KPIs will show up here."
             />
           ) : (
-            <div style={{ display: 'grid', gap: 14 }}>
-              {board.map(row => (
-                <MarketerKpiCard key={row.marketerUid} row={row} dayCount={dayCount} />
-              ))}
-            </div>
+            <>
+              <table
+                className="print-only"
+                style={{ width: '100%', marginBottom: 18, borderCollapse: 'collapse' }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Marketer</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Score</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Posted</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Active days</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Avg/day</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Tasks</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Completed</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>In progress</th>
+                    <th style={{ textAlign: 'left', padding: 6 }}>Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {board.map(row => (
+                    <tr key={`print-${row.marketerUid}`}>
+                      <td style={{ padding: 6 }}>
+                        {row.marketerName}
+                        {row.marketerEmail ? ` (${row.marketerEmail})` : ''}
+                      </td>
+                      <td style={{ padding: 6 }}>{row.progress.score}</td>
+                      <td style={{ padding: 6 }}>{row.progress.totalPosted}</td>
+                      <td style={{ padding: 6 }}>
+                        {row.progress.activeDays}/{row.progress.trackedDays || dayCount}
+                      </td>
+                      <td style={{ padding: 6 }}>{row.progress.avgPerDay}</td>
+                      <td style={{ padding: 6 }}>{row.taskCount}</td>
+                      <td style={{ padding: 6 }}>{row.completedCount}</td>
+                      <td style={{ padding: 6 }}>{row.inProgressCount}</td>
+                      <td style={{ padding: 6 }}>{row.progress.ratingLabel}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ display: 'grid', gap: 14 }}>
+                {board.map(row => (
+                  <MarketerKpiCard key={row.marketerUid} row={row} dayCount={dayCount} />
+                ))}
+              </div>
+            </>
           )}
         </>
       )}

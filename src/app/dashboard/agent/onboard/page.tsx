@@ -2,8 +2,7 @@
 
 import { useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { adminFetch } from '@/lib/panel-client-auth'
-import { USER_ROLES, type UserRole } from '@/lib/users'
-import { MERCHANT_SERVICES } from '@/lib/agent-registrations'
+import { AGENT_ONBOARD_ROLES, MERCHANT_SERVICES, type AgentOnboardRole } from '@/lib/agent-registrations'
 import {
   DashboardPageHeader,
   DashboardBackLink,
@@ -15,7 +14,7 @@ type FormState = {
   name: string
   email: string
   phone: string
-  role: UserRole
+  role: AgentOnboardRole
   password: string
   confirmPassword: string
   businessName: string
@@ -30,7 +29,7 @@ const emptyForm = (): FormState => ({
   name: '',
   email: '',
   phone: '',
-  role: 'customer',
+  role: 'merchant',
   password: '',
   confirmPassword: '',
   businessName: '',
@@ -284,7 +283,7 @@ export default function AgentOnboardPage() {
       <DashboardPageHeader
         sectionId="agents"
         title="Onboard user"
-        description="Verify email or phone with OTP (same as the app), then create a real account."
+        description="Register merchants or drivers only. Verify email or phone with the same app registration OTP, then create the account."
       />
 
       <AgentSubNav />
@@ -322,7 +321,7 @@ export default function AgentOnboardPage() {
 
       <form onSubmit={e => void submit(e)} style={card}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          {USER_ROLES.map(role => (
+          {AGENT_ONBOARD_ROLES.map(role => (
             <button
               key={role}
               type="button"
@@ -343,6 +342,9 @@ export default function AgentOnboardPage() {
             </button>
           ))}
         </div>
+        <p style={{ margin: '-6px 0 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>
+          Customers create their own accounts in the Vero360 app.
+        </p>
 
         <div
           style={{
@@ -455,7 +457,7 @@ export default function AgentOnboardPage() {
             {otpVerified ? 'Contact verified' : 'Verify with OTP *'}
           </div>
           <p style={{ margin: '6px 0 12px', fontSize: 13, color: 'var(--text-2)', lineHeight: 1.45 }}>
-            Same as the app: send a code by email or SMS, then enter it before creating the account.
+            Same as app registration: send a code by email or SMS via `/auth/otp`, then enter it before creating the account.
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>

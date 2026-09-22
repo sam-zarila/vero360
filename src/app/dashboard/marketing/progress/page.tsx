@@ -18,6 +18,7 @@ import {
 } from '@/app/dashboard/DashboardChrome'
 import { usePanelSession } from '../../PanelSessionProvider'
 import { MarketingSubNav } from '../MarketingSubNav'
+import { MarketingPrintButton, MarketingPrintMeta } from '../MarketingPrintButton'
 
 export default function MarketingProgressPage() {
   const { isMarketer, loading: sessionLoading } = usePanelSession()
@@ -54,16 +55,34 @@ export default function MarketingProgressPage() {
 
   return (
     <div>
-      {!isMarketer ? <DashboardBackLink label="Back to dashboard" /> : null}
+      {!isMarketer ? (
+        <div className="no-print">
+          <DashboardBackLink label="Back to dashboard" />
+        </div>
+      ) : null}
 
       <DashboardPageHeader
         sectionId="marketing"
         title="My progress"
         description={`Daily posting score · tracking starts ${formatMarketingDate(MARKETING_PROGRESS_START_DATE)}.`}
-        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+        actions={
+          <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <MarketingPrintButton
+              title="Marketing performance"
+              subtitle={`Score ${progress.score} · ${progress.ratingLabel}`}
+            />
+            <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
+          </div>
+        }
       />
 
       <MarketingSubNav />
+
+      <MarketingPrintMeta>
+        Score {progress.score} · Posted {progress.totalPosted} · Active days{' '}
+        {progress.activeDays}/{progress.trackedDays || 14} · Avg/day {progress.avgPerDay} ·{' '}
+        {progress.ratingLabel}
+      </MarketingPrintMeta>
 
       {error ? (
         <div
@@ -223,6 +242,24 @@ export default function MarketingProgressPage() {
                     </div>
                   ))}
                 </div>
+                <table className="print-only" style={{ width: '100%', marginTop: 14, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: 6 }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: 6 }}>Posts</th>
+                      <th style={{ textAlign: 'left', padding: 6 }}>Tone</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {progress.days.map(day => (
+                      <tr key={`print-${day.key}`}>
+                        <td style={{ padding: 6 }}>{day.label} ({day.key})</td>
+                        <td style={{ padding: 6 }}>{day.count}</td>
+                        <td style={{ padding: 6 }}>{day.tone}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
                 <div
                   style={{
                     display: 'flex',

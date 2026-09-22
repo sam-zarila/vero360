@@ -94,16 +94,29 @@ export const MARKETING_TASK_CATEGORIES = [
 ] as const
 
 export const MARKETING_TASK_PLATFORMS = [
-  'Instagram',
-  'TikTok',
-  'Facebook',
-  'X',
-  'YouTube',
-  'LinkedIn',
-  'WhatsApp',
-  'Website',
-  'Other',
+  'Buffer',
+  'Business Suite',
+  'Both',
 ] as const
+
+export type MarketingTaskPlatform = (typeof MARKETING_TASK_PLATFORMS)[number]
+
+/** Normalize legacy social names into Buffer / Business Suite / Both. */
+export function normalizeMarketingTaskPlatform(raw: unknown): MarketingTaskPlatform {
+  const v = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+  if (v === 'both' || v.includes('both') || v === 'buffer & business suite' || v === 'buffer and business suite') {
+    return 'Both'
+  }
+  if (v === 'business suite' || v === 'businesssuite' || v === 'meta business suite' || v === 'mbs') {
+    return 'Business Suite'
+  }
+  if (v === 'buffer') return 'Buffer'
+  // Default new / unknown / legacy social networks → Buffer
+  return 'Buffer'
+}
 
 export function normalizeMarketingTaskStatus(raw: unknown): MarketingTaskStatus {
   const v = String(raw ?? '')
@@ -432,7 +445,7 @@ export function buildDemoMarketingTasks(dayCount = 14): MarketingTask[] {
           marketerEmail: m.email,
           taskTitle: `Demo post ${n}`,
           category: p % 2 === 0 ? 'Post' : 'Reel',
-          platform: p % 2 === 0 ? 'Instagram' : 'TikTok',
+          platform: p % 3 === 0 ? 'Buffer' : p % 3 === 1 ? 'Business Suite' : 'Both',
           dueDate: null,
           status: 'completed',
           dateCompleted: `${dayKey}T18:00:00.000Z`,

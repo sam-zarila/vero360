@@ -26,6 +26,7 @@ export function MarketingSubNav() {
   return (
     <nav
       aria-label="Marketing sections"
+      className="no-print"
       style={{
         display: 'flex',
         flexWrap: 'wrap',

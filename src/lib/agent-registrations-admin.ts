@@ -5,7 +5,7 @@ import {
   MERCHANT_SERVICES,
   countAgentRegistrations,
   formatPhoneE164,
-  normalizeAgentUserRole,
+  normalizeAgentOnboardRole,
   parseAgentRegistration,
   syntheticEmailForPhone,
   type AgentRegistration,
@@ -107,7 +107,7 @@ export async function createAgentRegistration(
     .trim()
     .toLowerCase()
   const rawPhone = String(input.phone || '').trim()
-  const role = normalizeAgentUserRole(input.role)
+  const role = normalizeAgentOnboardRole(input.role)
   const useTemp = input.generateTempPassword === true
   const password = useTemp
     ? generateTempPassword()
@@ -137,7 +137,7 @@ export async function createAgentRegistration(
   if (geo.lng != null && !Number.isFinite(geo.lng)) geo.lng = null
 
   if (!name) throw new Error('Name is required')
-  if (!verificationTicket) {
+  if (!verificationTicket || verificationTicket.length < 8) {
     throw new Error('Verify email or phone with OTP before creating the account')
   }
 

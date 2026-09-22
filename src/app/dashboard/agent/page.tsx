@@ -65,7 +65,7 @@ export default function AgentPortalHome() {
     {
       href: '/dashboard/agent/onboard',
       title: 'Onboard user',
-      desc: 'Register a customer, merchant, or driver with email, phone, and location.',
+      desc: 'Register a merchant or driver with email, phone OTP, and location.',
     },
     {
       href: '/dashboard/agent/registrations',

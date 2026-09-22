@@ -38,12 +38,33 @@ export const MERCHANT_SERVICES = [
 
 export type MerchantServiceKey = (typeof MERCHANT_SERVICES)[number]['key']
 
+/** Roles agents may onboard — customers self-register in the app. */
+export const AGENT_ONBOARD_ROLES = ['merchant', 'driver'] as const
+export type AgentOnboardRole = (typeof AGENT_ONBOARD_ROLES)[number]
+
+export function isAgentOnboardRole(raw: unknown): raw is AgentOnboardRole {
+  const v = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+  return v === 'merchant' || v === 'driver'
+}
+
+/** Roles agents may create — never customer. */
+export function normalizeAgentOnboardRole(raw: unknown): AgentOnboardRole {
+  const v = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+  if (v === 'merchant' || v === 'business') return 'merchant'
+  if (v === 'driver' || v === 'taxi') return 'driver'
+  throw new Error('Agents can only register merchants or drivers — not customers')
+}
+
 export type CreateAgentRegistrationInput = {
   name: string
   /** Real email — optional if phone is provided (phone-only uses synthetic auth email like the app). */
   email?: string | null
   phone?: string | null
-  role: UserRole | string
+  role: AgentOnboardRole | string
   /** Required unless generateTempPassword is true. */
   password?: string | null
   /** When true, server creates a one-time temp password (user not present). */

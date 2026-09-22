@@ -68,7 +68,7 @@ export default function AdminAgentsPage() {
       <DashboardPageHeader
         sectionId="agents"
         title="Agents"
-        description="Field agents who onboard customers, merchants, and drivers. Create agents under Admins."
+        description="Field agents who onboard merchants and drivers. Create agents under Admins."
         actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
       />
 

@@ -19,6 +19,7 @@ import {
   marketingTaskAssignedByLabel,
   marketingTaskStatusLabel,
   marketingTaskStatusTone,
+  normalizeMarketingTaskPlatform,
   toDateInputValue,
   type MarketingTask,
   type MarketingTaskCounts,
@@ -33,6 +34,7 @@ import {
 import { usePanelSession } from '../../PanelSessionProvider'
 import { useConfirm, useConfirmDelete } from '../../ConfirmDialog'
 import { MarketingSubNav } from '../MarketingSubNav'
+import { MarketingPrintButton, MarketingPrintMeta } from '../MarketingPrintButton'
 
 const SECTION = DASHBOARD_SECTION_MAP.marketing
 
@@ -66,7 +68,7 @@ function emptyForm(defaults?: Partial<FormState>): FormState {
     marketerUid: '',
     taskTitle: '',
     category: 'Post',
-    platform: 'Instagram',
+    platform: 'Buffer',
     dueDate: '',
     status: 'not_started',
     dateCompleted: '',
@@ -81,7 +83,7 @@ function formFromTask(t: MarketingTask): FormState {
     marketerUid: t.marketerUid,
     taskTitle: t.taskTitle,
     category: t.category || 'Other',
-    platform: t.platform || 'Other',
+    platform: normalizeMarketingTaskPlatform(t.platform),
     dueDate: toDateInputValue(t.dueDate),
     status: t.status,
     dateCompleted: toDateInputValue(t.dateCompleted),
@@ -153,7 +155,9 @@ export default function MarketingTasksPage() {
       } else if (statusFilter !== 'all' && t.status !== statusFilter) {
         return false
       }
-      if (platformFilter !== 'all' && t.platform !== platformFilter) return false
+      if (platformFilter !== 'all' && normalizeMarketingTaskPlatform(t.platform) !== platformFilter) {
+        return false
+      }
       if (marketerFilter !== 'all' && t.marketerUid !== marketerFilter) return false
       const query = q.trim().toLowerCase()
       if (!query) return true
@@ -329,7 +333,11 @@ export default function MarketingTasksPage() {
 
   return (
     <div>
-      {!isMarketer ? <DashboardBackLink label="Back to dashboard" /> : null}
+      {!isMarketer ? (
+        <div className="no-print">
+          <DashboardBackLink label="Back to dashboard" />
+        </div>
+      ) : null}
 
       <DashboardPageHeader
         sectionId="marketing"
@@ -340,7 +348,11 @@ export default function MarketingTasksPage() {
             : 'Assign content tasks to marketers and review status.'
         }
         actions={
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <MarketingPrintButton
+              title="Marketing tasks"
+              subtitle={`${filtered.length} task${filtered.length === 1 ? '' : 's'} in current view`}
+            />
             <button type="button" onClick={openCreate} style={primaryBtn} disabled={busy}>
               + {isMarketer ? 'Add my task' : 'Assign task'}
             </button>
@@ -350,6 +362,28 @@ export default function MarketingTasksPage() {
       />
 
       <MarketingSubNav />
+
+      <MarketingPrintMeta>
+        Filters:{' '}
+        {statusFilter === 'all'
+          ? 'All statuses'
+          : statusFilter === 'overdue'
+            ? 'Overdue'
+            : marketingTaskStatusLabel(statusFilter)}
+        {' · '}
+        {platformFilter === 'all' ? 'All platforms' : platformFilter}
+        {isFullAdmin
+          ? ` · ${
+              marketerFilter === 'all'
+                ? 'All marketers'
+                : marketers.find(m => m.id === marketerFilter)?.displayName || 'Marketer'
+            }`
+          : ''}
+        {q.trim() ? ` · Search “${q.trim()}”` : ''}
+        {' · '}
+        Totals — All {counts.all}, In progress {counts.in_progress}, Completed {counts.completed}, Overdue{' '}
+        {counts.overdue}
+      </MarketingPrintMeta>
 
       {(error || notice) && (
         <div
@@ -382,7 +416,11 @@ export default function MarketingTasksPage() {
       </div>
 
       {formOpen ? (
-        <form onSubmit={e => void save(e)} style={{ ...card, marginBottom: 18 }}>
+        <form
+          className="no-print"
+          onSubmit={e => void save(e)}
+          style={{ ...card, marginBottom: 18 }}
+        >
           <h2 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 800 }}>
             {editingId ? 'Edit task' : isMarketer ? 'Add my task' : 'Assign a task'}
           </h2>
@@ -432,7 +470,7 @@ export default function MarketingTasksPage() {
                 required
                 value={form.taskTitle}
                 onChange={e => setForm(f => ({ ...f, taskTitle: e.target.value }))}
-                placeholder="Instagram carousel: Vero Ride…"
+                placeholder="Buffer carousel: Vero Ride…"
                 style={input}
               />
             </Field>
@@ -451,8 +489,13 @@ export default function MarketingTasksPage() {
             </Field>
             <Field label="Platform">
               <select
-                value={form.platform}
-                onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
+                value={normalizeMarketingTaskPlatform(form.platform)}
+                onChange={e =>
+                  setForm(f => ({
+                    ...f,
+                    platform: normalizeMarketingTaskPlatform(e.target.value),
+                  }))
+                }
                 style={input}
               >
                 {MARKETING_TASK_PLATFORMS.map(p => (
@@ -530,7 +573,7 @@ export default function MarketingTasksPage() {
       ) : null}
 
       <section style={card}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+        <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
           {statusTabs.map(t => (
             <button
               key={t.id}
@@ -549,6 +592,7 @@ export default function MarketingTasksPage() {
         </div>
 
         <div
+          className="no-print"
           style={{
             display: 'grid',
             gridTemplateColumns: isFullAdmin
@@ -637,7 +681,7 @@ export default function MarketingTasksPage() {
                         'Actions',
                       ]
                   ).map(h => (
-                    <th key={h} style={th}>
+                    <th key={h} style={th} className={h === 'Actions' ? 'no-print' : undefined}>
                       {h}
                     </th>
                   ))}
@@ -657,7 +701,7 @@ export default function MarketingTasksPage() {
                       ) : null}
                       <td style={{ ...td, fontWeight: 650, maxWidth: 220 }}>{t.taskTitle}</td>
                       <td style={td}>{t.category}</td>
-                      <td style={td}>{t.platform}</td>
+                      <td style={td}>{normalizeMarketingTaskPlatform(t.platform)}</td>
                       {!isMarketer ? (
                         <td style={td}>{formatMarketingDate(t.dueDate)}</td>
                       ) : null}
@@ -704,7 +748,7 @@ export default function MarketingTasksPage() {
                       <td style={{ ...td, maxWidth: 180, color: 'var(--text-2)' }}>
                         {t.notes || '—'}
                       </td>
-                      <td style={td}>
+                      <td style={td} className="no-print">
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           <button
                             type="button"
