@@ -68,6 +68,8 @@ function validateSignupPassword(password: string): string | null {
 
 export async function listAgentRegistrations(opts?: {
   agentUid?: string | null
+  /** When true (default), omit customer records — agents only onboard merchants/drivers. */
+  excludeCustomers?: boolean
 }): Promise<AgentRegistration[]> {
   const db = getAdminDb()
   let snap
@@ -80,8 +82,10 @@ export async function listAgentRegistrations(opts?: {
     snap = await db.collection(AGENT_REGISTRATIONS_COLLECTION).get()
   }
 
+  const excludeCustomers = opts?.excludeCustomers !== false
   return snap.docs
     .map(d => parseAgentRegistration(d.id, d.data() as Record<string, unknown>))
+    .filter(item => (excludeCustomers ? item.role !== 'customer' : true))
     .sort((a, b) => {
       const at = a.registeredAt ? new Date(a.registeredAt).getTime() : 0
       const bt = b.registeredAt ? new Date(b.registeredAt).getTime() : 0
@@ -89,7 +93,10 @@ export async function listAgentRegistrations(opts?: {
     })
 }
 
-export async function listAgentRegistrationsPayload(opts?: { agentUid?: string | null }) {
+export async function listAgentRegistrationsPayload(opts?: {
+  agentUid?: string | null
+  excludeCustomers?: boolean
+}) {
   const items = await listAgentRegistrations(opts)
   return { items, counts: countAgentRegistrations(items) }
 }

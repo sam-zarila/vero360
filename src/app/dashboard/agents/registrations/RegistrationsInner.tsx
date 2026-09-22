@@ -136,10 +136,10 @@ export default function AdminAgentRegistrationsInner() {
         }}
       >
         <Metric label="All" value={String(counts.all)} />
-        <Metric label="Customers" value={String(counts.customer)} />
         <Metric label="Merchants" value={String(counts.merchant)} />
         <Metric label="Drivers" value={String(counts.driver)} />
         <Metric label="Verified" value={String(counts.verified)} />
+        <Metric label="Unverified" value={String(counts.unverified)} />
       </div>
 
       <DashboardSearchField

@@ -106,9 +106,9 @@ export default function AgentPortalHome() {
         }}
       >
         <Metric label="Registered" value={String(counts.all)} />
-        <Metric label="Customers" value={String(counts.customer)} />
         <Metric label="Merchants" value={String(counts.merchant)} />
         <Metric label="Drivers" value={String(counts.driver)} />
+        <Metric label="Verified" value={String(counts.verified)} />
       </div>
 
       <div

@@ -51,6 +51,16 @@ export async function POST(request: Request) {
     }
 
     const body = (raw || {}) as CreateAgentRegistrationInput
+    const role = String(body.role || '')
+      .trim()
+      .toLowerCase()
+    if (role === 'customer' || role === 'user' || role === 'passenger') {
+      return NextResponse.json(
+        { error: 'Agents can only register merchants or drivers — not customers' },
+        { status: 400 },
+      )
+    }
+
     const result = await createAgentRegistration(body, actor.admin)
 
     return NextResponse.json(

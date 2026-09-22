@@ -34,7 +34,7 @@ export default function AgentMyRegistrationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'all' | 'customer' | 'merchant' | 'driver'>('all')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'merchant' | 'driver'>('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -120,12 +120,14 @@ export default function AgentMyRegistrationsPage() {
         }}
       >
         <Metric label="All" value={String(counts.all)} />
+        <Metric label="Merchants" value={String(counts.merchant)} />
+        <Metric label="Drivers" value={String(counts.driver)} />
         <Metric label="Verified" value={String(counts.verified)} />
         <Metric label="Unverified" value={String(counts.unverified)} />
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        {(['all', 'customer', 'merchant', 'driver'] as const).map(id => (
+        {(['all', 'merchant', 'driver'] as const).map(id => (
           <button
             key={id}
             type="button"
