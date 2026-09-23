@@ -97,16 +97,18 @@ export const MARKETING_TASK_PLATFORMS = [
   'Buffer',
   'Business Suite',
   'Both',
+  'TikTok',
 ] as const
 
 export type MarketingTaskPlatform = (typeof MARKETING_TASK_PLATFORMS)[number]
 
-/** Normalize legacy social names into Buffer / Business Suite / Both. */
+/** Normalize into Buffer / Business Suite / Both / TikTok. */
 export function normalizeMarketingTaskPlatform(raw: unknown): MarketingTaskPlatform {
   const v = String(raw ?? '')
     .trim()
     .toLowerCase()
     .replace(/[_-]+/g, ' ')
+  if (v === 'tiktok' || v === 'tik tok') return 'TikTok'
   if (v === 'both' || v.includes('both') || v === 'buffer & business suite' || v === 'buffer and business suite') {
     return 'Both'
   }
@@ -445,7 +447,14 @@ export function buildDemoMarketingTasks(dayCount = 14): MarketingTask[] {
           marketerEmail: m.email,
           taskTitle: `Demo post ${n}`,
           category: p % 2 === 0 ? 'Post' : 'Reel',
-          platform: p % 3 === 0 ? 'Buffer' : p % 3 === 1 ? 'Business Suite' : 'Both',
+          platform:
+            p % 4 === 0
+              ? 'Buffer'
+              : p % 4 === 1
+                ? 'Business Suite'
+                : p % 4 === 2
+                  ? 'Both'
+                  : 'TikTok',
           dueDate: null,
           status: 'completed',
           dateCompleted: `${dayKey}T18:00:00.000Z`,
