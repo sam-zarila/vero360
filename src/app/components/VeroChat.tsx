@@ -225,7 +225,7 @@ export default function VeroChat() {
                 background: '#fff', border: '1px solid var(--border)',
                 fontSize: 14, color: 'var(--text-2)', lineHeight: 1.5,
               }}>
-                Hello! This is Vero360 Help Center. Chat with us — how can we help?
+                Hello! This is Vero360 Help Center. Chat with us. How can we help?
               </div>
             )}
 

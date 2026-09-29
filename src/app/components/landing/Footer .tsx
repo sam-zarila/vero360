@@ -6,17 +6,19 @@ import Logo from './Logo'
 import { VeroIcon } from './icons'
 
 const links = {
-    Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation'],
+    Product: ['Marketplace', 'Vero Ride', 'Food & Courier', 'Accommodation', 'Digital Services', 'Jobs'],
     Company: ['About Vero360', 'Careers'],
     Partners: ['Become a merchant', 'Customers', 'Driver signup', 'Partner support'],
-    Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service'],
+    Support: ['Help center', 'Contact us', 'Privacy policy', 'Terms of service', 'Legal documents'],
   }
 
 const linkHrefs: Record<string, string> = {
-  'Marketplace': '/#services',
+  'Marketplace': '/browse/marketplace',
   'Vero Ride': '/#services',
-  'Food & Courier': '/#services',
-  'Accommodation': '/#services',
+  'Food & Courier': '/browse/food',
+  'Accommodation': '/browse/stays',
+  'Digital Services': '/browse/digital-services',
+  'Jobs': '/browse/jobs',
   'About Vero360': '/#about-us',
   'Careers': '/careers',
   'Become a merchant': '/get-started?role=merchant',
@@ -26,6 +28,7 @@ const linkHrefs: Record<string, string> = {
   'Contact us': '/#contact',
   'Privacy policy': '/privacy',
   'Terms of service': '/terms',
+  'Legal documents': '/legal',
 }
 
 function openHelpCenter() {
@@ -78,7 +81,7 @@ function openHelpCenter() {
                 <Logo height={36} textColor="#fff" />
               </div>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 24 }}>
-                Malawi&apos;s all-in-one super app. Marketplace, rides, food, courier, jobs, and more — one secure platform.
+                Malawi&apos;s all-in-one super app. Marketplace, rides, food, courier, jobs, and more on one secure platform.
               </p>
               {/* Contact */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -88,7 +91,7 @@ function openHelpCenter() {
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
                   <VeroIcon name="map-pin" size={16} color="rgba(255,255,255,0.45)" />
-                  <span>Lilongwe, Malawi</span>
+                  <span>Lilongwe Area 14, Malawi</span>
                 </div>
               </div>
             </div>
@@ -147,7 +150,7 @@ function openHelpCenter() {
                 Stay in the loop
               </h4>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, maxWidth: 400 }}>
-                Get updates on new cities, features, and product news. No spam — unsubscribe anytime.
+                Get updates on new cities, features, and product news. No spam  unsubscribe anytime.
               </p>
             </div>
             <form
@@ -213,6 +216,7 @@ function openHelpCenter() {
               <Link href="/panel" className="footer-legal-link">Panel</Link>
               <Link href="/privacy" className="footer-legal-link">Privacy</Link>
               <Link href="/terms" className="footer-legal-link">Terms</Link>
+              <Link href="/legal" className="footer-legal-link">Legal</Link>
             </div>
           </div>
         </div>

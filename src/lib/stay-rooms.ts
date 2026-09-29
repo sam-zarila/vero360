@@ -78,6 +78,7 @@ async function loadContact(uid: string): Promise<{
 /**
  * Merge Firestore `accommodation_rooms` overlays onto API listings
  * (availability, pricing period, hostel gender, capacity) and resolve host contacts.
+ * Uses targeted doc reads + batched `in` queries — no full collection scan.
  */
 export async function enrichStayListings(
   listings: StayListing[],
@@ -85,19 +86,46 @@ export async function enrichStayListings(
   if (listings.length === 0) return listings
 
   const byApiId = new Map<number, RoomMeta>()
+  const col = getAdminDb().collection(ACCOMMODATION_ROOMS_COLLECTION)
+  const ids = [...new Set(listings.map(l => l.id).filter(id => id > 0))]
 
   try {
-    const snap = await getAdminDb().collection(ACCOMMODATION_ROOMS_COLLECTION).get()
-    for (const doc of snap.docs) {
-      const data = doc.data() as Record<string, unknown>
-      const apiId =
-        num(data.apiAccommodationId ?? data.accommodationId ?? data.apiId) ||
-        (() => {
-          const fromKey = doc.id.match(/_(\d+)$/)
-          return fromKey ? Number(fromKey[1]) : 0
-        })()
-      if (!apiId) continue
-      byApiId.set(apiId, metaFromDoc(data))
+    // Preferred doc id pattern from the Flutter merchant dashboard: `{uid}_{apiId}`
+    await Promise.all(
+      listings.map(async listing => {
+        const uid = listing.hostFirebaseUid?.trim()
+        if (!uid || !listing.id) return
+        try {
+          const doc = await col.doc(`${uid}_${listing.id}`).get()
+          if (doc.exists) {
+            byApiId.set(listing.id, metaFromDoc(doc.data() as Record<string, unknown>))
+          }
+        } catch {
+          // ignore per-doc miss
+        }
+      }),
+    )
+
+    // Fill gaps with field queries (Firestore `in` max 30)
+    const missing = ids.filter(id => !byApiId.has(id))
+    for (let i = 0; i < missing.length; i += 30) {
+      const chunk = missing.slice(i, i + 30)
+      if (!chunk.length) break
+      try {
+        const snap = await col.where('apiAccommodationId', 'in', chunk).get()
+        for (const doc of snap.docs) {
+          const data = doc.data() as Record<string, unknown>
+          const apiId =
+            num(data.apiAccommodationId ?? data.accommodationId ?? data.apiId) ||
+            (() => {
+              const fromKey = doc.id.match(/_(\d+)$/)
+              return fromKey ? Number(fromKey[1]) : 0
+            })()
+          if (apiId) byApiId.set(apiId, metaFromDoc(data))
+        }
+      } catch (err) {
+        console.warn('[stay-rooms] apiAccommodationId batch skipped:', err)
+      }
     }
   } catch (err) {
     console.warn('[stay-rooms] Firestore room enrichment skipped:', err)

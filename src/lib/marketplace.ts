@@ -45,6 +45,8 @@ export type MarketplaceListing = {
   merchantFirebaseUid: string | null
   ownerId: number | null
   createdAt: string | null
+  /** ISO expiry for paid marketplace top boost (null when not promoted). */
+  promotedUntil: string | null
   latitude: number | null
   longitude: number | null
   source: 'firestore' | 'api'
@@ -217,6 +219,7 @@ export function parseMarketplaceListings(body: unknown): MarketplaceListing[] {
           null,
         ownerId: nullableNum(row.ownerId),
         createdAt: tsToIso(row.createdAt),
+        promotedUntil: tsToIso(row.promotedUntil),
         latitude: nullableNum(row.latitude ?? row.lat),
         longitude: nullableNum(row.longitude ?? row.lng),
         source: 'api',
@@ -266,6 +269,7 @@ export function parseFirestoreMarketplaceListing(
     merchantFirebaseUid: merchantUid,
     ownerId: nullableNum(data.merchantBackendId ?? data.backendUserId ?? data.ownerId),
     createdAt: tsToIso(data.createdAt),
+    promotedUntil: tsToIso(data.promotedUntil),
     latitude: nullableNum(data.latitude ?? data.lat),
     longitude: nullableNum(data.longitude ?? data.lng),
     source: 'firestore',

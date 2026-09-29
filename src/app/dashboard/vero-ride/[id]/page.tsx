@@ -9,7 +9,7 @@ import {
   formatDateTime,
   type FleetDriver,
 } from '@/lib/drivers'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import { useConfirm } from '../../ConfirmDialog'
 import { ApplicationReviewPanel } from '../ApplicationReviewPanel'
 
@@ -32,7 +32,7 @@ export default function DriverDetailPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch(`/api/admin/drivers/${id}`, {
+      const res = await adminFetch(`/api/admin/drivers/${id}`, {
         headers,
         cache: 'no-store',
       })
@@ -51,10 +51,8 @@ export default function DriverDetailPage() {
   }, [load])
 
   async function postJson(url: string, body?: unknown) {
-    const headers = await panelAuthHeaders(true)
-    const res = await fetch(url, {
+    const res = await adminFetch(url, {
       method: 'POST',
-      headers,
       body: body != null ? JSON.stringify(body) : undefined,
     })
     const data = await res.json()

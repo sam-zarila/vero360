@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import {
   cleanContactEmail,
@@ -95,6 +96,8 @@ async function enrichBookingContacts(bookings: StayBooking[]): Promise<StayBooki
  * via admin list: GET /bookings/admin/all.
  */
 export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const headers: HeadersInit = { Accept: 'application/json' }
     const auth = getVeroAuthHeader(request)

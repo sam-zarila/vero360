@@ -3,8 +3,11 @@
 import {
   driverStatusLabel,
   driverStatusTone,
+  formatDateOnly,
   formatDateTime,
-  isExpired,
+  hasCompleteDriverDocs,
+  hasCompleteVehicleDocs,
+  isDriverAtLeast18,
   taxiStatusLabel,
   type FleetDriver,
   type FleetTaxi,
@@ -126,6 +129,8 @@ export function ApplicationReviewPanel({
   const driverDone = driver.status === 'VERIFIED' && driver.isVerified
   const driverPending = driver.status === 'PENDING_VERIFICATION'
   const driverRejected = driver.status === 'REJECTED'
+  const driverDocsComplete = hasCompleteDriverDocs(driver)
+  const driverAgeOk = isDriverAtLeast18(driver.dateOfBirth)
   const tone = driverStatusTone(driver.status)
 
   return (
@@ -170,6 +175,11 @@ export function ApplicationReviewPanel({
         }}
       >
         <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>1. Driver documents</h3>
+        {driver.submittedAt ? (
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--muted)' }}>
+            Submitted {formatDateTime(driver.submittedAt)}
+          </p>
+        ) : null}
         <div
           style={{
             display: 'grid',
@@ -178,20 +188,15 @@ export function ApplicationReviewPanel({
             marginBottom: 14,
           }}
         >
-          <Field label="License number" value={driver.licenseNumber || '—'} />
           <Field
-            label="License expiry"
-            value={formatDateTime(driver.licenseExpiry)}
+            label="Date of birth"
+            value={formatDateOnly(driver.dateOfBirth)}
             warn={
-              isExpired(driver.licenseExpiry)
-                ? driver.licenseExpiry
-                  ? 'expired'
-                  : 'required'
+              !isDriverAtLeast18(driver.dateOfBirth)
+                ? 'Driver must be 18 or older'
                 : undefined
             }
           />
-          <Field label="National ID" value={driver.nationalId || '—'} />
-          <Field label="Date of birth" value={formatDateTime(driver.dateOfBirth)} />
         </div>
         <div
           style={{
@@ -228,12 +233,24 @@ export function ApplicationReviewPanel({
             Rejection reason: {driver.rejectionReason}
           </div>
         ) : null}
+        {driverPending && !driverDocsComplete ? (
+          <p
+            style={{
+              margin: '0 0 12px',
+              fontSize: 13,
+              color: '#B91C1C',
+              fontWeight: 600,
+            }}
+          >
+            License and national ID photos are required before approval.
+          </p>
+        ) : null}
         {driverPending ? (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <ActionButton
               label="Verify driver"
               tone="accept"
-              disabled={acting}
+              disabled={acting || !driverDocsComplete || !driverAgeOk}
               onClick={onVerifyDriver}
             />
             <ActionButton
@@ -296,6 +313,7 @@ function VehicleBlock({
   onPreview: (url: string) => void
 }) {
   const pending = taxi.status === 'PENDING_REVIEW'
+  const vehicleDocsComplete = hasCompleteVehicleDocs(taxi)
   return (
     <div
       style={{
@@ -314,7 +332,7 @@ function VehicleBlock({
         }}
       >
         <div style={{ fontWeight: 700 }}>
-          {taxi.make} {taxi.model} ({taxi.year}) · {taxi.licensePlate}
+          {taxi.model || 'Vehicle'} · {taxi.licensePlate}
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
           {taxiStatusLabel(taxi.status)}
@@ -330,28 +348,6 @@ function VehicleBlock({
       >
         <Field label="Color" value={taxi.color || '—'} />
         <Field label="Seats" value={String(taxi.seats)} />
-        <Field
-          label="Insurance expiry"
-          value={formatDateTime(taxi.insuranceExpiry)}
-          warn={
-            isExpired(taxi.insuranceExpiry)
-              ? taxi.insuranceExpiry
-                ? 'expired'
-                : 'required'
-              : undefined
-          }
-        />
-        <Field
-          label="COF expiry"
-          value={formatDateTime(taxi.cofExpiry)}
-          warn={
-            isExpired(taxi.cofExpiry)
-              ? taxi.cofExpiry
-                ? 'expired'
-                : 'required'
-              : undefined
-          }
-        />
       </div>
       <div
         style={{
@@ -363,25 +359,36 @@ function VehicleBlock({
       >
         <DocThumb label="Vehicle" url={taxi.imageUrl} required onPreview={onPreview} />
         <DocThumb
-          label="Registration"
-          url={taxi.registrationImageUrl}
-          required
-          onPreview={onPreview}
-        />
-        <DocThumb
           label="Insurance"
           url={taxi.insuranceImageUrl}
           required
           onPreview={onPreview}
         />
-        <DocThumb label="COF" url={taxi.cofImageUrl} required onPreview={onPreview} />
+        <DocThumb
+          label="COF"
+          url={taxi.cofImageUrl}
+          required
+          onPreview={onPreview}
+        />
       </div>
+      {pending && !vehicleDocsComplete ? (
+        <p
+          style={{
+            margin: '0 0 12px',
+            fontSize: 13,
+            color: '#B91C1C',
+            fontWeight: 600,
+          }}
+        >
+          Vehicle photo, insurance, and COF documents are required before approval.
+        </p>
+      ) : null}
       {pending ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <ActionButton
             label="Approve vehicle"
             tone="accept"
-            disabled={acting}
+            disabled={acting || !vehicleDocsComplete}
             onClick={onApprove}
           />
           <ActionButton

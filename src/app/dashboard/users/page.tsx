@@ -1,7 +1,7 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useAdminAlerts } from '../AdminAlertsProvider'
 import {
   authProviderLabel,
@@ -11,7 +11,17 @@ import {
   roleTone,
   type UserRole,
 } from '@/lib/users'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP.users
 
 type Tab = 'all' | UserRole
 
@@ -65,7 +75,7 @@ export default function UsersAdminPage() {
       if (
         !(await confirmDelete(
           name,
-          'Permanently deletes this account from Firebase Auth and Firestore. This cannot be undone.',
+          'Permanently deletes this account and ALL related data (trips, messages, marketplace, carts, wallets, Auth). Signing up again with the same email starts from a blank account. This cannot be undone.',
         ))
       ) {
         return
@@ -88,7 +98,7 @@ export default function UsersAdminPage() {
     setActionError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await adminFetch(`/api/admin/users/${id}`, {
         method: action === 'delete' ? 'DELETE' : 'PATCH',
         headers: action === 'delete' ? undefined : { 'Content-Type': 'application/json' },
         body: action === 'delete' ? undefined : JSON.stringify({ action }),
@@ -113,62 +123,12 @@ export default function UsersAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div
-        style={{
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: 'clamp(24px, 3vw, 32px)',
-              fontWeight: 900,
-              letterSpacing: '-0.4px',
-              marginBottom: 6,
-            }}
-          >
-            Users
-          </h1>
-          <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0, maxWidth: 560 }}>
-            Manage app accounts — search by name or email, then suspend or delete.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '8px 14px',
-            borderRadius: 100,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontWeight: 600,
-            fontSize: 13,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="users"
+        actions={<DashboardRefreshButton onClick={() => void refresh()} disabled={loading} />}
+      />
 
       <div
         className="user-count-row"
@@ -202,68 +162,13 @@ export default function UsersAdminPage() {
         </div>
       )}
 
-      <div
-        style={{
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
-        <label style={{ flex: '1 1 280px', position: 'relative', display: 'block' }}>
-          <span className="sr-only">Search users by name or email</span>
-          <input
-            type="search"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search name or email…"
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <DashboardSearchField
+        value={query}
+        onChange={setQuery}
+        placeholder="Search name or email…"
+        label="Search users by name or email"
+        onClear={() => setQuery('')}
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {tabs.map(t => {
@@ -302,11 +207,12 @@ export default function UsersAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading users…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim()
-              ? `No users found for “${query.trim()}”.`
-              : 'No users in this filter.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title={query.trim() ? `No users found for “${query.trim()}”` : 'No users in this filter'}
+            hint={query.trim() ? 'Try a different search term.' : undefined}
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {filtered.map(user => {

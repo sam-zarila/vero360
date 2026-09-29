@@ -8,8 +8,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
-import Link from 'next/link'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   escrowReleaseExplanation,
   escrowStatusTone,
@@ -25,6 +24,13 @@ import {
   type WalletRow,
   type WalletTxRow,
 } from '@/lib/finance'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
+import { AdminPasswordGate } from '@/app/dashboard/AdminPasswordGate'
 
 type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts'
 
@@ -48,6 +54,17 @@ const EMPTY_SUMMARY: FinanceSummary = {
 type EscrowFilter = 'all' | 'held' | 'released' | 'auto_released' | 'refunded'
 
 export default function FinanceAdminPage() {
+  return (
+    <AdminPasswordGate
+      title="Finance"
+      description="Enter your admin panel password to open Finance. Use the same password you sign in with at /panel."
+    >
+      <FinanceAdminInner />
+    </AdminPasswordGate>
+  )
+}
+
+function FinanceAdminInner() {
   const [tab, setTab] = useState<Tab>('overview')
   const [wallets, setWallets] = useState<WalletRow[]>([])
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])
@@ -64,7 +81,7 @@ export default function FinanceAdminPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/finance', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/finance', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load finance data')
       setWallets(data.wallets || [])
@@ -196,40 +213,20 @@ export default function FinanceAdminPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 16,
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <Link
-            href="/dashboard"
-            style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}
-          >
-            ← Dashboard
-          </Link>
-          <h1 style={{ margin: '8px 0 4px', fontSize: 26, fontWeight: 700 }}>
-            Finance & wallets
-          </h1>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-            Merchant balances, escrow holds, and every instant cash-out merchants run —
-            same Firestore data as the app.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          style={btnSecondary}
-        >
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
-      </div>
+      <DashboardBackLink />
+
+      <DashboardPageHeader
+        sectionId="finance"
+        title="Finance & wallets"
+        description="Merchant balances, escrow holds, and every instant cash-out merchants run."
+        actions={
+          <DashboardRefreshButton
+            onClick={() => void load()}
+            disabled={loading}
+            label={loading ? 'Refreshing…' : 'Refresh'}
+          />
+        }
+      />
 
       {error ? <Banner tone="error">{error}</Banner> : null}
 
@@ -251,19 +248,12 @@ export default function FinanceAdminPage() {
       </div>
 
       {tab !== 'overview' ? (
-        <input
+        <DashboardSearchField
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={setQuery}
           placeholder="Search order, merchant, tx ref, wallet…"
-          style={{
-            width: '100%',
-            maxWidth: 420,
-            marginBottom: 16,
-            padding: '10px 12px',
-            borderRadius: 8,
-            border: '1px solid #E5E7EB',
-            fontSize: 14,
-          }}
+          label="Search finance records"
+          onClear={() => setQuery('')}
         />
       ) : null}
 
@@ -335,7 +325,7 @@ export default function FinanceAdminPage() {
               </option>
               {payoutMerchants.map(m => (
                 <option key={m.key} value={m.key}>
-                  {m.name} — {m.count} · {formatMwk(m.total)}
+                  {m.name} · {m.count} · {formatMwk(m.total)}
                 </option>
               ))}
             </select>
@@ -505,7 +495,7 @@ function Overview({
     {
       label: 'Auto-released (7-day window)',
       value: formatMwk(summary.escrowAutoReleasedAmount),
-      sub: 'No buyer confirm — released after hold window',
+      sub: 'No buyer confirm. Released after hold window',
       go: 'escrow',
     },
     {
@@ -828,7 +818,7 @@ function EscrowCard({ row }: { row: EscrowRow }) {
         <div style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.45 }}>{explain.detail}</div>
         {row.refundAfterRelease ? (
           <div style={{ marginTop: 6, fontSize: 12, color: '#B91C1C', fontWeight: 600 }}>
-            Refund requested after release — ops clawback may be needed.
+            Refund requested after release. Ops clawback may be needed.
           </div>
         ) : null}
       </div>

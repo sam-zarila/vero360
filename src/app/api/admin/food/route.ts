@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminDb } from '@/lib/firebase-admin'
 import {
   mergeFoodItems,
@@ -12,7 +13,9 @@ import {
   veroEndpoint,
 } from '@/lib/vero-api'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const apiUrl = new URL(veroEndpoint('marketplace'))
     apiUrl.searchParams.set('category', 'food')

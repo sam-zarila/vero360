@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server'
 import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
 import { parseTaxi } from '@/lib/drivers'
 import { nestAdminFetch } from '@/lib/nest-admin'
+import { assertCanManageFleetTaxi } from '@/lib/agent-driver-access'
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function POST(request: Request, ctx: Ctx) {
   try {
-    await requirePanelAdmin(request)
+    const actor = await requirePanelAdmin(request)
     const { id } = await ctx.params
+    await assertCanManageFleetTaxi(actor, id, request)
+
     const payload = await request.json().catch(() => ({}))
     const reason =
       typeof (payload as { reason?: unknown }).reason === 'string'
@@ -27,6 +30,7 @@ export async function POST(request: Request, ctx: Ctx) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reason.trim() }),
       },
+      request,
     )
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })
@@ -35,6 +39,16 @@ export async function POST(request: Request, ctx: Ctx) {
   } catch (err) {
     const auth = authErrorResponse(err)
     if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+    const status =
+      err && typeof err === 'object' && 'status' in err
+        ? Number((err as { status: unknown }).status)
+        : 0
+    if (status === 403 || status === 404) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : 'Forbidden' },
+        { status },
+      )
+    }
     return NextResponse.json({ error: 'Reject failed' }, { status: 502 })
   }
 }

@@ -1,6 +1,8 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
+import { purgeUserData } from '@/lib/purge-user-data'
 import { parseAppUser, USERS_COLLECTION } from '@/lib/users'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -18,6 +20,8 @@ async function readBody(request: Request): Promise<ActionBody> {
 }
 
 export async function PATCH(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'User id required' }, { status: 400 })
@@ -79,6 +83,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(_request)
+  if (denied) return denied
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'User id required' }, { status: 400 })
@@ -93,7 +99,9 @@ export async function DELETE(_request: Request, ctx: Ctx) {
       return NextResponse.json({ error: 'User not found in Firestore' }, { status: 404 })
     }
 
-    await ref.delete()
+    // Cascade: marketplace items, carts, merchant profiles, wallets, etc.
+    // (also deletes the users/{id} document itself)
+    const purge = await purgeUserData(id)
 
     try {
       await auth.deleteUser(id)
@@ -101,10 +109,20 @@ export async function DELETE(_request: Request, ctx: Ctx) {
       console.warn('Auth delete skipped:', authErr)
     }
 
+    // Ensure profile is gone even if purge skipped it somehow
+    try {
+      const stillThere = await ref.get()
+      if (stillThere.exists) await ref.delete()
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json({
       success: true,
       deleted: true,
-      message: 'Account deleted from Firebase Auth and Firestore.',
+      purge,
+      message:
+        'Account and all related data deleted (trips, messages, marketplace, carts, wallets, Auth).',
     })
   } catch (err) {
     console.error('Admin user DELETE error:', err)

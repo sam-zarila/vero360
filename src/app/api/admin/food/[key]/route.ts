@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminDb } from '@/lib/firebase-admin'
 import {
   apiErrorMessage,
@@ -20,6 +21,8 @@ function parseKey(key: string): { source: string; rawId: string } | null {
 }
 
 export async function DELETE(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { key } = await ctx.params
   const parsed = parseKey(key)
   if (!parsed?.rawId) {

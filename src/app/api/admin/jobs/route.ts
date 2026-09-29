@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import {
   parseJobPost,
   parseJobPosts,
@@ -21,6 +22,8 @@ function authHeaders(request: Request, json = false): HeadersInit {
 }
 
 export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get('activeOnly') ?? 'false'
@@ -65,6 +68,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   let raw: unknown
   try {
     raw = await request.json()

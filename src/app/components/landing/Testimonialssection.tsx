@@ -13,7 +13,7 @@ const reviews = [
       avatar: 'DC',
       avatarColor: '#D97706',
       stars: 5,
-      text: 'I have a Vero merchant account. It is easy to use — I post, edit, and manage my listings and accept payments in one place.',
+      text: 'I have a Vero merchant account. It is easy to use I post, edit, and manage my listings and accept payments in one place.',
     },
     {
       name: 'Peter Chanda',

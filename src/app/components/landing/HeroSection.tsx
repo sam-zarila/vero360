@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import DownloadAppModal from './DownloadAppModal'
-import { IconBadge, VeroIcon, type VeroIconName } from './icons'
+import LandingCrawlTicker, { type LandingCrawlItem } from './LandingCrawlTicker'
+import { VeroIcon, type VeroIconName } from './icons'
 
 const stats = [
   { value: '8+', label: 'Services in one app' },
@@ -44,6 +45,8 @@ export default function HeroSection() {
   const phoneRef = useRef<HTMLDivElement>(null)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
+  const [crawls, setCrawls] = useState<LandingCrawlItem[]>([])
+  const [promoTitles, setPromoTitles] = useState<string[]>([])
 
   useEffect(() => {
     const update = () => setNow(new Date())
@@ -51,6 +54,60 @@ export default function HeroSection() {
     const id = setInterval(update, 60_000)
     return () => clearInterval(id)
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [crawlRes, promoRes] = await Promise.all([
+          fetch('/api/homepage-crawls', { cache: 'no-store' }),
+          fetch('/api/public/promos', { cache: 'no-store' }),
+        ])
+        const crawlData = await crawlRes.json().catch(() => ({}))
+        const promoData = await promoRes.json().catch(() => ({}))
+        if (cancelled) return
+
+        const list = Array.isArray(crawlData.items) ? crawlData.items : []
+        setCrawls(
+          list.filter(
+            (i: LandingCrawlItem) =>
+              i && typeof i.title === 'string' && i.title.trim().length > 0,
+          ),
+        )
+
+        const promos = Array.isArray(promoData.items) ? promoData.items : []
+        setPromoTitles(
+          promos
+            .map((p: { title?: string }) => String(p?.title || '').trim())
+            .filter(Boolean)
+            .slice(0, 12),
+        )
+      } catch {
+        if (!cancelled) {
+          setCrawls([])
+          setPromoTitles([])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  function onCrawlAction(item: { linkType: string }) {
+    const type = item.linkType.toLowerCase().trim()
+    if (type === 'app_update' || type === 'promotion' || type === 'promotions') {
+      setDownloadOpen(true)
+      return
+    }
+    if (type === 'marketplace') {
+      window.location.href = '/browse/marketplace'
+      return
+    }
+    if (type === 'announcements') {
+      document.getElementById('announcements')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   useEffect(() => {
     const el = phoneRef.current
@@ -84,7 +141,7 @@ export default function HeroSection() {
       }}/>
 
       <div style={{
-        maxWidth: 1200, margin: '0 auto', padding: '120px 24px 80px',
+        maxWidth: 1200, margin: '0 auto', padding: '120px 24px 110px',
         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60,
         alignItems: 'center', width: '100%', position: 'relative',
       }} className="hero-grid">
@@ -114,8 +171,8 @@ export default function HeroSection() {
             fontSize: 18, color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.7, marginBottom: 40, maxWidth: 480,
           }}>
-            Welcome to Vero360   a smarter way to connect with everyday services. From marketplace
-            and transport to food delivery, jobs, accommodation, and more in one secure platform.
+            Everything in one app ,marketplace, rides, food, Vero Courier(Lilongwe), stays, jobs,
+            tenders, and more. Browse here, then open Vero360 to order and book.
           </p>
 
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 52 }} className="hero-ctas">
@@ -172,7 +229,7 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Phone mockup — Vero360 super app home */}
+        {/* Phone mockup */}
         <div className="hero-phone" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <div className="hero-phone-scale">
           <div ref={phoneRef} style={{ position: 'relative' }}>
@@ -261,6 +318,12 @@ export default function HeroSection() {
                   <VeroIcon name="search" size={12} color="var(--text-4)" strokeWidth={2} />
                   <span style={{ color: 'var(--text-4)', fontSize: 10 }}>what are you looking for?</span>
                 </div>
+                <LandingCrawlTicker
+                  variant="phone"
+                  items={crawls}
+                  promoTitles={promoTitles}
+                  onAction={onCrawlAction}
+                />
               </div>
 
               {/* Scrollable body */}
@@ -374,7 +437,25 @@ export default function HeroSection() {
         </div>
       </div>
 
-      <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0 }}>
+      {/* Full-width home crawl along the bottom of the hero */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 64,
+          zIndex: 2,
+        }}
+      >
+        <LandingCrawlTicker
+          variant="hero"
+          items={crawls}
+          promoTitles={promoTitles}
+          onAction={onCrawlAction}
+        />
+      </div>
+
+      <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, zIndex: 1 }}>
         <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style={{ display: 'block', width: '100%', height: 80 }}>
           <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#fff"/>
         </svg>

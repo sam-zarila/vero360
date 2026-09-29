@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 
 const POLL_MS = 8_000
 
@@ -30,7 +30,7 @@ export function useHelpCenterUnread(): number {
     const tick = async () => {
       try {
         const headers = await panelAuthHeaders()
-        const res = await fetch('/api/admin/verochat/sessions', { headers, cache: 'no-store' })
+        const res = await adminFetch('/api/admin/verochat/sessions', { headers, cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || cancelled) return
         setUnread(Number(data.unread || 0) || 0)

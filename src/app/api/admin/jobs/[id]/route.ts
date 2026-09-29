@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { parseJobPost, toJobApiBody, type JobInput } from '@/lib/jobs'
 import {
   apiErrorMessage,
@@ -18,6 +19,8 @@ function authHeaders(request: Request, json = false): HeadersInit {
 }
 
 export async function GET(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id } = await ctx.params
   const jobId = Number(id)
   if (!Number.isFinite(jobId) || jobId <= 0) {
@@ -45,6 +48,8 @@ export async function GET(request: Request, ctx: Ctx) {
 }
 
 export async function PATCH(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id } = await ctx.params
   const jobId = Number(id)
   if (!Number.isFinite(jobId) || jobId <= 0) {
@@ -90,6 +95,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
 }
 
 export async function DELETE(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id } = await ctx.params
   const jobId = Number(id)
   if (!Number.isFinite(jobId) || jobId <= 0) {

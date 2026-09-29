@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import Link from 'next/link'
 import VeroChatMessageRow from '@/app/components/VeroChatMessageRow'
 import VeroChatReplyBar from '@/app/components/VeroChatReplyBar'
+import { DashboardBackLink, DashboardPageHeader } from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
 import {
   closeSession,
@@ -19,7 +19,7 @@ import {
   type VeroChatReplyTo,
   type VeroChatSessionView,
 } from '@/lib/verochat'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import { usePanelSession } from '../PanelSessionProvider'
 
 export default function HelpCenterInbox() {
@@ -47,7 +47,7 @@ export default function HelpCenterInbox() {
     const tick = async () => {
       try {
         const headers = await panelAuthHeaders()
-        const res = await fetch('/api/admin/verochat/sessions', { headers, cache: 'no-store' })
+        const res = await adminFetch('/api/admin/verochat/sessions', { headers, cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || cancelled) return
         const next = Array.isArray(data.sessions) ? data.sessions.map(hydrateSession) : []
@@ -75,7 +75,7 @@ export default function HelpCenterInbox() {
     const tick = async () => {
       try {
         const headers = await panelAuthHeaders()
-        const res = await fetch(`/api/admin/verochat/sessions/${activeId}/messages`, {
+        const res = await adminFetch(`/api/admin/verochat/sessions/${activeId}/messages`, {
           headers,
           cache: 'no-store',
         })
@@ -181,36 +181,9 @@ export default function HelpCenterInbox() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div style={{ marginBottom: 20 }}>
-        <h1
-          style={{
-            fontSize: 'clamp(24px, 3vw, 32px)',
-            fontWeight: 900,
-            letterSpacing: '-0.4px',
-            marginBottom: 6,
-          }}
-        >
-          Help Center
-        </h1>
-        <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0 }}>
-          Live Vero360 Help Center chats from the website.
-        </p>
-      </div>
+      <DashboardPageHeader sectionId="verochat" />
 
       <div
         className="help-inbox"
@@ -247,7 +220,7 @@ export default function HelpCenterInbox() {
 
           {chatSessions.length === 0 ? (
             <p style={{ padding: 20, fontSize: 14, color: 'var(--text-3)', lineHeight: 1.6 }}>
-              No live chats yet. When visitors use Help Center on the site, they will show up here.
+              No live chats yet. When people use Help Center on the website or live chat in the app, they will show up here.
             </p>
           ) : (
             chatSessions.map(session => {
@@ -295,6 +268,9 @@ export default function HelpCenterInbox() {
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-4)', marginBottom: 4 }}>
                     {session.visitorEmail || 'No email'} · {session.status}
+                    {session.source === 'app' || session.id.startsWith('app_')
+                      ? ' · App'
+                      : ''}
                   </div>
                   <div
                     style={{

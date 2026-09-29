@@ -2,9 +2,32 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
+import { signInWithEmailAndPassword, signOut, type AuthError } from 'firebase/auth'
 import Logo from '@/app/components/landing/Logo'
 import { auth } from '@/lib/firebase'
+
+function firebaseSignInMessage(err: unknown): string {
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as AuthError).code)
+      : ''
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Invalid email or password, or not an active admin.'
+    case 'auth/invalid-email':
+      return 'Enter a valid email address.'
+    case 'auth/user-disabled':
+      return 'This account is disabled in Firebase.'
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Wait a minute and try again.'
+    case 'auth/operation-not-allowed':
+      return 'Email/password sign-in is disabled.'
+    default:
+      return 'Invalid email or password, or not an active admin.'
+  }
+}
 
 export default function PanelSignIn() {
   const [email, setEmail] = useState('')
@@ -39,7 +62,10 @@ export default function PanelSignIn() {
   }, [])
 
   const goToDashboard = () => {
-    window.location.href = '/dashboard'
+    const next = new URLSearchParams(window.location.search).get('next') || ''
+    const safe =
+      next.startsWith('/dashboard') && !next.startsWith('//') ? next : '/dashboard'
+    window.location.href = safe
   }
 
   const createFirstAdmin = async (e: React.FormEvent) => {
@@ -95,7 +121,7 @@ export default function PanelSignIn() {
         needsBootstrap?: boolean
         authenticated?: boolean
         error?: string
-        me?: { status?: string }
+        me?: { status?: string; role?: string }
       }
 
       if (data?.needsBootstrap) {
@@ -110,8 +136,8 @@ export default function PanelSignIn() {
         throw new Error(
           apiError ||
             (res.status >= 500
-              ? `Server error (${res.status}). Open /api/admin/health to check Firebase Admin env on Netlify.`
-              : 'This account is not an active admin. Ask a super admin to create or activate your access.'),
+              ? `Server error (${res.status}). `
+              : 'Invalid email or password, or not an active admin.'),
         )
       }
 
@@ -120,12 +146,34 @@ export default function PanelSignIn() {
         throw new Error('This admin account is suspended.')
       }
 
+      if (data?.me?.role === 'marketer') {
+        const next = new URLSearchParams(window.location.search).get('next') || ''
+        const safe =
+          next.startsWith('/dashboard/marketing') ||
+          next.startsWith('/dashboard/marketing-tasks') ||
+          next.startsWith('/dashboard/settings')
+            ? next
+            : '/dashboard/marketing/tasks'
+        window.location.href = safe
+        return
+      }
+
+      if (data?.me?.role === 'agent') {
+        const next = new URLSearchParams(window.location.search).get('next') || ''
+        const safe =
+          next.startsWith('/dashboard/agent') || next.startsWith('/dashboard/settings')
+            ? next
+            : '/dashboard/agent'
+        window.location.href = safe
+        return
+      }
+
       goToDashboard()
     } catch (err) {
       const message =
         err instanceof Error && err.message && !err.message.includes('Firebase')
           ? err.message
-          : 'Invalid email or password, or not an active admin.'
+          : firebaseSignInMessage(err)
       setError(message)
       setLoading(false)
     }

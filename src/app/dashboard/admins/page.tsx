@@ -12,7 +12,7 @@ import {
 import Link from 'next/link'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   adminRoleLabel,
   adminRoleTone,
@@ -21,12 +21,19 @@ import {
   type AdminRole,
   type PanelAdmin,
 } from '@/lib/admins'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 
 type Counts = {
   all: number
   super_admin: number
   admin: number
+  marketer: number
+  agent: number
   active: number
   suspended: number
 }
@@ -35,6 +42,8 @@ const EMPTY_COUNTS: Counts = {
   all: 0,
   super_admin: 0,
   admin: 0,
+  marketer: 0,
+  agent: 0,
   active: 0,
   suspended: 0,
 }
@@ -72,7 +81,7 @@ export default function AdminsPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/admins', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/admins', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load admins')
       setAdmins(data.admins || [])
@@ -99,6 +108,8 @@ export default function AdminsPage() {
     return admins.filter(a => {
       if (tab === 'super_admin' && a.role !== 'super_admin') return false
       if (tab === 'admin' && a.role !== 'admin') return false
+      if (tab === 'marketer' && a.role !== 'marketer') return false
+      if (tab === 'agent' && a.role !== 'agent') return false
       if (tab === 'suspended' && a.status !== 'suspended') return false
       if (!q) return true
       return (
@@ -116,7 +127,7 @@ export default function AdminsPage() {
     setNotice('')
     try {
       const headers = await panelAuthHeaders(true)
-      const res = await fetch('/api/admin/admins', {
+      const res = await adminFetch('/api/admin/admins', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -144,6 +155,9 @@ export default function AdminsPage() {
               ? Math.max(c.super_admin, 1)
               : c.super_admin,
           admin: data.admin.role === 'admin' ? Math.max(c.admin, 1) : c.admin,
+          marketer:
+            data.admin.role === 'marketer' ? Math.max(c.marketer, 1) : c.marketer,
+          agent: data.admin.role === 'agent' ? Math.max(c.agent, 1) : c.agent,
           active: Math.max(c.active, 1),
         }))
         setBootstrap(false)
@@ -212,7 +226,7 @@ export default function AdminsPage() {
     try {
       const headers = await panelAuthHeaders(true)
       if (action === 'delete') {
-        const res = await fetch(`/api/admin/admins/${admin.id}`, {
+        const res = await adminFetch(`/api/admin/admins/${admin.id}`, {
           method: 'DELETE',
           headers,
           body: JSON.stringify({ password: confirmPassword }),
@@ -221,7 +235,7 @@ export default function AdminsPage() {
         if (!res.ok) throw new Error(data.error || 'Delete failed')
         setNotice(data.message || 'Deleted')
       } else {
-        const res = await fetch(`/api/admin/admins/${admin.id}`, {
+        const res = await adminFetch(`/api/admin/admins/${admin.id}`, {
           method: 'PATCH',
           headers,
           body: JSON.stringify(
@@ -246,69 +260,59 @@ export default function AdminsPage() {
     { id: 'all', label: 'All', count: counts.all },
     { id: 'super_admin', label: 'Super admins', count: counts.super_admin },
     { id: 'admin', label: 'Admins', count: counts.admin },
+    { id: 'marketer', label: 'Marketers', count: counts.marketer },
+    { id: 'agent', label: 'Agents', count: counts.agent },
     { id: 'suspended', label: 'Suspended', count: counts.suspended },
   ]
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto' }}>
-      <Link href="/dashboard" style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}>
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          gap: 14,
-          margin: '10px 0 18px',
-        }}
-      >
-        <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 700 }}>Admins</h1>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-            Classify panel users as <strong>super admin</strong> or <strong>admin</strong>.
-            You can have many super admins. Super admins manage accounts; normal admins
-            cannot see Finance or Admins.
-          </p>
-          {me ? (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6B7280' }}>
-              Signed in as {me.email} ({adminRoleLabel(me.role)})
-            </p>
-          ) : bootstrap ? (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#B45309' }}>
-              No admins yet — create the first <strong>super admin</strong> below, then sign in at{' '}
-              <Link href="/panel">/panel</Link>.
-            </p>
-          ) : needsSignIn ? (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#047857' }}>
-              Super admin exists. <Link href="/panel">Sign in at /panel</Link> to manage accounts.
-            </p>
-          ) : (
-            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#B45309' }}>
-              Sign in at <Link href="/panel">/panel</Link> as a super admin to manage accounts.
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => void load()} disabled={loading} style={btnGhost}>
-            {loading ? 'Refreshing…' : 'Refresh'}
-          </button>
-          {canManage ? (
-            <button
-              type="button"
-              onClick={() => setFormOpen(o => !o)}
-              style={btnPrimary}
-            >
-              {formOpen ? 'Close form' : '+ Create admin'}
-            </button>
-          ) : needsSignIn ? (
-            <Link href="/panel" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-block' }}>
-              Sign in at /panel
-            </Link>
-          ) : null}
-        </div>
-      </div>
+      <DashboardPageHeader
+        sectionId="admins"
+        description="Classify panel users as super admin, admin, marketer, or agent. Agents onboard merchants/drivers and verify Vero Ride drivers. Marketers only access Marketing. Super admins manage accounts; normal admins cannot see Finance or Admins."
+        actions={
+          <>
+            <DashboardRefreshButton
+              onClick={() => void load()}
+              disabled={loading}
+              label={loading ? 'Refreshing…' : 'Refresh'}
+            />
+            {canManage ? (
+              <button
+                type="button"
+                onClick={() => setFormOpen(o => !o)}
+                style={btnPrimary}
+              >
+                {formOpen ? 'Close form' : '+ Create account'}
+              </button>
+            ) : needsSignIn ? (
+              <Link href="/panel" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-block' }}>
+                Sign in at /panel
+              </Link>
+            ) : null}
+          </>
+        }
+      />
+      {me ? (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#6B7280' }}>
+          Signed in as {me.email} ({adminRoleLabel(me.role)})
+        </p>
+      ) : bootstrap ? (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#B45309' }}>
+          No admins yet. Create the first <strong>super admin</strong> below, then sign in at{' '}
+          <Link href="/panel">/panel</Link>.
+        </p>
+      ) : needsSignIn ? (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#047857' }}>
+          Super admin exists. <Link href="/panel">Sign in at /panel</Link> to manage accounts.
+        </p>
+      ) : (
+        <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#B45309' }}>
+          Sign in at <Link href="/panel">/panel</Link> as a super admin to manage accounts.
+        </p>
+      )}
 
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="ok">{notice}</Banner> : null}
@@ -316,7 +320,7 @@ export default function AdminsPage() {
       {formOpen && canManage ? (
         <form onSubmit={createAdmin} style={{ ...card, marginBottom: 18 }}>
           <h2 style={{ margin: '0 0 12px', fontSize: 16 }}>
-            {bootstrap ? 'Create first super admin' : 'Create admin'}
+            {bootstrap ? 'Create first super admin' : 'Create panel account'}
           </h2>
           <div
             style={{
@@ -360,13 +364,18 @@ export default function AdminsPage() {
               <Field label="Role">
                 <select
                   value={role}
-                  onChange={e =>
-                    setRole(e.target.value === 'super_admin' ? 'super_admin' : 'admin')
-                  }
+                  onChange={e => {
+                    const v = e.target.value
+                    if (v === 'super_admin' || v === 'marketer' || v === 'admin' || v === 'agent') {
+                      setRole(v)
+                    }
+                  }}
                   style={input}
                 >
                   <option value="admin">Admin</option>
                   <option value="super_admin">Super admin</option>
+                  <option value="marketer">Marketer</option>
+                  <option value="agent">Agent</option>
                 </select>
               </Field>
             ) : null}
@@ -376,7 +385,11 @@ export default function AdminsPage() {
             disabled={busyId === 'create'}
             style={{ ...btnPrimary, marginTop: 14 }}
           >
-            {busyId === 'create' ? 'Creating…' : bootstrap ? 'Create super admin' : 'Create admin'}
+            {busyId === 'create'
+              ? 'Creating…'
+              : bootstrap
+                ? 'Create super admin'
+                : 'Create account'}
           </button>
         </form>
       ) : null}
@@ -472,7 +485,7 @@ export default function AdminsPage() {
                         Activate
                       </button>
                     )}
-                    {a.role === 'admin' ? (
+                    {a.role !== 'super_admin' ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -481,7 +494,8 @@ export default function AdminsPage() {
                       >
                         Make super admin
                       </button>
-                    ) : (
+                    ) : null}
+                    {a.role !== 'admin' ? (
                       <button
                         type="button"
                         disabled={busy || isMe}
@@ -490,7 +504,27 @@ export default function AdminsPage() {
                       >
                         Make admin
                       </button>
-                    )}
+                    ) : null}
+                    {a.role !== 'marketer' ? (
+                      <button
+                        type="button"
+                        disabled={busy || isMe}
+                        onClick={() => void runAction(a, 'set_role', 'marketer')}
+                        style={btnGhost}
+                      >
+                        Make marketer
+                      </button>
+                    ) : null}
+                    {a.role !== 'agent' ? (
+                      <button
+                        type="button"
+                        disabled={busy || isMe}
+                        onClick={() => void runAction(a, 'set_role', 'agent')}
+                        style={btnGhost}
+                      >
+                        Make agent
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       disabled={busy || isMe}

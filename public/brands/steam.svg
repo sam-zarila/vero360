@@ -1,0 +1,9 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1B2838"/><stop offset="100%" stop-color="#0E151D"/></linearGradient></defs>
+  <rect width="640" height="400" rx="28" fill="url(#g)"/>
+  <circle cx="180" cy="170" r="70" fill="#66C0F4"/>
+  <circle cx="180" cy="170" r="42" fill="#1B2838"/>
+  <path d="M250 130 L340 170 L250 210 Z" fill="#66C0F4"/>
+  <text x="56" y="300" fill="#66C0F4" font-family="Arial Black, Arial, sans-serif" font-size="42" font-weight="900">STEAM</text>
+  <text x="56" y="340" fill="#ffffff" fill-opacity=".7" font-family="Arial, sans-serif" font-size="18">Wallet top-up</text>
+</svg>

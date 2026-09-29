@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminDb } from '@/lib/firebase-admin'
 import {
   REFUND_REQUESTS_COLLECTION,
@@ -6,7 +7,9 @@ import {
   parseRefundRequest,
 } from '@/lib/refunds'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const db = getAdminDb()
     let snap

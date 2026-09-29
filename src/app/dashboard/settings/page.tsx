@@ -16,8 +16,9 @@ import {
   type User,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import { adminRoleLabel, type PanelAdmin } from '@/lib/admins'
+import { DashboardBackLink, DashboardPageHeader } from '@/app/dashboard/DashboardChrome'
 
 export default function SettingsPage() {
   const [authReady, setAuthReady] = useState(false)
@@ -47,7 +48,7 @@ export default function SettingsPage() {
     setError('')
     try {
       const headers = await panelAuthHeaders()
-      const res = await fetch('/api/admin/admins/me', { headers, cache: 'no-store' })
+      const res = await adminFetch('/api/admin/admins/me', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok || !data.authenticated) {
         throw new Error(data.error || 'Sign in at /panel to manage your settings.')
@@ -80,7 +81,7 @@ export default function SettingsPage() {
     setNotice('')
     try {
       const headers = await panelAuthHeaders(true)
-      const res = await fetch('/api/admin/admins/me', {
+      const res = await adminFetch('/api/admin/admins/me', {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ displayName: displayName.trim() }),
@@ -119,7 +120,7 @@ export default function SettingsPage() {
       await reauthenticateWithCredential(user, cred)
 
       const headers = await panelAuthHeaders(true)
-      const res = await fetch('/api/admin/admins/me', {
+      const res = await adminFetch('/api/admin/admins/me', {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ password: newPassword }),
@@ -150,14 +151,12 @@ export default function SettingsPage() {
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
-      <Link href="/dashboard" style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}>
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <h1 style={{ margin: '10px 0 6px', fontSize: 26, fontWeight: 700 }}>Settings</h1>
-      <p style={{ margin: '0 0 18px', color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-        Update your admin display name and password.
-      </p>
+      <DashboardPageHeader
+        sectionId="settings"
+        description="Update your admin display name and password."
+      />
 
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="ok">{notice}</Banner> : null}

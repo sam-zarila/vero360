@@ -1,20 +1,33 @@
 import type { VeroIconName } from '@/app/components/landing/icons'
+import { isMarketingKpiDemoAvailable } from '@/lib/marketing-tasks'
 
 export type DashboardSectionId =
   | 'vero-ride'
   | 'vero-courier'
   | 'food'
   | 'jobs'
+  | 'tenders'
   | 'stay'
   | 'promotion'
+  | 'homepage-ads'
+  | 'marketplace-promotions'
+  | 'digital-services'
+  | 'marketing'
   | 'latest-arrivals'
+  | 'announcements'
+  | 'home-crawl'
+  | 'sell-banners'
+  | 'push'
+  | 'important-files'
   | 'marketplace'
   | 'orders'
   | 'refunds'
   | 'merchant-reports'
   | 'users'
+  | 'agents'
   | 'admins'
   | 'finance'
+  | 'rewards'
   | 'verochat'
   | 'get-started'
   | 'settings'
@@ -33,7 +46,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'vero-ride',
     title: 'Vero Ride',
-    desc: 'Trips, drivers, and ride activity',
+    desc: 'Drivers, trips, payments, and fleet operations',
     icon: 'car',
     color: '#F97316',
     bg: '#FFF7ED',
@@ -63,9 +76,17 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#EFF6FF',
   },
   {
+    id: 'tenders',
+    title: 'Tenders',
+    desc: 'Malawi procurement notices and RFQs',
+    icon: 'file-text',
+    color: '#0F766E',
+    bg: '#F0FDFA',
+  },
+  {
     id: 'stay',
     title: 'Stay',
-    desc: 'Accommodation bookings and hosts',
+    desc: 'Listings, hosts, and guest bookings',
     icon: 'bed',
     color: '#7C3AED',
     bg: '#F5F3FF',
@@ -79,6 +100,38 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#FDF2F8',
   },
   {
+    id: 'homepage-ads',
+    title: 'Homepage ads',
+    desc: 'Slider ads, owners, schedule, and platform fees',
+    icon: 'megaphone',
+    color: '#EA580C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'marketplace-promotions',
+    title: 'Promoted ads',
+    desc: 'Marketplace top boosts and Facebook ad orders',
+    icon: 'megaphone',
+    color: '#F59E0B',
+    bg: '#FFFBEB',
+  },
+  {
+    id: 'digital-services',
+    title: 'Digital services',
+    desc: 'Subscriptions, gift cards, and platform revenue',
+    icon: 'sparkles',
+    color: '#7C3AED',
+    bg: '#F5F3FF',
+  },
+  {
+    id: 'marketing',
+    title: 'Marketing',
+    desc: 'Marketing tasks and marketer KPIs',
+    icon: 'megaphone',
+    color: '#C2410C',
+    bg: '#FFF7ED',
+  },
+  {
     id: 'latest-arrivals',
     title: 'Latest arrivals',
     desc: 'Goods posted in the last 24 hours',
@@ -87,9 +140,49 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#ECFDF5',
   },
   {
+    id: 'announcements',
+    title: 'Announcements',
+    desc: 'Homepage news with photo and post date',
+    icon: 'bell',
+    color: '#C2410C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'home-crawl',
+    title: 'Home crawl ticker',
+    desc: 'Scrolling messages under the app home search bar',
+    icon: 'megaphone',
+    color: '#EA580C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'sell-banners',
+    title: 'Sell banners',
+    desc: 'Homepage banners that invite people to start selling',
+    icon: 'shop',
+    color: '#C2410C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'push',
+    title: 'Push notification',
+    desc: 'Vero360 Team chat messages and pushes to everyone',
+    icon: 'bell',
+    color: '#EA580C',
+    bg: '#FFF7ED',
+  },
+  {
+    id: 'important-files',
+    title: 'Important files',
+    desc: 'Folders for key documents: name, usage, and uploads',
+    icon: 'file-text',
+    color: '#0369A1',
+    bg: '#F0F9FF',
+  },
+  {
     id: 'marketplace',
     title: 'Marketplace',
-    desc: 'Listings, merchants, and sales',
+    desc: 'Browse, filter, and remove catalog listings',
     icon: 'cart',
     color: '#D97706',
     bg: '#FFFBEB',
@@ -105,7 +198,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'refunds',
     title: 'Refunds',
-    desc: 'Pending and completed refund requests',
+    desc: 'Review and complete marketplace refunds',
     icon: 'refund',
     color: '#BE123C',
     bg: '#FFF1F2',
@@ -113,7 +206,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'merchant-reports',
     title: 'Merchant reports',
-    desc: 'User reports about marketplace merchants',
+    desc: 'Review user reports about merchants',
     icon: 'flag',
     color: '#C2410C',
     bg: '#FFF7ED',
@@ -125,6 +218,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'users',
     color: '#0F766E',
     bg: '#F0FDFA',
+  },
+  {
+    id: 'agents',
+    title: 'Agents',
+    desc: 'Field agents, onboarding, and registrations',
+    icon: 'briefcase',
+    color: '#047857',
+    bg: '#ECFDF5',
   },
   {
     id: 'admins',
@@ -142,6 +243,24 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'wallet',
     color: '#15803D',
     bg: '#F0FDF4',
+    superAdminOnly: true,
+  },
+  {
+    id: 'wallet',
+    title: 'Admin wallet',
+    desc: 'Super admin platform fees (10% marketplace)',
+    icon: 'wallet',
+    color: '#0F766E',
+    bg: '#F0FDFA',
+    superAdminOnly: true,
+  },
+  {
+    id: 'rewards',
+    title: 'Vero Coins',
+    desc: '1 coin = MWK 50 · 10 coins = MWK 500 cash-out',
+    icon: 'sparkles',
+    color: '#D97706',
+    bg: '#FFFBEB',
     superAdminOnly: true,
   },
   {
@@ -166,7 +285,16 @@ export const DASHBOARD_SECTION_MAP = Object.fromEntries(
   DASHBOARD_SECTIONS.map(s => [s.id, s]),
 ) as Record<DashboardSectionId, DashboardSection>
 
-export type DashboardNavBadgeKey = 'help' | 'courier' | 'orders' | 'users' | 'reports'
+export type DashboardNavBadgeKey =
+  | 'help'
+  | 'courier'
+  | 'drivers'
+  | 'rides'
+  | 'orders'
+  | 'users'
+  | 'reports'
+  | 'digital'
+  | 'homepageAds'
 
 export type DashboardNavItem = {
   href: string
@@ -174,6 +302,14 @@ export type DashboardNavItem = {
   icon: VeroIconName
   badgeKey?: DashboardNavBadgeKey
   superAdminOnly?: boolean
+  /** Visible to marketers (otherwise marketers only see Marketing tasks + My progress + settings). */
+  marketerAllowed?: boolean
+  /** Hidden from full admins — marketer-only nav item. */
+  marketerOnly?: boolean
+  /** Visible to field agents. */
+  agentAllowed?: boolean
+  /** Hidden from full admins — agent-only nav item. */
+  agentOnly?: boolean
 }
 
 export type DashboardNavGroup = {
@@ -189,23 +325,80 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
   {
     title: 'Services',
     items: [
-      { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: 'car' },
+      { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: 'car', badgeKey: 'drivers' },
+      { href: '/dashboard/vero-ride/trips', label: 'Vero Ride Trips', icon: 'car', badgeKey: 'rides' },
       { href: '/dashboard/vero-courier', label: 'Vero Courier', icon: 'truck', badgeKey: 'courier' },
       { href: '/dashboard/food', label: 'Food', icon: 'food' },
       { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
+      { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },
       { href: '/dashboard/stay', label: 'Stay', icon: 'bed' },
       { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'cart' },
       { href: '/dashboard/orders', label: 'Orders', icon: 'package', badgeKey: 'orders' },
       { href: '/dashboard/refunds', label: 'Refunds', icon: 'refund' },
       { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: 'flag', badgeKey: 'reports' },
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
+      { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
+      { href: '/dashboard/marketplace-promotions', label: 'Promoted ads', icon: 'megaphone' },
+      { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
+      { href: '/dashboard/marketing/tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
+      {
+        href: '/dashboard/marketing/progress',
+        label: 'My progress',
+        icon: 'layers',
+        marketerAllowed: true,
+        marketerOnly: true,
+      },
+      {
+        href: '/dashboard/marketing/kpi',
+        label: isMarketingKpiDemoAvailable() ? 'Demo KPI' : 'My KPI',
+        icon: 'layers',
+        marketerAllowed: true,
+        marketerOnly: true,
+      },
+      { href: '/dashboard/marketing/kpi', label: 'Marketing KPI', icon: 'layers' },
       { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
+      { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
+      { href: '/dashboard/home-crawl', label: 'Home crawl', icon: 'megaphone' },
+      { href: '/dashboard/sell-banners', label: 'Sell banners', icon: 'shop' },
+      { href: '/dashboard/push', label: 'Push notification', icon: 'bell' },
+      { href: '/dashboard/important-files', label: 'Important files', icon: 'file-text' },
     ],
   },
   {
     title: 'People',
     items: [
       { href: '/dashboard/users', label: 'Users', icon: 'users', badgeKey: 'users' },
+      { href: '/dashboard/agents', label: 'Agents', icon: 'briefcase' },
+      { href: '/dashboard/agents/registrations', label: 'Agent registrations', icon: 'users' },
+      {
+        href: '/dashboard/agent',
+        label: 'Agent portal',
+        icon: 'briefcase',
+        agentAllowed: true,
+        agentOnly: true,
+      },
+      {
+        href: '/dashboard/agent/onboard',
+        label: 'Onboard user',
+        icon: 'user',
+        agentAllowed: true,
+        agentOnly: true,
+      },
+      {
+        href: '/dashboard/agent/registrations',
+        label: 'My registrations',
+        icon: 'users',
+        agentAllowed: true,
+        agentOnly: true,
+      },
+      {
+        href: '/dashboard/agent/drivers',
+        label: 'Verify drivers',
+        icon: 'car',
+        agentAllowed: true,
+        agentOnly: true,
+        badgeKey: 'drivers',
+      },
       { href: '/dashboard/admins', label: 'Admins', icon: 'shield', superAdminOnly: true },
       { href: '/dashboard/verochat', label: 'Help Center', icon: 'headset', badgeKey: 'help' },
     ],
@@ -214,8 +407,21 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'System',
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
+      { href: '/dashboard/wallet', label: 'Admin wallet', icon: 'wallet', superAdminOnly: true },
+      {
+        href: '/dashboard/rewards',
+        label: 'Vero Coins',
+        icon: 'sparkles',
+        superAdminOnly: true,
+      },
       { href: '/dashboard/get-started', label: 'Get started videos', icon: 'video' },
-      { href: '/dashboard/settings', label: 'Settings', icon: 'settings' },
+      {
+        href: '/dashboard/settings',
+        label: 'Settings',
+        icon: 'settings',
+        marketerAllowed: true,
+        agentAllowed: true,
+      },
     ],
   },
 ]
@@ -228,10 +434,24 @@ export function getDashboardSection(id: string) {
     return {
       id: 'settings' as const,
       title: 'Settings',
-      desc: 'Platform preferences, API config, and account settings.',
+      desc: 'Panel preferences and account settings.',
       icon: 'settings' as const,
       color: '#475569',
       bg: '#F8FAFC',
+    }
+  }
+
+  if (id === 'marketing-kpi' || id === 'marketing-tasks') {
+    return {
+      id: 'marketing' as const,
+      title: id === 'marketing-kpi' ? 'Marketing KPI' : 'Marketing tasks',
+      desc:
+        id === 'marketing-kpi'
+          ? 'See how every marketer is performing.'
+          : 'Assign and track marketer content tasks.',
+      icon: id === 'marketing-kpi' ? ('layers' as const) : ('megaphone' as const),
+      color: '#C2410C',
+      bg: '#FFF7ED',
     }
   }
 

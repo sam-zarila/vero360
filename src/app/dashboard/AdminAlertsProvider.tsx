@@ -2,16 +2,22 @@
 
 import { createContext, useContext } from 'react'
 import { useCourierAlerts, type CourierAlertState } from '@/lib/courier-alerts'
+import { useDriverAlerts, type DriverAlertState } from '@/lib/driver-alerts'
+import { useRideAlerts, type RideAlertState } from '@/lib/ride-alerts'
 import { useHelpCenterUnread } from '@/lib/help-center-alerts'
 import { useMerchantReportAlerts, type MerchantReportAlertState } from '@/lib/merchant-report-alerts'
 import { useOrderAlerts, type OrderAlertState } from '@/lib/order-alerts'
+import { usePaymentAlerts, type PaymentAlertState } from '@/lib/payment-alerts'
 import { useUserAlerts, type UserAlertState } from '@/lib/user-alerts'
 
 type AdminAlertsContextValue = {
   courier: CourierAlertState
+  drivers: DriverAlertState
+  rides: RideAlertState
   orders: OrderAlertState
   users: UserAlertState
   merchantReports: MerchantReportAlertState
+  payments: PaymentAlertState
   helpUnread: number
 }
 
@@ -19,12 +25,17 @@ const AdminAlertsContext = createContext<AdminAlertsContextValue | null>(null)
 
 export function AdminAlertsProvider({ children }: { children: React.ReactNode }) {
   const courier = useCourierAlerts()
+  const drivers = useDriverAlerts()
+  const rides = useRideAlerts()
   const orders = useOrderAlerts()
   const users = useUserAlerts()
   const merchantReports = useMerchantReportAlerts()
+  const payments = usePaymentAlerts()
   const helpUnread = useHelpCenterUnread()
   return (
-    <AdminAlertsContext.Provider value={{ courier, orders, users, merchantReports, helpUnread }}>
+    <AdminAlertsContext.Provider
+      value={{ courier, drivers, rides, orders, users, merchantReports, payments, helpUnread }}
+    >
       {children}
     </AdminAlertsContext.Provider>
   )
@@ -42,6 +53,16 @@ export function useAdminAlerts() {
 export function useCourierPendingBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.courier.pending ?? 0
+}
+
+export function useDriverPendingBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.drivers.pending ?? 0
+}
+
+export function useRideIssuesBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.rides.issues ?? 0
 }
 
 export function useOrdersPendingBadge() {
@@ -62,4 +83,14 @@ export function useMerchantReportsOpenBadge() {
 export function useHelpCenterUnreadBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.helpUnread ?? 0
+}
+
+export function useDigitalPaymentsNewBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.payments.digitalNew ?? 0
+}
+
+export function useHomepageAdPaymentsNewBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.payments.homepageAdNew ?? 0
 }

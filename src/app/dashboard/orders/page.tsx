@@ -1,7 +1,7 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   ORDER_STATUSES,
@@ -17,7 +17,18 @@ import {
   type MarketplaceOrder,
   type OrderStatus,
 } from '@/lib/orders'
-import { useConfirm } from '../ConfirmDialog'
+import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
+import {
+  DashboardBackLink,
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+  DashboardThumbFallback,
+} from '@/app/dashboard/DashboardChrome'
+import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
+
+const SECTION = DASHBOARD_SECTION_MAP.orders
 
 type Tab = 'all' | OrderStatus
 
@@ -39,6 +50,7 @@ const EMPTY_COUNTS: Counts = {
 
 export default function OrdersAdminPage() {
   const confirm = useConfirm()
+  const confirmDelete = useConfirmDelete()
   const [items, setItems] = useState<MarketplaceOrder[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [tab, setTab] = useState<Tab>('all')
@@ -56,7 +68,7 @@ export default function OrdersAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/orders', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/orders', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load orders')
       setItems(data.items || [])
@@ -111,7 +123,7 @@ export default function OrdersAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/orders/${id}/status`, {
+      const res = await adminFetch(`/api/admin/orders/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -128,6 +140,43 @@ export default function OrdersAdminPage() {
     }
   }
 
+  const removeOrder = async (item: MarketplaceOrder) => {
+    if (
+      !(await confirmDelete(
+        item.orderNumber || `#${item.id}`,
+        'Permanently delete this marketplace order? This cannot be undone.',
+      ))
+    ) {
+      return
+    }
+
+    setBusyId(item.id)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(`/api/admin/orders/${item.id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setNotice(`Deleted order ${item.orderNumber || `#${item.id}`}`)
+      setItems(prev => prev.filter(o => o.id !== item.id))
+      setCounts(prev => {
+        const next = { ...prev }
+        next.all = Math.max(0, next.all - 1)
+        if (item.status in next) {
+          const key = item.status as keyof Counts
+          next[key] = Math.max(0, (next[key] as number) - 1)
+        }
+        return next
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const tabs: Array<{ id: Tab; label: string; count: number }> = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'pending', label: 'Pending', count: counts.pending },
@@ -138,62 +187,12 @@ export default function OrdersAdminPage() {
 
   return (
     <div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 500,
-          color: 'var(--text-3)',
-          marginBottom: 20,
-        }}
-      >
-        ← Back to dashboard
-      </Link>
+      <DashboardBackLink label="Back to dashboard" />
 
-      <div
-        style={{
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: 'clamp(24px, 3vw, 32px)',
-              fontWeight: 900,
-              letterSpacing: '-0.4px',
-              marginBottom: 6,
-            }}
-          >
-            Orders
-          </h1>
-          <p style={{ fontSize: 15, color: 'var(--text-3)', margin: 0, maxWidth: 560 }}>
-            Marketplace orders from the app. Search by order number, update status for buyers and sellers.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '8px 14px',
-            borderRadius: 100,
-            border: '1px solid var(--border)',
-            background: '#fff',
-            fontWeight: 600,
-            fontSize: 13,
-            color: 'var(--text-2)',
-          }}
-        >
-          Refresh
-        </button>
-      </div>
+      <DashboardPageHeader
+        sectionId="orders"
+        actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
+      />
 
       {(error || notice) && (
         <div
@@ -211,71 +210,16 @@ export default function OrdersAdminPage() {
         </div>
       )}
 
-      <div
-        style={{
-          marginBottom: 16,
-          display: 'flex',
-          gap: 10,
-          flexWrap: 'wrap',
-          alignItems: 'center',
+      <DashboardSearchField
+        value={query}
+        onChange={value => {
+          setQuery(value)
+          if (value.trim()) setTab('all')
         }}
-      >
-        <label style={{ flex: '1 1 280px', position: 'relative', display: 'block' }}>
-          <span className="sr-only">Search orders</span>
-          <input
-            type="search"
-            value={query}
-            onChange={e => {
-              setQuery(e.target.value)
-              if (e.target.value.trim()) setTab('all')
-            }}
-            placeholder="Search order number, item, buyer, seller…"
-            autoComplete="off"
-            style={{
-              width: '100%',
-              padding: '11px 14px 11px 40px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 14,
-              color: 'var(--text)',
-              outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: 14,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-4)',
-              fontSize: 15,
-              pointerEvents: 'none',
-            }}
-          >
-            ⌕
-          </span>
-        </label>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-2)',
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+        placeholder="Search order number, item, buyer, seller…"
+        label="Search orders"
+        onClear={() => setQuery('')}
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {tabs.map(t => {
@@ -314,11 +258,12 @@ export default function OrdersAdminPage() {
         {loading ? (
           <p style={{ color: 'var(--text-3)' }}>Loading orders…</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: 'var(--text-3)' }}>
-            {query.trim()
-              ? `No orders found for “${query.trim()}”.`
-              : 'No marketplace orders yet.'}
-          </p>
+          <DashboardEmptyState
+            icon={SECTION.icon}
+            color={SECTION.color}
+            title={query.trim() ? `No orders found for “${query.trim()}”` : 'No marketplace orders yet'}
+            hint={query.trim() ? 'Try a different search term.' : undefined}
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(item => {
@@ -355,18 +300,11 @@ export default function OrdersAdminPage() {
                     {img ? (
                       <Image src={img} alt="" fill unoptimized style={{ objectFit: 'cover' }} />
                     ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: 'var(--text-4)',
-                          fontSize: 12,
-                        }}
-                      >
-                        No img
-                      </div>
+                      <DashboardThumbFallback
+                        icon={SECTION.icon}
+                        color={SECTION.color}
+                        bg={SECTION.bg}
+                      />
                     )}
                   </div>
 
@@ -545,6 +483,24 @@ export default function OrdersAdminPage() {
                         </option>
                       ))}
                     </select>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void removeOrder(item)}
+                      style={{
+                        padding: '9px 12px',
+                        borderRadius: 10,
+                        border: '1px solid #FECACA',
+                        background: busy ? '#FEE2E2' : '#FEF2F2',
+                        color: '#B91C1C',
+                        fontSize: 13,
+                        fontWeight: 800,
+                        cursor: busy ? 'wait' : 'pointer',
+                        opacity: busy ? 0.7 : 1,
+                      }}
+                    >
+                      {busy ? 'Removing…' : 'Delete'}
+                    </button>
                   </div>
                 </article>
               )

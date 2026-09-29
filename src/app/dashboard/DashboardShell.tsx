@@ -11,25 +11,112 @@ import { DASHBOARD_NAV_GROUPS } from '@/lib/dashboard-sections'
 import { AdminAlertsProvider, useAdminAlerts, useHelpCenterUnreadBadge } from './AdminAlertsProvider'
 import { ConfirmDialogProvider } from './ConfirmDialog'
 import {
+  isAgentAllowedPath,
+  isMarketerAllowedPath,
   isSuperAdminOnlyPath,
+  AGENT_HOME,
+  MARKETER_HOME,
   PanelSessionProvider,
   usePanelSession,
 } from './PanelSessionProvider'
 
 function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard'
+  if (href === '/dashboard/vero-ride/trips') {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
+  if (href === '/dashboard/vero-ride') {
+    if (pathname === '/dashboard/vero-ride') return true
+    if (pathname.startsWith('/dashboard/vero-ride/trips')) return false
+    return pathname.startsWith('/dashboard/vero-ride/')
+  }
+  if (href === '/dashboard/marketing/tasks') {
+    return pathname === href || pathname.startsWith(`${href}/`) || pathname === '/dashboard/marketing-tasks'
+  }
+  if (href === '/dashboard/marketing/progress') {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
+  if (href === '/dashboard/marketing/kpi') {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
+  if (href === '/dashboard/marketing') {
+    if (pathname === '/dashboard/marketing') return true
+    if (pathname.startsWith('/dashboard/marketing/tasks')) return false
+    if (pathname.startsWith('/dashboard/marketing/progress')) return false
+    if (pathname.startsWith('/dashboard/marketing/kpi')) return false
+    if (pathname === '/dashboard/marketing-tasks') return false
+    return pathname.startsWith('/dashboard/marketing/')
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <PanelSessionProvider>
-      <AdminAlertsProvider>
-        <ConfirmDialogProvider>
-          <DashboardShellInner>{children}</DashboardShellInner>
-        </ConfirmDialogProvider>
-      </AdminAlertsProvider>
+      <DashboardAuthGate>{children}</DashboardAuthGate>
     </PanelSessionProvider>
+  )
+}
+
+function DashboardAuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const {
+    isSuperAdmin,
+    isMarketer,
+    isAgent,
+    loading: sessionLoading,
+    authenticated,
+  } = usePanelSession()
+
+  useEffect(() => {
+    if (sessionLoading) return
+    if (!authenticated) {
+      const next =
+        pathname && pathname.startsWith('/dashboard')
+          ? `?next=${encodeURIComponent(pathname)}`
+          : ''
+      router.replace(`/panel${next}`)
+      return
+    }
+    if (isMarketer && !isMarketerAllowedPath(pathname)) {
+      router.replace(MARKETER_HOME)
+      return
+    }
+    if (isAgent && !isAgentAllowedPath(pathname)) {
+      router.replace(AGENT_HOME)
+      return
+    }
+    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
+      router.replace(isMarketer ? MARKETER_HOME : isAgent ? AGENT_HOME : '/dashboard')
+    }
+  }, [sessionLoading, isSuperAdmin, isMarketer, isAgent, pathname, router, authenticated])
+
+  if (sessionLoading || !authenticated) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--surface)',
+          padding: 24,
+        }}
+      >
+        <p style={{ color: 'var(--text-3)', fontSize: 15, fontWeight: 600, margin: 0 }}>
+          {sessionLoading ? 'Checking admin access…' : 'Redirecting to sign in…'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <AdminAlertsProvider>
+      <ConfirmDialogProvider>
+        <DashboardShellInner>{children}</DashboardShellInner>
+      </ConfirmDialogProvider>
+    </AdminAlertsProvider>
   )
 }
 
@@ -39,9 +126,11 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const unread = useHelpCenterUnreadBadge()
-  const { isSuperAdmin, loading: sessionLoading, bootstrap } = usePanelSession()
+  const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
   const {
     courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
+    drivers: { pending: driversPending, toast: driversToast, clearToast: clearDriversToast },
+    rides: { issues: rideIssues, toast: ridesToast, clearToast: clearRidesToast },
     orders: { pending: ordersPending, toast: ordersToast, clearToast: clearOrdersToast },
     users: { newCount: newUsers, toast: usersToast, clearToast: clearUsersToast },
     merchantReports: {
@@ -49,30 +138,45 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       toast: reportsToast,
       clearToast: clearReportsToast,
     },
+    payments: {
+      digitalNew,
+      homepageAdNew,
+      toast: paymentsToast,
+      toastHref: paymentsToastHref,
+      clearToast: clearPaymentsToast,
+    },
   } = useAdminAlerts()
 
   const navGroups = useMemo(() => {
     return DASHBOARD_NAV_GROUPS.map(group => ({
       ...group,
-      items: group.items.filter(item => !item.superAdminOnly || isSuperAdmin),
+      items: group.items.filter(item => {
+        if (isMarketer) return Boolean(item.marketerAllowed)
+        if (isAgent) return Boolean(item.agentAllowed)
+        if (item.marketerOnly || item.agentOnly) return false
+        if (item.superAdminOnly && !isSuperAdmin) return false
+        return true
+      }),
     })).filter(group => group.items.length > 0)
-  }, [isSuperAdmin])
-
-  useEffect(() => {
-    if (sessionLoading) return
-    // Allow /dashboard/admins during bootstrap (no admins exist yet).
-    if (bootstrap && pathname.startsWith('/dashboard/admins')) return
-    // Normal admins (or signed-out) cannot open finance / wallet / admins.
-    if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
-      router.replace('/dashboard')
-    }
-  }, [sessionLoading, isSuperAdmin, bootstrap, pathname, router])
+  }, [isSuperAdmin, isMarketer, isAgent])
 
   useEffect(() => {
     if (!courierToast) return
     const timer = window.setTimeout(() => clearCourierToast(), 8000)
     return () => window.clearTimeout(timer)
   }, [courierToast, clearCourierToast])
+
+  useEffect(() => {
+    if (!driversToast) return
+    const timer = window.setTimeout(() => clearDriversToast(), 8000)
+    return () => window.clearTimeout(timer)
+  }, [driversToast, clearDriversToast])
+
+  useEffect(() => {
+    if (!ridesToast) return
+    const timer = window.setTimeout(() => clearRidesToast(), 8000)
+    return () => window.clearTimeout(timer)
+  }, [ridesToast, clearRidesToast])
 
   useEffect(() => {
     if (!ordersToast) return
@@ -91,6 +195,12 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => clearReportsToast(), 8000)
     return () => window.clearTimeout(timer)
   }, [reportsToast, clearReportsToast])
+
+  useEffect(() => {
+    if (!paymentsToast) return
+    const timer = window.setTimeout(() => clearPaymentsToast(), 10000)
+    return () => window.clearTimeout(timer)
+  }, [paymentsToast, clearPaymentsToast])
 
   useEffect(() => {
     setOpen(false)
@@ -176,7 +286,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   borderRadius: 100,
                 }}
               >
-                {sessionLoading ? 'Admin' : isSuperAdmin ? 'Super admin' : 'Admin'}
+                {isSuperAdmin ? 'Super admin' : 'Admin'}
               </span>
             </Link>
           </div>
@@ -304,13 +414,21 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                         ? unread
                         : item.badgeKey === 'courier'
                           ? courierPending
-                          : item.badgeKey === 'orders'
-                            ? ordersPending
-                            : item.badgeKey === 'users'
-                              ? newUsers
-                              : item.badgeKey === 'reports'
-                                ? reportsOpen
-                                : 0
+                          : item.badgeKey === 'drivers'
+                            ? driversPending
+                            : item.badgeKey === 'rides'
+                              ? rideIssues
+                            : item.badgeKey === 'orders'
+                              ? ordersPending
+                              : item.badgeKey === 'users'
+                                ? newUsers
+                                : item.badgeKey === 'reports'
+                                  ? reportsOpen
+                                  : item.badgeKey === 'digital'
+                                    ? digitalNew
+                                    : item.badgeKey === 'homepageAds'
+                                      ? homepageAdNew
+                                      : 0
                     const badge =
                       badgeCount > 0 ? (badgeCount > 99 ? '99+' : String(badgeCount)) : null
 
@@ -337,8 +455,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                         >
                           <VeroIcon
                             name={item.icon}
-                            size={18}
-                            style={{ flexShrink: 0, opacity: active ? 1 : 0.85 }}
+                            size={20}
+                            strokeWidth={2.35}
+                            style={{ flexShrink: 0, opacity: active ? 1 : 0.9 }}
                           />
                           <span style={{ flex: 1 }}>{item.label}</span>
                           {badge && (
@@ -398,7 +517,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="truck" size={18} />
+                  <VeroIcon name="truck" size={20} strokeWidth={2.35} />
                   {courierToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
@@ -418,6 +537,116 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={clearCourierToast}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #FED7AA',
+                      background: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#9A3412',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </div>
+            )}
+            {driversToast && (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#FFF7ED',
+                  border: '1px solid #FED7AA',
+                  color: '#9A3412',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  boxShadow: '0 8px 24px rgba(249,115,22,0.16)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="car" size={20} strokeWidth={2.35} />
+                  {driversToast}
+                </span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
+                  <Link
+                    href="/dashboard/vero-ride"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: '#F97316',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Review
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={clearDriversToast}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #FED7AA',
+                      background: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#9A3412',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </div>
+            )}
+            {ridesToast && (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#FFF7ED',
+                  border: '1px solid #FED7AA',
+                  color: '#9A3412',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  boxShadow: '0 8px 24px rgba(249,115,22,0.16)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="car" size={20} strokeWidth={2.35} />
+                  {ridesToast}
+                </span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
+                  <Link
+                    href="/dashboard/vero-ride/trips"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: '#F97316',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    View trips
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={clearRidesToast}
                     style={{
                       padding: '6px 10px',
                       borderRadius: 8,
@@ -453,7 +682,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="package" size={18} />
+                  <VeroIcon name="package" size={20} strokeWidth={2.35} />
                   {ordersToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
@@ -508,7 +737,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="users" size={18} />
+                  <VeroIcon name="users" size={20} strokeWidth={2.35} />
                   {usersToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
@@ -563,7 +792,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <VeroIcon name="flag" size={18} />
+                  <VeroIcon name="flag" size={20} strokeWidth={2.35} />
                   {reportsToast}
                 </span>
                 <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
@@ -591,6 +820,67 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                       fontSize: 12,
                       fontWeight: 600,
                       color: '#9A3412',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </div>
+            )}
+            {paymentsToast && (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  color: '#166534',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  boxShadow: '0 8px 24px rgba(22,163,74,0.12)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon
+                    name={
+                      paymentsToastHref?.includes('homepage') ? 'megaphone' : 'sparkles'
+                    }
+                    size={20}
+                    strokeWidth={2.35}
+                  />
+                  {paymentsToast}
+                </span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
+                  <Link
+                    href={paymentsToastHref || '/dashboard/digital-services'}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: '#15803D',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Open
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={clearPaymentsToast}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #BBF7D0',
+                      background: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#166534',
                     }}
                   >
                     Dismiss

@@ -4,168 +4,29 @@ import Link from 'next/link'
 import { VeroIcon } from '@/app/components/landing/icons'
 import { DASHBOARD_SECTIONS } from '@/lib/dashboard-sections'
 import {
-<<<<<<< HEAD
-  isHelpCenterSession,
-  subscribeToSessions,
-  type VeroChatSessionView,
-} from '@/lib/verochat'
-
-const cards = [
-  {
-    id: 'vero-ride',
-    title: 'Vero Ride',
-    desc: 'Trips, drivers, and ride activity',
-    icon: '🚗',
-    color: '#F97316',
-    bg: '#FFF7ED',
-  },
-  {
-    id: 'vero-courier',
-    title: 'Vero Courier',
-    desc: 'Deliveries, parcels, and couriers',
-    icon: '🚚',
-    color: '#EA580C',
-    bg: '#FFEDD5',
-  },
-  {
-    id: 'food',
-    title: 'Food',
-    desc: 'Orders, restaurants, and menus',
-    icon: '🍔',
-    color: '#DC2626',
-    bg: '#FEF2F2',
-  },
-  {
-    id: 'jobs',
-    title: 'Jobs',
-    desc: 'Post, edit, and manage job listings',
-    icon: '💼',
-    color: '#2563EB',
-    bg: '#EFF6FF',
-  },
-  {
-    id: 'stay',
-    title: 'Stay',
-    desc: 'Accommodation bookings and hosts',
-    icon: '🏨',
-    color: '#7C3AED',
-    bg: '#F5F3FF',
-  },
-  {
-    id: 'promotion',
-    title: 'Promotion',
-    desc: 'Campaigns, ads, and offers',
-    icon: '📣',
-    color: '#DB2777',
-    bg: '#FDF2F8',
-  },
-  {
-    id: 'latest-arrivals',
-    title: 'Latest arrivals',
-    desc: 'Goods posted in the last 24 hours',
-    icon: '✨',
-    color: '#059669',
-    bg: '#ECFDF5',
-  },
-  {
-    id: 'marketplace',
-    title: 'Marketplace',
-    desc: 'Listings, merchants, and sales',
-    icon: '🛒',
-    color: '#D97706',
-    bg: '#FFFBEB',
-  },
-  {
-    id: 'orders',
-    title: 'Orders',
-    desc: 'Marketplace orders and fulfillment',
-    icon: '📦',
-    color: '#0369A1',
-    bg: '#F0F9FF',
-  },
-  {
-    id: 'refunds',
-    title: 'Refunds',
-    desc: 'Pending and completed refund requests',
-    icon: '↩️',
-    color: '#BE123C',
-    bg: '#FFF1F2',
-  },
-  {
-    id: 'merchant-reports',
-    title: 'Merchant reports',
-    desc: 'User reports about marketplace merchants',
-    icon: '🚩',
-    color: '#C2410C',
-    bg: '#FFF7ED',
-  },
-  {
-    id: 'users',
-    title: 'Users',
-    desc: 'Customers, merchants, and accounts',
-    icon: '👥',
-    color: '#0F766E',
-    bg: '#F0FDFA',
-  },
-  {
-    id: 'admins',
-    title: 'Admins',
-    desc: 'Super admins and panel admins',
-    icon: '🛡️',
-    color: '#6D28D9',
-    bg: '#F5F3FF',
-    superAdminOnly: true,
-  },
-  {
-    id: 'wallet',
-    title: 'Admin wallet',
-    desc: 'Super admin platform fees (10% marketplace)',
-    icon: '🏦',
-    color: '#0F766E',
-    bg: '#F0FDFA',
-    superAdminOnly: true,
-  },
-  {
-    id: 'finance',
-    title: 'Finance',
-    desc: 'Wallets, escrow, and merchant cash-outs',
-    icon: '💰',
-    color: '#15803D',
-    bg: '#F0FDF4',
-    superAdminOnly: true,
-  },
-  {
-    id: 'verochat',
-    title: 'Help Center',
-    desc: 'Live chats from Vero360 Help Center',
-    icon: '🎧',
-    color: '#EA580C',
-    bg: '#FFF7ED',
-  },
-]
-
-function getHelpCenterUnread(sessions: VeroChatSessionView[]) {
-  return sessions
-    .filter(isHelpCenterSession)
-    .reduce((sum, s) => sum + (s.unreadForAgent || 0), 0)
-}
-=======
   useCourierPendingBadge,
+  useDigitalPaymentsNewBadge,
+  useDriverPendingBadge,
+  useRideIssuesBadge,
   useHelpCenterUnreadBadge,
+  useHomepageAdPaymentsNewBadge,
   useMerchantReportsOpenBadge,
   useNewUsersBadge,
   useOrdersPendingBadge,
 } from './AdminAlertsProvider'
 import { usePanelSession } from './PanelSessionProvider'
->>>>>>> 8662bc56413d6cc08b4740f609f2d8012f2f5027
 
 export default function DashboardCards() {
   const unread = useHelpCenterUnreadBadge()
   const courierPending = useCourierPendingBadge()
+  const driversPending = useDriverPendingBadge()
+  const rideIssues = useRideIssuesBadge()
   const ordersPending = useOrdersPendingBadge()
   const newUsers = useNewUsersBadge()
   const reportsOpen = useMerchantReportsOpenBadge()
-  const { isSuperAdmin } = usePanelSession()
+  const digitalNew = useDigitalPaymentsNewBadge()
+  const homepageAdNew = useHomepageAdPaymentsNewBadge()
+  const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
 
   return (
     <div
@@ -176,62 +37,97 @@ export default function DashboardCards() {
         gap: 18,
       }}
     >
-      {DASHBOARD_SECTIONS.filter(card => !card.superAdminOnly || isSuperAdmin).map(card => {
+      {DASHBOARD_SECTIONS.filter(card => {
+        if (isMarketer) return card.id === 'marketing'
+        if (isAgent) return card.id === 'agents'
+        return !card.superAdminOnly || isSuperAdmin
+      }).map(card => {
         const isHelp = card.id === 'verochat'
         const isCourier = card.id === 'vero-courier'
+        const isDrivers = card.id === 'vero-ride'
         const isOrders = card.id === 'orders'
         const isUsers = card.id === 'users'
         const isReports = card.id === 'merchant-reports'
+        const isDigital = card.id === 'digital-services'
+        const isHomepageAds = card.id === 'homepage-ads'
         const badgeCount = isHelp
           ? unread
           : isCourier
             ? courierPending
-            : isOrders
-              ? ordersPending
-              : isUsers
-                ? newUsers
-                : isReports
-                  ? reportsOpen
-                  : 0
+            : isDrivers
+              ? driversPending + rideIssues
+              : isOrders
+                ? ordersPending
+                : isUsers
+                  ? newUsers
+                  : isReports
+                    ? reportsOpen
+                    : isDigital
+                      ? digitalNew
+                      : isHomepageAds
+                        ? homepageAdNew
+                        : 0
         const showBadge = badgeCount > 0
         const alertLabel = isHelp
           ? `${badgeCount} unread Help Center messages`
           : isCourier
             ? `${badgeCount} pending Vero Courier order${badgeCount === 1 ? '' : 's'}`
-            : isOrders
-              ? `${badgeCount} pending marketplace order${badgeCount === 1 ? '' : 's'}`
-              : isUsers
-                ? `${badgeCount} new user${badgeCount === 1 ? '' : 's'}`
-                : isReports
-                  ? `${badgeCount} open merchant report${badgeCount === 1 ? '' : 's'}`
-                  : ''
+            : isDrivers
+              ? `${driversPending + rideIssues} Vero Ride item${driversPending + rideIssues === 1 ? '' : 's'} need attention`
+              : isOrders
+                ? `${badgeCount} pending marketplace order${badgeCount === 1 ? '' : 's'}`
+                : isUsers
+                  ? `${badgeCount} new user${badgeCount === 1 ? '' : 's'}`
+                  : isReports
+                    ? `${badgeCount} open merchant report${badgeCount === 1 ? '' : 's'}`
+                    : isDigital
+                      ? `${badgeCount} new digital service payment${badgeCount === 1 ? '' : 's'}`
+                      : isHomepageAds
+                        ? `${badgeCount} new homepage ad payment${badgeCount === 1 ? '' : 's'}`
+                        : ''
         const alertDesc = isHelp
           ? `${badgeCount} new message${badgeCount === 1 ? '' : 's'} waiting`
           : isCourier
             ? `${badgeCount} new order${badgeCount === 1 ? '' : 's'} waiting`
-            : isOrders
-              ? `${badgeCount} order${badgeCount === 1 ? '' : 's'} needing review`
-              : isUsers
-                ? `${badgeCount} new registration${badgeCount === 1 ? '' : 's'}`
-                : isReports
-                  ? `${badgeCount} report${badgeCount === 1 ? '' : 's'} to review`
-                  : ''
+            : isDrivers
+              ? `${badgeCount} document${badgeCount === 1 ? '' : 's'} to review`
+              : isOrders
+                ? `${badgeCount} order${badgeCount === 1 ? '' : 's'} needing review`
+                : isUsers
+                  ? `${badgeCount} new registration${badgeCount === 1 ? '' : 's'}`
+                  : isReports
+                    ? `${badgeCount} report${badgeCount === 1 ? '' : 's'} to review`
+                    : isDigital
+                      ? `${badgeCount} payment${badgeCount === 1 ? '' : 's'} just completed`
+                      : isHomepageAds
+                        ? `${badgeCount} advert payment${badgeCount === 1 ? '' : 's'} just completed`
+                        : ''
         const alertCta = isHelp
           ? 'Reply now →'
           : isCourier
             ? 'Review now →'
-            : isOrders
-              ? 'Open orders →'
-              : isUsers
-                ? 'View users →'
-                : isReports
-                  ? 'Review reports →'
-                  : ''
+            : isDrivers
+              ? 'Review drivers →'
+              : isOrders
+                ? 'Open orders →'
+                : isUsers
+                  ? 'View users →'
+                  : isReports
+                    ? 'Review reports →'
+                    : isDigital
+                      ? 'Open digital services →'
+                      : isHomepageAds
+                        ? 'Open homepage ads →'
+                        : ''
 
         return (
           <Link
             key={card.id}
-            href={`/dashboard/${card.id}`}
+            href={
+              isAgent && card.id === 'agents'
+                ? '/dashboard/agent'
+                : `/dashboard/${card.id}`
+            }
             className={`dashboard-card${showBadge ? ' dashboard-card-alert' : ''}`}
             style={{
               position: 'relative',
@@ -274,9 +170,9 @@ export default function DashboardCards() {
 
             <div
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
+                width: 52,
+                height: 52,
+                borderRadius: 15,
                 background: card.bg,
                 color: card.color,
                 display: 'flex',
@@ -285,7 +181,7 @@ export default function DashboardCards() {
                 position: 'relative',
               }}
             >
-              <VeroIcon name={card.icon} size={24} color={card.color} />
+              <VeroIcon name={card.icon} size={26} color={card.color} strokeWidth={2.35} />
               {showBadge && (
                 <span
                   style={{

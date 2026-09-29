@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#E50914"/><stop offset="100%" stop-color="#6F0007"/></linearGradient></defs>
+  <rect width="640" height="400" rx="28" fill="url(#g)"/>
+  <text x="56" y="175" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="72" font-weight="900" letter-spacing="-2">NETFLIX</text>
+  <rect x="56" y="210" width="220" height="10" rx="5" fill="#ffffff" fill-opacity=".35"/>
+  <text x="56" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="28" font-weight="700">Streaming</text>
+  <text x="56" y="340" fill="#ffffff" fill-opacity=".8" font-family="Arial, sans-serif" font-size="20" font-weight="600">1-month subscription</text>
+</svg>

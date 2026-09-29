@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -71,7 +72,7 @@ export function useOrderAlerts(enabled = true): OrderAlertState {
 
     const poll = async () => {
       try {
-        const res = await fetch('/api/admin/orders/pending', { cache: 'no-store' })
+        const res = await adminFetch('/api/admin/orders/pending', { cache: 'no-store' })
         if (!res.ok) return
         const data = (await res.json()) as {
           pending?: number
@@ -97,8 +98,8 @@ export function useOrderAlerts(enabled = true): OrderAlertState {
         if (fresh.length > 0) {
           const message =
             fresh.length === 1
-              ? `New marketplace order #${fresh[0]} — review in Orders`
-              : `${fresh.length} new marketplace orders — review in Orders`
+              ? `New marketplace order #${fresh[0]}. Review in Orders`
+              : `${fresh.length} new marketplace orders. Review in Orders`
           setToast(message)
           notifyBrowser('New marketplace order', message)
           writeKnownIds([...new Set([...known, ...pendingIds])])

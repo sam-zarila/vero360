@@ -1,0 +1,608 @@
+'use client'
+
+import { adminFetch } from '@/lib/panel-client-auth'
+import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+} from '@/app/dashboard/DashboardChrome'
+
+type PushItem = {
+  id: string
+  title: string
+  body: string
+  type: string
+  badgeRoute: string
+  target: string
+  sent: boolean
+  fcmError: string | null
+  topics: string[]
+  createdAt: string | null
+  sentAt: string | null
+  createdByEmail: string
+}
+
+type OpenTarget =
+  | 'notifications'
+  | 'quick_promotions'
+  | 'quick_post_arrival'
+  | 'marketplace'
+  | 'app_update'
+
+type DeliveryChannel = 'push' | 'vero_team'
+
+const OPEN_OPTIONS: { value: OpenTarget; label: string }[] = [
+  { value: 'notifications', label: 'In-app Notifications page' },
+  { value: 'quick_promotions', label: 'Promotions' },
+  { value: 'quick_post_arrival', label: "Today's arrivals" },
+  { value: 'marketplace', label: 'Marketplace' },
+  {
+    value: 'app_update',
+    label: 'App update (Play Store / App Store)',
+  },
+]
+
+type TeamBroadcastItem = {
+  id: string
+  title: string
+  body: string
+  kind: string
+  createdAt: string | null
+  createdByEmail: string | null
+  fcmSent: boolean
+}
+
+function formatWhen(iso: string | null) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString()
+}
+
+export default function AdminPushPage() {
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [badgeRoute, setBadgeRoute] = useState<OpenTarget>('notifications')
+  const [channel, setChannel] = useState<DeliveryChannel>('vero_team')
+  const [confirmSend, setConfirmSend] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [items, setItems] = useState<PushItem[]>([])
+  const [teamItems, setTeamItems] = useState<TeamBroadcastItem[]>([])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [pushRes, teamRes] = await Promise.all([
+        adminFetch('/api/admin/push', { cache: 'no-store' }),
+        adminFetch('/api/admin/vero-team/broadcast', { cache: 'no-store' }),
+      ])
+      const pushData = await pushRes.json().catch(() => ({}))
+      const teamData = await teamRes.json().catch(() => ({}))
+      if (!pushRes.ok) {
+        throw new Error(pushData?.error || 'Failed to load history')
+      }
+      setItems(Array.isArray(pushData.items) ? pushData.items : [])
+      setTeamItems(Array.isArray(teamData.items) ? teamData.items : [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    setNotice('')
+
+    if (!title.trim() || !body.trim()) {
+      setError('Title and message are required.')
+      return
+    }
+    if (!confirmSend) {
+      setError('Tick the confirmation box before sending to everyone.')
+      return
+    }
+
+    setSending(true)
+    try {
+      if (channel === 'vero_team') {
+        const kind =
+          badgeRoute === 'app_update' ? 'app_update' : 'general'
+        const res = await adminFetch('/api/admin/vero-team/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: title.trim() || 'Vero360 Team',
+            body: body.trim(),
+            kind,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.error || 'Send failed')
+        }
+        setNotice(
+          data?.message ||
+            'Posted in Vero360 Team chat and pushed to everyone.',
+        )
+      } else {
+        const isAppUpdate = badgeRoute === 'app_update'
+        const res = await adminFetch('/api/admin/push', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: title.trim(),
+            body: body.trim(),
+            badgeRoute: isAppUpdate ? 'app_update' : badgeRoute,
+            target: 'all',
+            type: isAppUpdate ? 'app_update' : 'admin_broadcast',
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.error || 'Send failed')
+        }
+        setNotice(data?.message || 'Push sent to everyone on Vero360.')
+      }
+      setTitle('')
+      setBody('')
+      setConfirmSend(false)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Send failed')
+      await load()
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function retrySend(id: string) {
+    setError('')
+    setNotice('')
+    setSending(true)
+    try {
+      const res = await adminFetch('/api/admin/push', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'retry', id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Retry failed')
+      }
+      setNotice(data?.message || 'Push sent.')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Retry failed')
+      await load()
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 820, margin: '0 auto', padding: '8px 16px 48px' }}>
+      <DashboardBackLink />
+      <DashboardPageHeader
+        sectionId="push"
+        description="Message everyone on Vero360: Vero360 Team chat (recommended) or a system push only."
+        actions={<DashboardRefreshButton onClick={() => void load()} />}
+      />
+
+      <div
+        style={{
+          marginTop: 16,
+          padding: 16,
+          borderRadius: 16,
+          background: '#FFF7ED',
+          border: '1px solid #FED7AA',
+          color: '#9A3412',
+          fontSize: 13.5,
+          lineHeight: 1.45,
+          fontWeight: 600,
+        }}
+      >
+        <strong>Vero360 Team</strong> posts the message in the app chat and
+        sends a push. Tap opens Team chat. Use this for updates and announcements.
+      </div>
+
+      <form
+        onSubmit={onSubmit}
+        style={{
+          marginTop: 18,
+          padding: 20,
+          borderRadius: 18,
+          background: '#fff',
+          border: '1px solid #E5E7EB',
+          boxShadow: '0 8px 24px rgba(15,23,42,0.04)',
+          display: 'grid',
+          gap: 14,
+        }}
+      >
+        <label style={labelStyle}>
+          Send as
+          <select
+            value={channel}
+            onChange={(e) => setChannel(e.target.value as DeliveryChannel)}
+            style={inputStyle}
+          >
+            <option value="vero_team">Vero360 Team chat + push</option>
+            <option value="push">System push only</option>
+          </select>
+        </label>
+
+        <label style={labelStyle}>
+          Title
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={120}
+            placeholder={
+              channel === 'vero_team'
+                ? 'e.g. New update available'
+                : 'e.g. New marketplace feature'
+            }
+            style={inputStyle}
+            required
+          />
+        </label>
+
+        <label style={labelStyle}>
+          Message
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            maxLength={channel === 'vero_team' ? 2000 : 500}
+            rows={4}
+            placeholder={
+              channel === 'vero_team'
+                ? 'Message that appears in Vero360 Team chat…'
+                : 'Short message users will see on their phone…'
+            }
+            style={{ ...inputStyle, resize: 'vertical', minHeight: 96 }}
+            required
+          />
+          <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500 }}>
+            {body.length}/{channel === 'vero_team' ? 2000 : 500}
+          </span>
+        </label>
+
+        {channel === 'push' ? (
+          <label style={labelStyle}>
+            When tapped, open
+            <select
+              value={badgeRoute}
+              onChange={(e) => {
+                const next = e.target.value as OpenTarget
+                setBadgeRoute(next)
+                if (next === 'app_update') {
+                  if (!title.trim()) setTitle('New update available')
+                  if (!body.trim()) {
+                    setBody('Tap to download the latest Vero360 for your phone.')
+                  }
+                }
+              }}
+              style={inputStyle}
+            >
+              {OPEN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {badgeRoute === 'app_update' ? (
+              <span style={{ fontSize: 12, color: '#9A3412', fontWeight: 600 }}>
+                Android users open Google Play. iPhone users open the App Store.
+              </span>
+            ) : null}
+          </label>
+        ) : (
+          <label style={labelStyle}>
+            Message type
+            <select
+              value={badgeRoute === 'app_update' ? 'app_update' : 'general'}
+              onChange={(e) => {
+                if (e.target.value === 'app_update') {
+                  setBadgeRoute('app_update')
+                  if (!title.trim()) setTitle('New update available')
+                  if (!body.trim()) {
+                    setBody(
+                      'A new Vero360 update is ready. Open this chat and tap Update to download.',
+                    )
+                  }
+                } else {
+                  setBadgeRoute('notifications')
+                }
+              }}
+              style={inputStyle}
+            >
+              <option value="general">General Team message</option>
+              <option value="app_update">App update notice</option>
+            </select>
+            <span style={{ fontSize: 12, color: '#9A3412', fontWeight: 600 }}>
+              Push opens Vero360 Team chat. Update notices include a download
+              button in the chat.
+            </span>
+          </label>
+        )}
+
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: '#1F2937',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={confirmSend}
+            onChange={(e) => setConfirmSend(e.target.checked)}
+            style={{ marginTop: 3, width: 16, height: 16 }}
+          />
+          <span>
+            I confirm this should go to <strong>everyone</strong> with the
+            Vero360 app.
+          </span>
+        </label>
+
+        {error ? (
+          <div style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13.5 }}>
+            {error}
+          </div>
+        ) : null}
+        {notice ? (
+          <div style={{ color: '#047857', fontWeight: 700, fontSize: 13.5 }}>
+            {notice}
+          </div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={sending}
+          style={{
+            marginTop: 4,
+            border: 'none',
+            borderRadius: 12,
+            padding: '14px 18px',
+            background: sending ? '#FDBA74' : '#FF8A00',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: 15,
+            cursor: sending ? 'wait' : 'pointer',
+          }}
+        >
+          {sending
+            ? 'Sending…'
+            : channel === 'vero_team'
+              ? 'Send via Vero360 Team'
+              : 'Send push to everyone'}
+        </button>
+      </form>
+
+      <h2
+        style={{
+          marginTop: 32,
+          marginBottom: 12,
+          fontSize: 17,
+          fontWeight: 900,
+          color: '#111827',
+        }}
+      >
+        Recent Vero360 Team messages
+      </h2>
+      {loading ? (
+        <p style={{ color: '#6B7280' }}>Loading…</p>
+      ) : teamItems.length === 0 ? (
+        <p style={{ color: '#6B7280' }}>No Team messages yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 10, marginBottom: 28 }}>
+          {teamItems.map((item) => (
+            <article
+              key={item.id}
+              style={{
+                background: '#fff',
+                border: '1px solid #E5E7EB',
+                borderRadius: 14,
+                padding: 14,
+              }}
+            >
+              <div style={{ fontWeight: 900, color: '#111827' }}>
+                {item.title || 'Vero360 Team'}
+                {item.kind === 'app_update' ? (
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#9A3412',
+                    }}
+                  >
+                    Update
+                  </span>
+                ) : null}
+              </div>
+              <div
+                style={{
+                  marginTop: 4,
+                  color: '#4B5563',
+                  fontSize: 13.5,
+                  lineHeight: 1.4,
+                }}
+              >
+                {item.body}
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  color: '#6B7280',
+                  fontWeight: 600,
+                }}
+              >
+                {formatWhen(item.createdAt)}
+                {item.createdByEmail ? ` · ${item.createdByEmail}` : ''}
+                {item.fcmSent ? ' · Push sent' : ' · Push pending/failed'}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <h2
+        style={{
+          marginTop: 12,
+          marginBottom: 12,
+          fontSize: 17,
+          fontWeight: 900,
+          color: '#111827',
+        }}
+      >
+        Recent system pushes
+      </h2>
+
+      {loading ? (
+        <p style={{ color: '#6B7280' }}>Loading…</p>
+      ) : items.length === 0 ? (
+        <p style={{ color: '#6B7280' }}>No broadcasts yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {items.map((item) => (
+            <article
+              key={item.id}
+              style={{
+                background: '#fff',
+                border: '1px solid #E5E7EB',
+                borderRadius: 14,
+                padding: 14,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 900, color: '#111827' }}>
+                    {item.title || '(no title)'}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 4,
+                      color: '#4B5563',
+                      fontSize: 13.5,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {item.body}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: '4px 8px',
+                    borderRadius: 999,
+                    background: item.sent
+                      ? '#ECFDF5'
+                      : item.fcmError
+                        ? '#FEF2F2'
+                        : '#FFF7ED',
+                    color: item.sent
+                      ? '#047857'
+                      : item.fcmError
+                        ? '#B91C1C'
+                        : '#C2410C',
+                  }}
+                >
+                  {item.sent ? 'Sent' : item.fcmError ? 'Failed' : 'Queued'}
+                </span>
+              </div>
+              {item.fcmError && !item.sent ? (
+                <p
+                  style={{
+                    margin: '8px 0 0',
+                    fontSize: 12,
+                    color: '#B91C1C',
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.fcmError}
+                </p>
+              ) : null}
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: '#6B7280',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                  alignItems: 'center',
+                }}
+              >
+                <span>{formatWhen(item.createdAt)}</span>
+                {item.createdByEmail ? <span>· {item.createdByEmail}</span> : null}
+                {item.type ? <span>· {item.type}</span> : null}
+                {!item.sent ? (
+                  <button
+                    type="button"
+                    disabled={sending}
+                    onClick={() => void retrySend(item.id)}
+                    style={{
+                      border: '1px solid #FDBA74',
+                      background: '#FFF7ED',
+                      color: '#C2410C',
+                      borderRadius: 8,
+                      padding: '4px 10px',
+                      fontWeight: 800,
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    Retry send
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const labelStyle: CSSProperties = {
+  display: 'grid',
+  gap: 6,
+  fontSize: 13,
+  fontWeight: 700,
+  color: '#374151',
+}
+
+const inputStyle: CSSProperties = {
+  width: '100%',
+  borderRadius: 12,
+  border: '1px solid #D1D5DB',
+  padding: '11px 12px',
+  fontSize: 14,
+  fontWeight: 500,
+  color: '#111827',
+  background: '#F9FAFB',
+  outline: 'none',
+}

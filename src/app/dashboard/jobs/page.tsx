@@ -1,4 +1,5 @@
 'use client'
+import { adminFetch } from '@/lib/panel-client-auth'
 
 import {
   useCallback,
@@ -9,7 +10,6 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import {
   formatDateTime,
@@ -20,7 +20,18 @@ import {
   type JobPost,
   type JobRegion,
 } from '@/lib/jobs'
+import {
+  DashboardBackLink,
+  DashboardPageHeader,
+  DashboardRefreshButton,
+  DashboardSearchField,
+} from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
+import {
+  AUTO_SYNC_INTERVAL_MS,
+  markAutoSyncRan,
+  shouldRunAutoSync,
+} from '@/lib/auto-sync-client'
 
 type Tab = 'all' | 'active' | 'inactive' | 'malawi' | 'international'
 
@@ -91,7 +102,7 @@ export default function JobsAdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [busyId, setBusyId] = useState<number | 'new' | 'sync' | null>(null)
+  const [busyId, setBusyId] = useState<number | 'new' | 'sync' | 'sync-malawi' | null>(null)
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -101,7 +112,7 @@ export default function JobsAdminPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/jobs?activeOnly=false', { cache: 'no-store' })
+      const res = await adminFetch('/api/admin/jobs?activeOnly=false', { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load jobs')
       setItems(data.items || [])
@@ -116,6 +127,52 @@ export default function JobsAdminPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const syncMalawi = useCallback(
+    async (opts?: { quiet?: boolean }) => {
+      if (!opts?.quiet) {
+        setBusyId('sync-malawi')
+        setError('')
+        setNotice('')
+      }
+      try {
+        const res = await adminFetch('/api/admin/jobs/sync-malawi', { method: 'POST' })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Malawi sync failed')
+        const parts = (data.sources || [])
+          .map(
+            (s: { source: string; ok: boolean; fetched: number; error?: string }) =>
+              s.ok ? `${s.source}: ${s.fetched}` : `${s.source}: failed`,
+          )
+          .join(' · ')
+        const message = opts?.quiet
+          ? `Auto-sync: fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, skipped ${data.skipped ?? 0}.`
+          : `Malawi sync done: fetched ${data.fetched ?? 0}, added ${data.created ?? 0}, skipped ${data.skipped ?? 0}${
+              parts ? ` (${parts})` : ''
+            }. Sources: onlinejobmw.com, jobsearchmalawi.com, mwayi.mw.`
+        setNotice(message)
+        if (Array.isArray(data.errors) && data.errors.length) {
+          setError(data.errors.slice(0, 3).join(' · '))
+        }
+        await load()
+      } catch (err) {
+        if (!opts?.quiet) {
+          setError(err instanceof Error ? err.message : 'Malawi sync failed')
+        } else {
+          console.warn('Jobs auto-sync failed:', err)
+        }
+      } finally {
+        if (!opts?.quiet) setBusyId(null)
+      }
+    },
+    [load],
+  )
+
+  useEffect(() => {
+    if (!shouldRunAutoSync('jobs')) return
+    markAutoSyncRan('jobs')
+    void syncMalawi({ quiet: true })
+  }, [syncMalawi])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -183,11 +240,10 @@ export default function JobsAdminPage() {
       if (form.location.trim()) payload.location = form.location.trim()
 
       const isEdit = editingId != null
-      const res = await fetch(
+      const res = await adminFetch(
         isEdit ? `/api/admin/jobs/${editingId}` : '/api/admin/jobs',
         {
           method: isEdit ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         },
       )
@@ -202,8 +258,8 @@ export default function JobsAdminPage() {
 
       setNotice(
         isEdit
-          ? `Updated “${position}” — visible in the app when Active`
-          : `Posted “${position}” — pull to refresh Jobs in the app`,
+          ? `Updated “${position}”. Visible in the app when Active`
+          : `Posted “${position}”. Pull to refresh Jobs in the app`,
       )
       closeForm()
       await load()
@@ -219,7 +275,7 @@ export default function JobsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/jobs/${j.id}`, {
+      const res = await adminFetch(`/api/admin/jobs/${j.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !j.isActive }),
@@ -255,7 +311,7 @@ export default function JobsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch(`/api/admin/jobs/${j.id}`, { method: 'DELETE' })
+      const res = await adminFetch(`/api/admin/jobs/${j.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
       setNotice(`Deleted “${j.position}”`)
@@ -274,7 +330,7 @@ export default function JobsAdminPage() {
     setError('')
     setNotice('')
     try {
-      const res = await fetch('/api/admin/jobs/sync', { method: 'POST' })
+      const res = await adminFetch('/api/admin/jobs/sync', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Sync failed')
       setNotice('External job sync finished (Remotive / Jooble).')
@@ -296,44 +352,40 @@ export default function JobsAdminPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <Link href="/dashboard" style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}>
-        ← Dashboard
-      </Link>
+      <DashboardBackLink />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 14,
-          margin: '10px 0 18px',
-        }}
-      >
-        <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 700 }}>Jobs</h1>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.5 }}>
-            Post, edit, activate, and delete listings shown in the Vero360 app (
-            <code>GET /vero/jobs</code>).
-          </p>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => void syncExternal()}
-            disabled={busyId === 'sync' || loading}
-            style={btnGhost}
-          >
-            {busyId === 'sync' ? 'Syncing…' : 'Sync external'}
-          </button>
-          <button type="button" onClick={() => void load()} disabled={loading} style={btnGhost}>
-            {loading ? 'Refreshing…' : 'Refresh'}
-          </button>
-          <button type="button" onClick={openCreate} style={btnPrimary}>
-            + Post job
-          </button>
-        </div>
-      </div>
+      <DashboardPageHeader
+        sectionId="jobs"
+        description={`Post, edit, and sync listings for the Vero360 app. Malawi boards auto-sync when you open this page (every ${AUTO_SYNC_INTERVAL_MS / (60 * 60 * 1000)}h). International listings sync on the Nest server every 6h.`}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => void syncMalawi()}
+              disabled={busyId === 'sync-malawi' || busyId === 'sync' || loading}
+              style={btnGhost}
+            >
+              {busyId === 'sync-malawi' ? 'Syncing Malawi…' : 'Sync Malawi'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void syncExternal()}
+              disabled={busyId === 'sync' || busyId === 'sync-malawi' || loading}
+              style={btnGhost}
+            >
+              {busyId === 'sync' ? 'Syncing…' : 'Sync international'}
+            </button>
+            <DashboardRefreshButton
+              onClick={() => void load()}
+              disabled={loading}
+              label={loading ? 'Refreshing…' : 'Refresh'}
+            />
+            <button type="button" onClick={openCreate} style={btnPrimary}>
+              + Post job
+            </button>
+          </>
+        }
+      />
 
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="ok">{notice}</Banner> : null}
@@ -487,11 +539,12 @@ export default function JobsAdminPage() {
         ))}
       </div>
 
-      <input
+      <DashboardSearchField
         value={query}
-        onChange={e => setQuery(e.target.value)}
+        onChange={setQuery}
         placeholder="Search title, company, location…"
-        style={{ ...input, maxWidth: 420, marginBottom: 16 }}
+        label="Search jobs"
+        onClear={() => setQuery('')}
       />
 
       <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 12px' }}>

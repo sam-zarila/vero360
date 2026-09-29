@@ -78,8 +78,89 @@ export default function TermsPage() {
               textDecoration: 'none',
             }}
           >
-            Read more →
+            Read more: Merchant Terms →
           </a>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+            <a
+              href="/legal/Vero360_Platform_Agreement_Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Platform Agreement →
+            </a>
+            <a
+              href="/legal/Vero360_Refund_Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Refund Policy →
+            </a>
+            <a
+              href="/legal/Vero360_Subscription_Payment_Policy_v2.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Subscription &amp; Payment Policy →
+            </a>
+            <a
+              href="/legal/Vero360_Cybersecurity_Fraud_Prevention_Customer_Protection_Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+              }}
+            >
+              Cybersecurity &amp; Fraud Prevention →
+            </a>
+            <Link
+              href="/legal"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#EA580C',
+                textDecoration: 'none',
+                marginTop: 4,
+              }}
+            >
+              All legal documents →
+            </Link>
+          </div>
         </article>
       </div>
     </main>

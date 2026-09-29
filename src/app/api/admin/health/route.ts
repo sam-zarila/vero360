@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,6 +10,8 @@ export const dynamic = 'force-dynamic'
  * 2) Optionally probes Admin init when ?probe=1
  */
 export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const flags = {
     hasClientEmail: Boolean(process.env.FIREBASE_CLIENT_EMAIL?.trim()),
     hasPrivateKey: Boolean(process.env.FIREBASE_PRIVATE_KEY?.trim()),
@@ -28,14 +31,17 @@ export async function GET(request: Request) {
   const probe = new URL(request.url).searchParams.get('probe') === '1'
   if (!probe) {
     const ready =
-      flags.hasClientEmail && (flags.hasPrivateKeyBase64 || flags.hasPrivateKey)
+      flags.hasLegacyPath ||
+      (flags.hasClientEmail && (flags.hasPrivateKeyBase64 || flags.hasPrivateKey)) ||
+      flags.hasServiceAccountJson ||
+      flags.hasServiceAccountBase64
     return NextResponse.json({
       success: ready,
       stage: 'env',
       firebaseAdmin: flags,
       hint: ready
         ? 'Env looks set. Check /api/admin/health?probe=1 next.'
-        : 'On Netlify set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY_BASE64 from .env.netlify. Remove FIREBASE_SERVICE_ACCOUNT_PATH and old FIREBASE_PRIVATE_KEY.',
+        : 'Set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY_BASE64 (or FIREBASE_SERVICE_ACCOUNT_JSON) on Netlify.',
     })
   }
 
@@ -49,7 +55,7 @@ export async function GET(request: Request) {
         firebaseAdmin: status,
         hint: status.ok
           ? 'Firebase Admin OK. Sign in at /panel with admin@vero360.app'
-          : 'Admin init failed — fix FIREBASE_PRIVATE_KEY (keep \\n escapes, wrap in quotes).',
+          : 'Admin init failed. Fix FIREBASE_PRIVATE_KEY (keep \\n escapes, wrap in quotes).',
       },
       { status: status.ok ? 200 : 503 },
     )

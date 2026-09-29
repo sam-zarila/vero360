@@ -6,7 +6,7 @@ const openings: { icon: VeroIconName; title: string; desc: string }[] = [
   {
     icon: 'megaphone',
     title: 'Marketing',
-    desc: 'Help us grow Vero360 across Malawi — campaigns, partnerships, community outreach, and brand strategy.',
+    desc: 'Help us grow Vero360 across Malawi: campaigns, partnerships, community outreach, and brand strategy.',
   },
   {
     icon: 'palette',
@@ -21,7 +21,7 @@ const openings: { icon: VeroIconName; title: string; desc: string }[] = [
   {
     icon: 'code',
     title: 'Developers',
-    desc: 'Build and improve our platform — mobile, web, and backend systems that power everyday services.',
+    desc: 'Build and improve our platform: mobile, web, and backend systems that power everyday services.',
   },
 ]
 

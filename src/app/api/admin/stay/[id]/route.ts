@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { ACCOMMODATION_ROOMS_COLLECTION } from '@/lib/stay-rooms'
 import {
@@ -9,8 +10,30 @@ import {
 
 type Ctx = { params: Promise<{ id: string }> }
 
-/** Admin delete — same Nest path the app uses for owner delete, via admin bypass. */
-export async function DELETE(_request: Request, ctx: Ctx) {
+async function cleanupRoomOverlays(id: number) {
+  const db = getAdminDb()
+  const col = db.collection(ACCOMMODATION_ROOMS_COLLECTION)
+  const deletes: Promise<unknown>[] = []
+
+  for (const field of ['apiAccommodationId', 'accommodationId', 'apiId'] as const) {
+    try {
+      const snap = await col.where(field, '==', id).limit(40).get()
+      for (const doc of snap.docs) deletes.push(doc.ref.delete())
+    } catch (err) {
+      console.warn(`Stay room cleanup query (${field}) skipped:`, err)
+    }
+  }
+
+  await Promise.all(deletes)
+}
+
+/**
+ * Admin delete — Nest DELETE /accommodations/admin/:id (no owner check).
+ * Same pattern as marketplace admin delete.
+ */
+export async function DELETE(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id: raw } = await ctx.params
   const id = Number(raw)
   if (!Number.isFinite(id) || id <= 0) {
@@ -24,31 +47,21 @@ export async function DELETE(_request: Request, ctx: Ctx) {
       cache: 'no-store',
     })
     const data = await readJsonSafe(res)
+
     if (!res.ok) {
       return NextResponse.json(
         {
           error: apiErrorMessage(
             data,
-            'Failed to delete listing. Redeploy vero-backend with DELETE /accommodations/admin/:id if this is 404.',
+            'Failed to delete this accommodation. Redeploy vero-backend if Nest DELETE /accommodations/admin/:id is missing or still blocked by bookings FK.',
           ),
         },
         { status: res.status },
       )
     }
 
-    // Best-effort: remove Firestore room overlay docs tied to this API id
     try {
-      const db = getAdminDb()
-      const col = db.collection(ACCOMMODATION_ROOMS_COLLECTION)
-      const qs = await col.where('apiAccommodationId', '==', id).limit(20).get()
-      await Promise.all(qs.docs.map(d => d.ref.delete()))
-      // Also try common doc id pattern `{uid}_{apiId}`
-      const all = await col.get()
-      await Promise.all(
-        all.docs
-          .filter(d => d.id.endsWith(`_${id}`))
-          .map(d => d.ref.delete()),
-      )
+      await cleanupRoomOverlays(id)
     } catch (err) {
       console.warn('Stay room Firestore cleanup skipped:', err)
     }

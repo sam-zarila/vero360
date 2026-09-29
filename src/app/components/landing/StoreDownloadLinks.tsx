@@ -1,77 +1,147 @@
+'use client'
+
 import type { CSSProperties } from 'react'
 import Image from 'next/image'
-import { appStoreLinks, storeBadgeImages } from './veroServices'
+import { APP_LAUNCH_HEADLINE, isAppStoreLaunched } from '@/lib/app-launch'
+import { APP_STORE_URL, appStoreLinks, storeBadgeImages } from './veroServices'
 
 type Props = {
   className?: string
   maxWidth?: number
   style?: CSSProperties
+  /** Force locked UI even when APP_STORE_LAUNCHED is true. */
+  locked?: boolean
 }
 
-export default function StoreDownloadLinks({ className, maxWidth = 320, style }: Props) {
+const linkStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 14,
+  padding: '14px 18px',
+  borderRadius: 12,
+  border: '1.5px solid var(--border)',
+  background: '#fff',
+  width: '100%',
+}
+
+export default function StoreDownloadLinks({
+  className,
+  maxWidth = 320,
+  style,
+  locked,
+}: Props) {
+  const downloadsLocked = locked ?? !isAppStoreLaunched()
+  const showIos = Boolean((appStoreLinks.ios || APP_STORE_URL) && !downloadsLocked) || downloadsLocked
+  const showAndroid = Boolean(appStoreLinks.android && appStoreLinks.android !== '#') || downloadsLocked
+
+  const renderStoreRow = (
+    key: 'ios' | 'android',
+    badgeSrc: string,
+    badgeAlt: string,
+    topLabel: string,
+    storeLabel: string,
+    href: string,
+  ) => {
+    const content = (
+      <>
+        <Image
+          src={badgeSrc}
+          alt={badgeAlt}
+          width={44}
+          height={44}
+          unoptimized
+          style={{
+            width: 44,
+            height: 44,
+            flexShrink: 0,
+            objectFit: key === 'android' ? 'contain' : undefined,
+            opacity: downloadsLocked ? 0.55 : 1,
+          }}
+        />
+        <div style={{ textAlign: 'left', flex: 1 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{topLabel}</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{storeLabel}</div>
+          {downloadsLocked ? (
+            <div style={{ fontSize: 11, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>
+              {APP_LAUNCH_HEADLINE}
+            </div>
+          ) : null}
+        </div>
+      </>
+    )
+
+    if (downloadsLocked) {
+      return (
+        <div
+          key={key}
+          className="store-download-link store-download-link-locked"
+          aria-disabled="true"
+          style={{
+            ...linkStyle,
+            cursor: 'not-allowed',
+            opacity: 0.92,
+            background: 'var(--surface)',
+          }}
+        >
+          {content}
+        </div>
+      )
+    }
+
+    return (
+      <a
+        key={key}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="store-download-link"
+        style={linkStyle}
+      >
+        {content}
+      </a>
+    )
+  }
+
+  if (!downloadsLocked && !showIos && !showAndroid) {
+    return null
+  }
+
   return (
     <div
       className={className}
       style={{
-        display: 'flex', flexDirection: 'column', gap: 12,
-        maxWidth, margin: '0 auto', width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        maxWidth,
+        margin: '0 auto',
+        width: '100%',
         ...style,
       }}
     >
-      <a
-        href={appStoreLinks.ios}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="store-download-link"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 14,
-          padding: '14px 18px', borderRadius: 12,
-          border: '1.5px solid var(--border)',
-          background: '#fff',
-        }}
-      >
-        <Image
-          src={storeBadgeImages.appStore}
-          alt="App Store"
-          width={44}
-          height={44}
-          unoptimized
-          style={{ width: 44, height: 44, flexShrink: 0 }}
-        />
-        <div style={{ textAlign: 'left' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Download on the</div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>App Store</div>
-        </div>
-      </a>
-
-      <a
-        href={appStoreLinks.android}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="store-download-link"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 14,
-          padding: '14px 18px', borderRadius: 12,
-          border: '1.5px solid var(--border)',
-          background: '#fff',
-        }}
-      >
-        <Image
-          src={storeBadgeImages.googlePlay}
-          alt="Google Play"
-          width={44}
-          height={44}
-          unoptimized
-          style={{ width: 44, height: 44, objectFit: 'contain', flexShrink: 0 }}
-        />
-        <div style={{ textAlign: 'left' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Get it on</div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>Google Play</div>
-        </div>
-      </a>
+      {showAndroid
+        ? renderStoreRow(
+            'android',
+            storeBadgeImages.googlePlay,
+            'Google Play',
+            'Get it on',
+            'Google Play',
+            appStoreLinks.android || '#',
+          )
+        : null}
+      {showIos
+        ? renderStoreRow(
+            'ios',
+            storeBadgeImages.appStore,
+            'App Store',
+            'Download on the',
+            'App Store',
+            appStoreLinks.ios || APP_STORE_URL,
+          )
+        : null}
 
       <style>{`
-        .store-download-link:hover {
+        .store-download-link:hover:not(.store-download-link-locked) {
           border-color: var(--primary);
           box-shadow: var(--shadow-primary);
         }

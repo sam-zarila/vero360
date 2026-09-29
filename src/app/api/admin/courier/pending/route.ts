@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { parseCourierDeliveries } from '@/lib/courier'
 import {
   apiErrorMessage,
@@ -7,7 +8,9 @@ import {
 } from '@/lib/vero-api'
 
 /** Lightweight poll endpoint for admin courier order badges / notifications. */
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const res = await fetch(veroEndpoint('verocourier', 'all', 'deliveries'), {
       headers: { Accept: 'application/json' },
@@ -29,16 +32,20 @@ export async function GET() {
         return bt - at
       })
 
+    const latest = pending[0]
     return NextResponse.json({
       success: true,
       pending: pending.length,
       pendingIds: pending.map(item => item.id),
-      latest: pending[0]
+      latest: latest
         ? {
-            id: pending[0].id,
-            trackingNumber: pending[0].trackingNumber,
-            city: pending[0].city,
-            createdAt: pending[0].createdAt,
+            id: latest.id,
+            trackingNumber: latest.trackingNumber,
+            city: latest.city,
+            createdAt: latest.createdAt,
+            estimatedPriceMwk: latest.estimatedPriceMwk,
+            estimatedDistanceKm: latest.estimatedDistanceKm,
+            estimateSummary: latest.estimateSummary,
           }
         : null,
     })

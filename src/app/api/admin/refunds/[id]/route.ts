@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
 import {
@@ -10,6 +11,8 @@ import {
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'Invalid refund id' }, { status: 400 })

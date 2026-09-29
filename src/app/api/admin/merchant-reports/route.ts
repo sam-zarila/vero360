@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { enrichMerchantReports } from '@/lib/enrich-merchant-reports'
 import {
@@ -7,7 +8,9 @@ import {
   parseMerchantReport,
 } from '@/lib/merchant-reports'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
   try {
     const db = getAdminDb()
     let snap

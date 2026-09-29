@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { panelAuthHeaders } from '@/lib/panel-client-auth'
+import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import type { AdminRole, PanelAdmin } from '@/lib/admins'
 
 type PanelSession = {
@@ -21,6 +21,9 @@ type PanelSession = {
   role: AdminRole | null
   isSuperAdmin: boolean
   isAdmin: boolean
+  isMarketer: boolean
+  isAgent: boolean
+  isFullAdmin: boolean
   authenticated: boolean
   refresh: () => Promise<void>
 }
@@ -32,6 +35,9 @@ const PanelSessionContext = createContext<PanelSession>({
   role: null,
   isSuperAdmin: false,
   isAdmin: false,
+  isMarketer: false,
+  isAgent: false,
+  isFullAdmin: false,
   authenticated: false,
   refresh: async () => {},
 })
@@ -49,8 +55,12 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const headers = auth.currentUser ? await panelAuthHeaders() : { Accept: 'application/json' }
-      const res = await fetch('/api/admin/admins/me', { headers, cache: 'no-store' })
+      const headers = auth.currentUser
+        ? await panelAuthHeaders()
+        : { Accept: 'application/json' }
+      const res = auth.currentUser
+        ? await adminFetch('/api/admin/admins/me', { headers, cache: 'no-store' })
+        : await fetch('/api/admin/admins/me', { headers, cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
       setBootstrap(Boolean(data?.needsBootstrap))
       if (res.ok && data?.authenticated && data?.me) {
@@ -80,6 +90,9 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
       role,
       isSuperAdmin: role === 'super_admin',
       isAdmin: role === 'admin',
+      isMarketer: role === 'marketer',
+      isAgent: role === 'agent',
+      isFullAdmin: role === 'super_admin' || role === 'admin',
       authenticated: !!me,
       refresh,
     }
@@ -99,10 +112,41 @@ export const SUPER_ADMIN_ONLY_PATHS = [
   '/dashboard/finance',
   '/dashboard/wallet',
   '/dashboard/admins',
+  '/dashboard/rewards',
+] as const
+
+export const MARKETER_HOME = '/dashboard/marketing/tasks'
+
+export const MARKETER_ALLOWED_PATHS = [
+  '/dashboard/marketing',
+  '/dashboard/marketing/tasks',
+  '/dashboard/marketing/progress',
+  '/dashboard/marketing/kpi',
+  '/dashboard/marketing-tasks',
+  '/dashboard/settings',
+] as const
+
+export const AGENT_HOME = '/dashboard/agent'
+
+export const AGENT_ALLOWED_PATHS = [
+  '/dashboard/agent',
+  '/dashboard/settings',
 ] as const
 
 export function isSuperAdminOnlyPath(pathname: string) {
   return SUPER_ADMIN_ONLY_PATHS.some(
+    p => pathname === p || pathname.startsWith(`${p}/`),
+  )
+}
+
+export function isMarketerAllowedPath(pathname: string) {
+  return MARKETER_ALLOWED_PATHS.some(
+    p => pathname === p || pathname.startsWith(`${p}/`),
+  )
+}
+
+export function isAgentAllowedPath(pathname: string) {
+  return AGENT_ALLOWED_PATHS.some(
     p => pathname === p || pathname.startsWith(`${p}/`),
   )
 }

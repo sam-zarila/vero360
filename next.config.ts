@@ -16,13 +16,15 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '67.211.220.69' },
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
       { protocol: 'https', hostname: 'storage.googleapis.com' },
+      { protocol: 'https', hostname: 'vero360.app' },
+      { protocol: 'https', hostname: '**.firebasestorage.app' },
     ],
   },
   async redirects() {
     return [
       {
         source: '/merchant/:id',
-        destination: '/dashboard/merchant/:id',
+        destination: '/shop/:id',
         permanent: false,
       },
       {
