@@ -187,12 +187,20 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
     }
 
     const serviceType = String(data.serviceType || 'marketplace').toLowerCase()
+    const service =
+      serviceType === 'accommodation' || serviceType === 'stay'
+        ? 'stay'
+        : serviceType === 'food'
+          ? 'food'
+          : 'marketplace'
     const transactionId = `TXN${Date.now()}${credited}`
     const now = Timestamp.now()
     const description =
-      serviceType === 'accommodation'
-        ? `Stay service fee (${txRef})`
-        : `Marketplace buyer commission — Vero share (${txRef})`
+      service === 'stay'
+        ? `Stay buyer commission — Vero share (${txRef})`
+        : service === 'food'
+          ? `Food buyer commission — Vero share (${txRef})`
+          : `Marketplace buyer commission — Vero share (${txRef})`
     const txPayload: Record<string, unknown> = {
       transactionId,
       walletId: PLATFORM_WALLET_DOC_ID,
@@ -202,6 +210,7 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
       status: 'completed',
       description,
       reference: txRef,
+      service,
       createdAt: now,
       updatedAt: now,
       backfilled: true,

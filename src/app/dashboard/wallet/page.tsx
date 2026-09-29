@@ -17,6 +17,14 @@ import {
   PAYOUT_MOMO,
 } from '@/lib/payout-destinations'
 
+type ServiceBucket = {
+  id: string
+  label: string
+  credited: number
+  waiting: number
+  count: number
+}
+
 type Summary = {
   balance: number
   pendingBalance: number
@@ -45,6 +53,7 @@ export default function SuperAdminWalletPage() {
   const [wallet, setWallet] = useState<WalletRow | null>(null)
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])
   const [summary, setSummary] = useState<Summary>(EMPTY)
+  const [services, setServices] = useState<ServiceBucket[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -63,6 +72,7 @@ export default function SuperAdminWalletPage() {
       setWallet(data.wallet || null)
       setTransactions(data.transactions || [])
       setSummary({ ...EMPTY, ...(data.summary || {}) })
+      setServices(Array.isArray(data.byService) ? data.byService : [])
       const bf = data.backfill
       if (bf && typeof bf.credited === 'number' && bf.credited > 0) {
         setNotice(
@@ -110,11 +120,11 @@ export default function SuperAdminWalletPage() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Admin wallet</h1>
-          <p style={{ color: '#6B7280', marginTop: 6, marginBottom: 0 }}>
-            10% marketplace fee is held in escrow at checkout. It only becomes
-            available here after the buyer confirms receipt (or auto-release after
-            shipment).
+          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Platform wallet</h1>
+          <p style={{ color: '#6B7280', marginTop: 6, marginBottom: 0, maxWidth: 640 }}>
+            Vero360 commission from marketplace, food, stay, rides, digital services,
+            promoted ads, and homepage ads is collected here. Pay out the available
+            balance to a bank or mobile money.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -139,7 +149,7 @@ export default function SuperAdminWalletPage() {
                 : `Need at least MWK ${MIN_PAYOUT_MWK.toLocaleString()} available`
             }
           >
-            Cash out
+            Pay out
           </button>
         </div>
       </div>
@@ -187,7 +197,7 @@ export default function SuperAdminWalletPage() {
           {formatMwk(summary.balance)}
         </div>
         <div style={{ fontSize: 13, opacity: 0.85 }}>
-          Available to cash out · userId {wallet?.userId || 'super_admin'}
+          Available to pay out · {wallet?.userId || 'super_admin'}
         </div>
         {summary.feesHeld > 0 ? (
           <div
@@ -200,14 +210,14 @@ export default function SuperAdminWalletPage() {
               lineHeight: 1.45,
             }}
           >
-            <strong>{formatMwk(summary.feesHeld)}</strong> still held in escrow
-            across {summary.heldCount} order{summary.heldCount === 1 ? '' : 's'}.
-            That commission is not available until release.
+            <strong>{formatMwk(summary.feesHeld)}</strong> is still in escrow across{' '}
+            {summary.heldCount} order{summary.heldCount === 1 ? '' : 's'}. It moves
+            into this balance when the order is released.
           </div>
         ) : null}
         {!wallet && !loading ? (
           <p style={{ margin: '12px 0 0', fontSize: 13, opacity: 0.9 }}>
-            Wallet is created automatically on the first released marketplace sale.
+            The wallet is created on the first commission credit from the app.
           </p>
         ) : null}
       </div>
@@ -220,18 +230,45 @@ export default function SuperAdminWalletPage() {
           marginBottom: 20,
         }}
       >
-        <Stat label="Lifetime fees credited" value={formatMwk(summary.lifetimeFees)} />
+        <Stat label="Collected" value={formatMwk(summary.lifetimeFees)} />
         <Stat
-          label="Fees still in escrow"
+          label="Still in escrow"
           value={formatMwk(summary.feesHeld)}
-          sub={`${summary.heldCount} held orders · not cashable yet`}
+          sub={`${summary.heldCount} orders · not payable yet`}
         />
-        <Stat label="Fees from released orders" value={formatMwk(summary.feesCollected)} />
+        <Stat label="Released order fees" value={formatMwk(summary.feesCollected)} />
         <Stat
-          label="Cashed out"
+          label="Paid out"
           value={formatMwk(summary.payoutTotal)}
           sub={`${summary.payoutCount} payouts`}
         />
+      </div>
+
+      <h2 style={{ fontSize: 18, fontWeight: 800, margin: '4px 0 12px' }}>
+        Commission by service
+      </h2>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        {services.map(service => (
+          <Stat
+            key={service.id}
+            label={service.label}
+            value={formatMwk(service.credited)}
+            sub={
+              service.waiting > 0
+                ? `${formatMwk(service.waiting)} still in escrow`
+                : service.count > 0
+                  ? `${service.count} credits`
+                  : 'No credits yet'
+            }
+          />
+        ))}
       </div>
 
       <h2 style={{ fontSize: 18, fontWeight: 800, margin: '8px 0 12px' }}>Ledger</h2>
@@ -255,9 +292,9 @@ export default function SuperAdminWalletPage() {
       ) : filtered.length === 0 ? (
         <div style={card}>
           <p style={{ margin: 0, color: '#6B7280' }}>
-            No fees or payouts in the ledger yet. New purchases stay in escrow until
-            the buyer confirms receipt (or auto-release after shipment). Check
-            “Fees still in escrow” above for pending commission.
+            No commission or payouts yet. Marketplace, food, and stay fees land here
+            when an order is released. Ride, digital, advert, and promotion payments
+            credit this wallet as soon as they are paid.
           </p>
         </div>
       ) : (
@@ -276,7 +313,22 @@ export default function SuperAdminWalletPage() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 700 }}>{t.description}</div>
+                    <div style={{ fontWeight: 700 }}>
+                      {t.description}
+                      {!payout && t.service && t.service !== 'other' ? (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            textTransform: 'uppercase',
+                            color: '#0F766E',
+                          }}
+                        >
+                          {t.service.replace('_', ' ')}
+                        </span>
+                      ) : null}
+                    </div>
                     <div style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>
                       {formatDateTime(t.createdAt)} · {t.reference}
                       {payout && t.payoutMethod ? ` · ${t.payoutMethod}` : ''}
@@ -422,7 +474,7 @@ function CashOutDialog({
           overflow: 'auto',
         }}
       >
-        <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800 }}>Cash out</h3>
+        <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800 }}>Pay out</h3>
         <p style={{ margin: '0 0 16px', color: '#6B7280', fontSize: 13 }}>
           Available {formatMwk(available)}. Minimum MWK {MIN_PAYOUT_MWK.toLocaleString()}.
           PayChangu sends the money, then this wallet is debited.

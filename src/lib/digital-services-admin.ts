@@ -395,6 +395,7 @@ export async function creditDigitalOrderPlatformFee(orderId: string): Promise<{
       status: 'completed',
       description,
       reference,
+      service: 'digital',
       source: 'digital_service',
       feeMode: 'full',
       digitalOrderId: order.id,

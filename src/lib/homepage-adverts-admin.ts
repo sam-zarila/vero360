@@ -454,6 +454,7 @@ export async function creditAdvertPlatformFee(advertId: string): Promise<{
       status: 'completed',
       description,
       reference,
+      service: 'homepage_ads',
       source: 'homepage_advert',
       feeMode: 'full',
       advertId: advert.id,

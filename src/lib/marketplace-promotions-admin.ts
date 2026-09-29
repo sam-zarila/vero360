@@ -403,6 +403,7 @@ export async function creditPromotionPlatformFee(promoId: string): Promise<{
       status: 'completed',
       description,
       reference,
+      service: 'promotions',
       source: 'marketplace_promotion',
       feeMode: 'full',
       promotionId: promo.id,

@@ -24,9 +24,11 @@ export type DashboardSectionId =
   | 'refunds'
   | 'merchant-reports'
   | 'users'
+  | 'kyc'
   | 'agents'
   | 'admins'
   | 'finance'
+  | 'wallet'
   | 'rewards'
   | 'verochat'
   | 'get-started'
@@ -220,6 +222,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#F0FDFA',
   },
   {
+    id: 'kyc',
+    title: 'KYC',
+    desc: 'Didit identity checks, reviews, and verification status',
+    icon: 'shield',
+    color: '#C2410C',
+    bg: '#FFF7ED',
+  },
+  {
     id: 'agents',
     title: 'Agents',
     desc: 'Field agents, onboarding, and registrations',
@@ -247,8 +257,8 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   },
   {
     id: 'wallet',
-    title: 'Admin wallet',
-    desc: 'Super admin platform fees (10% marketplace)',
+    title: 'Platform wallet',
+    desc: 'Commission collected from every Vero360 service',
     icon: 'wallet',
     color: '#0F766E',
     bg: '#F0FDFA',
@@ -368,6 +378,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'People',
     items: [
       { href: '/dashboard/users', label: 'Users', icon: 'users', badgeKey: 'users' },
+      { href: '/dashboard/kyc', label: 'KYC', icon: 'shield' },
       { href: '/dashboard/agents', label: 'Agents', icon: 'briefcase' },
       { href: '/dashboard/agents/registrations', label: 'Agent registrations', icon: 'users' },
       {
@@ -407,7 +418,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'System',
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
-      { href: '/dashboard/wallet', label: 'Admin wallet', icon: 'wallet', superAdminOnly: true },
+      { href: '/dashboard/wallet', label: 'Platform wallet', icon: 'wallet', superAdminOnly: true },
       {
         href: '/dashboard/rewards',
         label: 'Vero Coins',

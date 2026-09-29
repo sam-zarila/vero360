@@ -81,6 +81,7 @@ export type WalletTxRow = {
   recipientName: string | null
   recipientPhone: string | null
   fee: number | null
+  service: string
 }
 
 export type EscrowRow = {
@@ -189,7 +190,75 @@ export function parseWalletTx(
     recipientName: str(data.recipientName) || null,
     recipientPhone: str(data.recipientPhone) || null,
     fee: data.fee == null || data.fee === '' ? null : num(data.fee),
+    service: platformServiceOf({
+      service: str(data.service),
+      description: str(data.description),
+      reference: str(data.reference),
+    }),
   }
+}
+
+export const PLATFORM_SERVICES = [
+  'marketplace',
+  'food',
+  'stay',
+  'ride',
+  'digital',
+  'promotions',
+  'homepage_ads',
+  'courier',
+  'other',
+] as const
+
+export type PlatformService = (typeof PLATFORM_SERVICES)[number]
+
+export function platformServiceLabel(service: string): string {
+  switch (service) {
+    case 'marketplace':
+      return 'Marketplace'
+    case 'food':
+      return 'Food'
+    case 'stay':
+      return 'Stay'
+    case 'ride':
+      return 'Vero Ride'
+    case 'digital':
+      return 'Digital services'
+    case 'promotions':
+      return 'Promoted ads'
+    case 'homepage_ads':
+      return 'Homepage ads'
+    case 'courier':
+      return 'Vero Courier'
+    default:
+      return 'Other'
+  }
+}
+
+/** Group a platform fee using the stored service, then the description. */
+export function platformServiceOf(input: {
+  service?: string
+  description?: string
+  reference?: string
+  serviceType?: string
+}): PlatformService {
+  const explicit = String(input.service || input.serviceType || '')
+    .trim()
+    .toLowerCase()
+  if (explicit === 'accommodation') return 'stay'
+  if ((PLATFORM_SERVICES as readonly string[]).includes(explicit) && explicit !== 'other') {
+    return explicit as PlatformService
+  }
+  const text = `${input.description || ''} ${input.reference || ''}`.toLowerCase()
+  if (text.includes('food')) return 'food'
+  if (text.includes('stay') || text.includes('accommodation')) return 'stay'
+  if (text.includes('ride')) return 'ride'
+  if (text.includes('digital')) return 'digital'
+  if (text.includes('homepage') || text.includes('advert')) return 'homepage_ads'
+  if (text.includes('promote')) return 'promotions'
+  if (text.includes('courier')) return 'courier'
+  if (text.includes('marketplace')) return 'marketplace'
+  return 'other'
 }
 
 export function parseEscrow(id: string, data: Record<string, unknown>): EscrowRow {

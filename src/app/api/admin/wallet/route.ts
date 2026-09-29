@@ -6,10 +6,13 @@ import {
   PLATFORM_WALLET_USER_ID,
   WALLETS_COLLECTION,
   WALLET_TX_COLLECTION,
+  PLATFORM_SERVICES,
   isPayoutTx,
   parseEscrow,
   parseWallet,
   parseWalletTx,
+  platformServiceLabel,
+  platformServiceOf,
   type WalletRow,
   type WalletTxRow,
 } from '@/lib/finance'
@@ -163,6 +166,22 @@ export async function GET(request: Request) {
     const feesHeld = held.reduce((s, e) => s + e.serviceFeeAmount, 0)
     const feesCollected = collected.reduce((s, e) => s + e.serviceFeeAmount, 0)
     const feeTxs = transactions.filter(t => t.type.toLowerCase() === 'service_fee')
+    const byService = PLATFORM_SERVICES.filter(id => id !== 'other').map(id => {
+      const credited = feeTxs
+        .filter(t => t.service === id)
+        .reduce((s, t) => s + t.amount, 0)
+      const waiting = held
+        .filter(e => platformServiceOf({ serviceType: e.serviceType }) === id)
+        .reduce((s, e) => s + e.serviceFeeAmount, 0)
+      const count = feeTxs.filter(t => t.service === id).length
+      return {
+        id,
+        label: platformServiceLabel(id),
+        credited,
+        waiting,
+        count,
+      }
+    })
     const payoutTxs = transactions.filter(isPayoutTx)
     const lifetimeFees = feeTxs.reduce((s, t) => s + t.amount, 0)
 
@@ -187,6 +206,7 @@ export async function GET(request: Request) {
       wallet,
       transactions,
       backfill,
+      byService,
       summary: {
         balance: wallet?.balance ?? 0,
         pendingBalance: wallet?.pendingBalance ?? 0,
