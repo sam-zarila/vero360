@@ -16,6 +16,7 @@ import type { AdminRole, PanelAdmin } from '@/lib/admins'
 
 type PanelSession = {
   loading: boolean
+  bootstrap: boolean
   me: PanelAdmin | null
   role: AdminRole | null
   isSuperAdmin: boolean
@@ -26,6 +27,7 @@ type PanelSession = {
 
 const PanelSessionContext = createContext<PanelSession>({
   loading: true,
+  bootstrap: false,
   me: null,
   role: null,
   isSuperAdmin: false,
@@ -36,6 +38,7 @@ const PanelSessionContext = createContext<PanelSession>({
 
 export function PanelSessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
+  const [bootstrap, setBootstrap] = useState(false)
   const [me, setMe] = useState<PanelAdmin | null>(null)
   const [authReady, setAuthReady] = useState(false)
 
@@ -46,19 +49,17 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      if (!auth.currentUser) {
-        setMe(null)
-        return
-      }
-      const headers = await panelAuthHeaders()
+      const headers = auth.currentUser ? await panelAuthHeaders() : { Accept: 'application/json' }
       const res = await fetch('/api/admin/admins/me', { headers, cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
+      setBootstrap(Boolean(data?.needsBootstrap))
       if (res.ok && data?.authenticated && data?.me) {
         setMe(data.me as PanelAdmin)
       } else {
         setMe(null)
       }
     } catch {
+      setBootstrap(false)
       setMe(null)
     } finally {
       setLoading(false)
@@ -74,6 +75,7 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
     const role = me?.role ?? null
     return {
       loading,
+      bootstrap,
       me,
       role,
       isSuperAdmin: role === 'super_admin',
@@ -81,7 +83,7 @@ export function PanelSessionProvider({ children }: { children: ReactNode }) {
       authenticated: !!me,
       refresh,
     }
-  }, [loading, me, refresh])
+  }, [loading, bootstrap, me, refresh])
 
   return (
     <PanelSessionContext.Provider value={value}>{children}</PanelSessionContext.Provider>

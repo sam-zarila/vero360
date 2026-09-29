@@ -15,81 +15,6 @@ import {
   PanelSessionProvider,
   usePanelSession,
 } from './PanelSessionProvider'
-<<<<<<< HEAD
-import {
-  isHelpCenterSession,
-  subscribeToSessions,
-  type VeroChatSessionView,
-} from '@/lib/verochat'
-
-type NavItem = {
-  href: string
-  label: string
-  icon: string
-  badgeKey?: 'help' | 'courier' | 'orders' | 'users' | 'reports'
-}
-
-type NavGroup = {
-  title: string
-  items: NavItem[]
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    title: 'Overview',
-    items: [{ href: '/dashboard', label: 'Dashboard', icon: '▦' }],
-  },
-  {
-    title: 'Services',
-    items: [
-      { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: '🚗' },
-      {
-        href: '/dashboard/vero-courier',
-        label: 'Vero Courier',
-        icon: '🚚',
-        badgeKey: 'courier',
-      },
-      { href: '/dashboard/food', label: 'Food', icon: '🍔' },
-      { href: '/dashboard/jobs', label: 'Jobs', icon: '💼' },
-      { href: '/dashboard/stay', label: 'Stay', icon: '🏨' },
-      { href: '/dashboard/marketplace', label: 'Marketplace', icon: '🛒' },
-      { href: '/dashboard/orders', label: 'Orders', icon: '📦', badgeKey: 'orders' },
-      { href: '/dashboard/refunds', label: 'Refunds', icon: '↩️' },
-      { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: '🚩', badgeKey: 'reports' },
-      { href: '/dashboard/promotion', label: 'Promotion', icon: '📣' },
-      { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: '✨' },
-    ],
-  },
-  {
-    title: 'People',
-    items: [
-      { href: '/dashboard/users', label: 'Users', icon: '👥', badgeKey: 'users' },
-      { href: '/dashboard/admins', label: 'Admins', icon: '🛡️' },
-      {
-        href: '/dashboard/verochat',
-        label: 'Help Center',
-        icon: '🎧',
-        badgeKey: 'help',
-      },
-    ],
-  },
-  {
-    title: 'System',
-    items: [
-      { href: '/dashboard/wallet', label: 'Admin wallet', icon: '🏦' },
-      { href: '/dashboard/finance', label: 'Finance', icon: '💰' },
-      { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
-    ],
-  },
-]
-
-function getHelpCenterUnread(sessions: VeroChatSessionView[]) {
-  return sessions
-    .filter(isHelpCenterSession)
-    .reduce((sum, s) => sum + (s.unreadForAgent || 0), 0)
-}
-=======
->>>>>>> 8662bc56413d6cc08b4740f609f2d8012f2f5027
 
 function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard'
@@ -114,7 +39,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const unread = useHelpCenterUnreadBadge()
-  const { isSuperAdmin, loading: sessionLoading, authenticated } = usePanelSession()
+  const { isSuperAdmin, loading: sessionLoading, bootstrap } = usePanelSession()
   const {
     courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
     orders: { pending: ordersPending, toast: ordersToast, clearToast: clearOrdersToast },
@@ -129,30 +54,19 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const navGroups = useMemo(() => {
     return DASHBOARD_NAV_GROUPS.map(group => ({
       ...group,
-<<<<<<< HEAD
-      items: group.items.filter(item => {
-        if (
-          item.href === '/dashboard/finance' ||
-          item.href === '/dashboard/wallet' ||
-          item.href === '/dashboard/admins'
-        ) {
-          return isSuperAdmin
-        }
-        return true
-      }),
-=======
       items: group.items.filter(item => !item.superAdminOnly || isSuperAdmin),
->>>>>>> 8662bc56413d6cc08b4740f609f2d8012f2f5027
     })).filter(group => group.items.length > 0)
   }, [isSuperAdmin])
 
   useEffect(() => {
     if (sessionLoading) return
-    // Normal admins (or signed-out) cannot open finance / admins.
+    // Allow /dashboard/admins during bootstrap (no admins exist yet).
+    if (bootstrap && pathname.startsWith('/dashboard/admins')) return
+    // Normal admins (or signed-out) cannot open finance / wallet / admins.
     if (isSuperAdminOnlyPath(pathname) && !isSuperAdmin) {
       router.replace('/dashboard')
     }
-  }, [sessionLoading, isSuperAdmin, pathname, router, authenticated])
+  }, [sessionLoading, isSuperAdmin, bootstrap, pathname, router])
 
   useEffect(() => {
     if (!courierToast) return

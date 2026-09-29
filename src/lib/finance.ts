@@ -4,8 +4,25 @@ export const WALLETS_COLLECTION = 'wallets'
 export const WALLET_TX_COLLECTION = 'wallet_transactions'
 export const ORDER_ESCROW_COLLECTION = 'order_escrow'
 
-/** Marketplace platform fee (must match Flutter FirebaseWalletService.marketplaceServiceFeeRate). */
+/**
+ * Fallback label for older escrow rows that stored a flat 10% fee.
+ * New orders store the tier rate from the buyer-paid commission schedule.
+ */
 export const MARKETPLACE_SERVICE_FEE_RATE = 0.1
+
+/** Buyer-paid commission rate for a provider price in MWK. Not deducted from the seller. */
+export function buyerCommissionRate(providerPrice: number): number {
+  if (!(providerPrice > 0)) return 0
+  if (providerPrice <= 5_000) return 0.1
+  if (providerPrice <= 10_000) return 0.09
+  if (providerPrice <= 20_000) return 0.08
+  if (providerPrice <= 50_000) return 0.07
+  if (providerPrice <= 100_000) return 0.06
+  if (providerPrice <= 500_000) return 0.05
+  if (providerPrice <= 2_000_000) return 0.04
+  if (providerPrice <= 10_000_000) return 0.033
+  return 0.03
+}
 export const PLATFORM_WALLET_USER_ID = 'super_admin'
 
 export function serviceFeePercentLabel(row: {

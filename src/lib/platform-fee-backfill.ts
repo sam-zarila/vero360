@@ -149,7 +149,8 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
       continue
     }
 
-    let fee = num(data.serviceFeeAmount)
+    const veroShare = num(data.veroShareAmount)
+    let fee = veroShare > 0 ? veroShare : num(data.serviceFeeAmount)
     if (!(fee > 0)) {
       const gross = num(data.grossAmount)
       const merchantAmount = num(data.merchantAmount)
@@ -191,7 +192,7 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
     const description =
       serviceType === 'accommodation'
         ? `Stay service fee (${txRef})`
-        : `Marketplace service fee 10% (${txRef})`
+        : `Marketplace buyer commission — Vero share (${txRef})`
     const txPayload: Record<string, unknown> = {
       transactionId,
       walletId: PLATFORM_WALLET_DOC_ID,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import Logo from '@/app/components/landing/Logo'
@@ -9,12 +9,70 @@ import { auth } from '@/lib/firebase'
 export default function PanelSignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [bootstrap, setBootstrap] = useState(false)
+  const [bootstrapChecked, setBootstrapChecked] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/admins/me', {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!cancelled) setBootstrap(Boolean(data?.needsBootstrap))
+      } catch {
+        if (!cancelled) setBootstrap(false)
+      } finally {
+        if (!cancelled) setBootstrapChecked(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const goToDashboard = () => {
     window.location.href = '/dashboard'
+  }
+
+  const createFirstAdmin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    setNotice('')
+
+    try {
+      const res = await fetch('/api/admin/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          displayName: displayName.trim() || undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to create admin')
+      }
+
+      setNotice(data.message || 'Super admin created. Signing you in…')
+      setBootstrap(false)
+
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password)
+      await cred.user.getIdToken()
+      goToDashboard()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create admin')
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,13 +166,77 @@ export default function PanelSignIn() {
               color: 'var(--text)',
             }}
           >
-            Admin sign in
+            {bootstrap ? 'Create super admin' : 'Admin sign in'}
           </h1>
           <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.6 }}>
-            Only admins can sign in.
+            {bootstrap
+              ? 'No admin accounts exist yet. Create the first super admin below.'
+              : 'Only admins can sign in.'}
           </p>
         </div>
 
+        {!bootstrapChecked ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 14 }}>Loading…</p>
+        ) : bootstrap ? (
+          <form
+            onSubmit={createFirstAdmin}
+            style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
+          >
+            <div>
+              <label htmlFor="email" style={labelStyle}>
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="admin@vero360.app"
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" style={labelStyle}>
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={6}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="displayName" style={labelStyle}>
+                Display name (optional)
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="Admin"
+                style={inputStyle}
+              />
+            </div>
+
+            <button type="submit" disabled={loading} style={submitStyle(loading)}>
+              {loading ? 'Creating…' : 'Create super admin'}
+            </button>
+
+            {notice ? <p style={noticeStyle}>{notice}</p> : null}
+            {error ? <p style={errorStyle}>{error}</p> : null}
+          </form>
+        ) : (
         <form
           onSubmit={handleSubmit}
           style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
@@ -248,19 +370,10 @@ export default function PanelSignIn() {
           </button>
 
           {error ? (
-            <p
-              style={{
-                marginTop: 4,
-                fontSize: 14,
-                color: 'var(--error)',
-                textAlign: 'center',
-                lineHeight: 1.5,
-              }}
-            >
-              {error}
-            </p>
+            <p style={errorStyle}>{error}</p>
           ) : null}
         </form>
+        )}
 
         <p style={{ textAlign: 'center', marginTop: 28, fontSize: 14 }}>
           <Link href="/" style={{ color: 'var(--text-3)', fontWeight: 500 }}>
@@ -271,3 +384,52 @@ export default function PanelSignIn() {
     </main>
   )
 }
+
+const labelStyle = {
+  display: 'block',
+  fontSize: 13,
+  fontWeight: 600,
+  color: 'var(--text-2)',
+  marginBottom: 8,
+} as const
+
+const inputStyle = {
+  width: '100%',
+  padding: '14px 16px',
+  borderRadius: 12,
+  border: '1.5px solid var(--border)',
+  fontSize: 15,
+  outline: 'none',
+} as const
+
+function submitStyle(loading: boolean) {
+  return {
+    marginTop: 8,
+    padding: '14px 24px',
+    borderRadius: 12,
+    width: '100%',
+    border: 'none',
+    background: loading ? 'var(--primary-light)' : 'var(--primary)',
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 16,
+    cursor: loading ? 'wait' : 'pointer',
+    opacity: loading ? 0.8 : 1,
+  } as const
+}
+
+const errorStyle = {
+  marginTop: 4,
+  fontSize: 14,
+  color: 'var(--error)',
+  textAlign: 'center',
+  lineHeight: 1.5,
+} as const
+
+const noticeStyle = {
+  marginTop: 4,
+  fontSize: 14,
+  color: '#047857',
+  textAlign: 'center',
+  lineHeight: 1.5,
+} as const
