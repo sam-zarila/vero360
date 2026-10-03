@@ -10,6 +10,7 @@ import {
 import { verifyPaychanguTransaction } from '@/lib/paychangu'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { DIGITAL_SERVICE_ORDERS_COLLECTION } from '@/lib/digital-services'
+import { recordAudit } from '@/lib/audit-trail-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +48,18 @@ async function settleFromTxRef(txRef: string, orderIdHint?: string | null) {
       orderId,
       txRef: cleanTx,
     })
+    if (!settled.alreadyPaid) {
+      await recordAudit({
+        action: 'settle',
+        resource: 'payment',
+        resourceId: orderId,
+        summary: `PayChangu paid digital order ${orderId} (${cleanTx})`,
+        actorUid: 'paychangu',
+        actorEmail: '',
+        actorName: 'PayChangu',
+        actorRole: 'webhook',
+      })
+    }
     return {
       success: true,
       paid: true,
@@ -65,6 +78,18 @@ async function settleFromTxRef(txRef: string, orderIdHint?: string | null) {
       promoId: promo.id,
       txRef: cleanTx,
     })
+    if (settled.paid && !settled.alreadyPaid) {
+      await recordAudit({
+        action: 'settle',
+        resource: 'payment',
+        resourceId: settled.promo.id,
+        summary: `PayChangu paid promotion ${settled.promo.id} (${cleanTx})`,
+        actorUid: 'paychangu',
+        actorEmail: '',
+        actorName: 'PayChangu',
+        actorRole: 'webhook',
+      })
+    }
     return {
       success: true,
       paid: settled.paid,

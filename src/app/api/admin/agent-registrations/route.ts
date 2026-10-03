@@ -6,6 +6,7 @@ import {
   listAgentRegistrationsPayload,
 } from '@/lib/agent-registrations-admin'
 import type { CreateAgentRegistrationInput } from '@/lib/agent-registrations'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +63,12 @@ export async function POST(request: Request) {
     }
 
     const result = await createAgentRegistration(body, actor.admin)
+    await recordPanelAudit(actor, {
+      action: 'create',
+      resource: 'agent_registration',
+      resourceId: result.registration.id,
+      summary: `Registered ${result.registration.role} ${result.registration.email || result.registration.phone}`,
+    })
 
     return NextResponse.json(
       {

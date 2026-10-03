@@ -12,6 +12,7 @@ import {
   parsePanelAdmin,
   type AdminRole,
 } from '@/lib/admins'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import { verifyFirebasePassword } from '@/lib/verify-firebase-password'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -131,6 +132,15 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
     const updated = await ref.get()
     const admin = parsePanelAdmin(id, (updated.data() || {}) as Record<string, unknown>)
+    await recordPanelAudit(actor, {
+      action,
+      resource: 'admin',
+      resourceId: id,
+      summary:
+        action === 'set_role'
+          ? `Changed ${admin.email} role to ${admin.role}`
+          : `${action === 'suspend' ? 'Suspended' : 'Activated'} ${admin.email}`,
+    })
     return NextResponse.json({
       success: true,
       admin,

@@ -31,6 +31,7 @@ export type DashboardSectionId =
   | 'verochat'
   | 'get-started'
   | 'settings'
+  | 'audit'
 
 export type DashboardSection = {
   id: DashboardSectionId
@@ -228,6 +229,15 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#ECFDF5',
   },
   {
+    id: 'audit',
+    title: 'Audit trail',
+    desc: 'Who changed accounts, content, and payments',
+    icon: 'shield',
+    color: '#6D28D9',
+    bg: '#F5F3FF',
+    superAdminOnly: true,
+  },
+  {
     id: 'admins',
     title: 'Admins',
     desc: 'Super admins and panel admins',
@@ -398,6 +408,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'System',
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
+      { href: '/dashboard/audit', label: 'Audit trail', icon: 'shield', superAdminOnly: true },
       {
         href: '/dashboard/rewards',
         label: 'Vero Coins',

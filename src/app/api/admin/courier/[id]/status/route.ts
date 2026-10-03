@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import {
   isCourierStatus,
   parseCourierDeliveries,
@@ -37,6 +38,7 @@ async function loadDelivery(
 export async function PATCH(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(request)
   const { id } = await ctx.params
   const auth = getVeroAuthHeader(request)
 
@@ -171,6 +173,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
       console.warn('Courier status push skipped:', notifyError)
     }
 
+    const tracking = delivery?.trackingNumber || before?.trackingNumber || id
+    await recordPanelAudit(actor, {
+      action: status === 'CANCELLED' ? 'cancel' : 'update',
+      resource: 'courier',
+      resourceId: id,
+      summary: `Set courier ${tracking} to ${status}`,
+    })
     return NextResponse.json({
       success: true,
       item: delivery || data,

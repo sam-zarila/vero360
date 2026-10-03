@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import { purgeUserData } from '@/lib/purge-user-data'
 import { parseAppUser, USERS_COLLECTION } from '@/lib/users'
@@ -22,6 +23,7 @@ async function readBody(request: Request): Promise<ActionBody> {
 export async function PATCH(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(request)
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'User id required' }, { status: 400 })
@@ -65,6 +67,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
     const updated = await ref.get()
     const user = parseAppUser(id, (updated.data() || {}) as Record<string, unknown>)
+    await recordPanelAudit(actor, {
+      action,
+      resource: 'user',
+      resourceId: id,
+      summary: `${suspended ? 'Suspended' : 'Activated'} ${user.email || user.name || id}`,
+    })
     return NextResponse.json({
       success: true,
       action,
@@ -85,6 +93,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
 export async function DELETE(_request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(_request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(_request)
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'User id required' }, { status: 400 })
@@ -117,6 +126,12 @@ export async function DELETE(_request: Request, ctx: Ctx) {
       // ignore
     }
 
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'user',
+      resourceId: id,
+      summary: `Deleted user ${id} and related data`,
+    })
     return NextResponse.json({
       success: true,
       deleted: true,

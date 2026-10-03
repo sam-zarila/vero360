@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import {
   deleteSellBanner,
   updateSellBanner,
@@ -15,6 +16,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
   try {
+    const actor = await requirePanelAdmin(request)
     const { id } = await ctx.params
     const contentType = request.headers.get('content-type') || ''
 
@@ -46,6 +48,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
       }
 
       const item = await updateSellBanner(id, patch)
+      await recordPanelAudit(actor, {
+        action: 'update',
+        resource: 'sell_banner',
+        resourceId: id,
+        summary: `Updated sell banner “${item.title}”`,
+      })
       return NextResponse.json({ success: true, item })
     }
 
@@ -79,6 +87,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
       sortOrder:
         body.sortOrder !== undefined ? Number(body.sortOrder) : undefined,
     })
+    await recordPanelAudit(actor, {
+      action: 'update',
+      resource: 'sell_banner',
+      resourceId: id,
+      summary: `Updated sell banner “${item.title}”`,
+    })
     return NextResponse.json({ success: true, item })
   } catch (err) {
     console.error('Admin sell banners PATCH:', err)
@@ -93,8 +107,15 @@ export async function DELETE(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
   try {
+    const actor = await requirePanelAdmin(request)
     const { id } = await ctx.params
     await deleteSellBanner(id)
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'sell_banner',
+      resourceId: id,
+      summary: 'Deleted a sell banner',
+    })
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('Admin sell banners DELETE:', err)

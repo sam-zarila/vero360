@@ -11,6 +11,7 @@ import {
   listMarketingTasks,
 } from '@/lib/marketing-tasks-admin'
 import type { CreateMarketingTaskInput } from '@/lib/marketing-tasks'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,6 +91,13 @@ export async function POST(request: Request) {
         createdByName: actor.admin.displayName || actor.admin.email,
       },
     )
+
+    await recordPanelAudit(actor, {
+      action: 'create',
+      resource: 'marketing_task',
+      resourceId: item.id,
+      summary: `Created task “${item.taskTitle}” for ${item.marketerName || item.marketerEmail}`,
+    })
 
     return NextResponse.json({ success: true, item }, { status: 201 })
   } catch (err) {

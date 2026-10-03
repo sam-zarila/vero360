@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import { getAdminDb } from '@/lib/firebase-admin'
 import {
   apiErrorMessage,
@@ -23,6 +24,7 @@ function parseKey(key: string): { source: string; rawId: string } | null {
 export async function DELETE(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(request)
   const { key } = await ctx.params
   const parsed = parseKey(key)
   if (!parsed?.rawId) {
@@ -34,11 +36,23 @@ export async function DELETE(request: Request, ctx: Ctx) {
   try {
     if (source === 'marketplace') {
       await getAdminDb().collection('marketplace_items').doc(rawId).delete()
+      await recordPanelAudit(actor, {
+        action: 'delete',
+        resource: 'food',
+        resourceId: rawId,
+        summary: `Removed food listing ${rawId}`,
+      })
       return NextResponse.json({ success: true, deleted: true })
     }
 
     if (source === 'menu') {
       await getAdminDb().collection('food_menu_items').doc(rawId).delete()
+      await recordPanelAudit(actor, {
+        action: 'delete',
+        resource: 'food',
+        resourceId: rawId,
+        summary: `Removed menu item ${rawId}`,
+      })
       return NextResponse.json({ success: true, deleted: true })
     }
 
@@ -64,6 +78,12 @@ export async function DELETE(request: Request, ctx: Ctx) {
           { status: res.status },
         )
       }
+      await recordPanelAudit(actor, {
+        action: 'delete',
+        resource: 'food',
+        resourceId: rawId,
+        summary: `Removed food API item ${rawId}`,
+      })
       return NextResponse.json({ success: true, deleted: true })
     }
 

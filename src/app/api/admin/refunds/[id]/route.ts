@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
 import {
@@ -13,6 +14,7 @@ type Ctx = { params: Promise<{ id: string }> }
 export async function PATCH(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(request)
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'Invalid refund id' }, { status: 400 })
@@ -59,6 +61,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const updated = await ref.get()
     const item = parseRefundRequest(updated.id, updated.data() as Record<string, unknown>)
 
+    await recordPanelAudit(actor, {
+      action: 'update',
+      resource: 'refund',
+      resourceId: id,
+      summary: `Set refund ${id} to ${status}`,
+    })
     return NextResponse.json({ success: true, item })
   } catch (err) {
     console.error('Admin refund PATCH error:', err)

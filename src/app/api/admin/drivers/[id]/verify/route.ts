@@ -3,6 +3,7 @@ import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
 import { parseDriver } from '@/lib/drivers'
 import { nestAdminFetch } from '@/lib/nest-admin'
 import { assertCanManageFleetDriver } from '@/lib/agent-driver-access'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -29,7 +30,14 @@ export async function POST(request: Request, ctx: Ctx) {
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })
     }
-    return NextResponse.json({ success: true, driver: parseDriver(body) ?? body })
+    const driver = parseDriver(body)
+    await recordPanelAudit(actor, {
+      action: 'verify',
+      resource: 'driver',
+      resourceId: id,
+      summary: `Verified driver ${driver?.name || existing.name || id}`,
+    })
+    return NextResponse.json({ success: true, driver: driver ?? body })
   } catch (err) {
     const auth = authErrorResponse(err)
     if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })

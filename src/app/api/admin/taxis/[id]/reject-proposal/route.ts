@@ -3,6 +3,7 @@ import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
 import { parseTaxi } from '@/lib/drivers'
 import { nestAdminFetch } from '@/lib/nest-admin'
 import { assertCanManageFleetTaxi } from '@/lib/agent-driver-access'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -35,7 +36,14 @@ export async function POST(request: Request, ctx: Ctx) {
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })
     }
-    return NextResponse.json({ success: true, taxi: parseTaxi(body) ?? body })
+    const taxi = parseTaxi(body)
+    await recordPanelAudit(actor, {
+      action: 'reject',
+      resource: 'taxi',
+      resourceId: id,
+      summary: `Rejected taxi proposal ${taxi?.licensePlate || id}`,
+    })
+    return NextResponse.json({ success: true, taxi: taxi ?? body })
   } catch (err) {
     const auth = authErrorResponse(err)
     if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
