@@ -71,6 +71,13 @@ function str(value: unknown): string {
   return value == null ? '' : String(value).trim()
 }
 
+/** Account placeholders such as +firebase_… are not numbers staff can call. */
+function callablePhone(value: unknown): string {
+  const phone = str(value)
+  if (!phone || phone.toLowerCase().startsWith('+firebase_')) return ''
+  return phone
+}
+
 function nullableStr(value: unknown): string | null {
   const s = str(value)
   return s ? s : null
@@ -129,7 +136,7 @@ export function parseDriver(raw: unknown): FleetDriver | null {
     userId: toId(item.userId),
     name: str(user.name) || 'Driver',
     email: str(user.email),
-    phone: str(user.phone),
+    phone: callablePhone(user.phone),
     status: parseDriverStatus(item.status),
     isVerified: item.isVerified === true,
     isActive: item.isActive !== false,
