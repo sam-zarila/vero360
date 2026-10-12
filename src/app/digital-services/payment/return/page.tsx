@@ -9,6 +9,7 @@ function PaymentReturnInner() {
   const params = useSearchParams()
   const txRef = params.get('tx_ref') || ''
   const orderId = params.get('order_id') || ''
+  const depositId = params.get('deposit_id') || ''
   const [status, setStatus] = useState<'checking' | 'paid' | 'pending' | 'error'>(
     'checking',
   )
@@ -19,16 +20,18 @@ function PaymentReturnInner() {
     let tries = 0
 
     async function check() {
-      if (!txRef) {
+      if (!txRef && !depositId) {
         setStatus('error')
         setMessage('Missing payment reference.')
         return
       }
       try {
-        const qs = new URLSearchParams({ tx_ref: txRef })
+        const qs = new URLSearchParams()
+        if (depositId) qs.set('deposit_id', depositId)
+        if (txRef) qs.set('tx_ref', txRef)
         if (orderId) qs.set('order_id', orderId)
         const res = await fetch(
-          `/api/public/payments/paychangu/callback?${qs.toString()}`,
+          `/api/public/payments/pawapay/status?${qs.toString()}`,
           { cache: 'no-store' },
         )
         const data = await res.json().catch(() => ({}))
@@ -40,11 +43,20 @@ function PaymentReturnInner() {
           )
           return
         }
+        if (data.status === 'failed') {
+          setStatus('error')
+          setMessage(
+            data.failure ||
+              data.error ||
+              'The prompt was not approved. Go back and try again.',
+          )
+          return
+        }
         tries += 1
         if (tries >= 8) {
           setStatus('pending')
           setMessage(
-            'We’re still waiting for PayChangu confirmation. If you paid, keep this reference and contact support. Your order will update automatically.',
+            'We’re still waiting for PawaPay confirmation. If you approved the prompt, keep this reference and contact support. Your order will update automatically.',
           )
           return
         }
@@ -65,7 +77,7 @@ function PaymentReturnInner() {
     return () => {
       cancelled = true
     }
-  }, [txRef, orderId])
+  }, [txRef, orderId, depositId])
 
   const tone =
     status === 'paid'

@@ -1,17 +1,22 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
+import { FieldValue } from 'firebase-admin/firestore'
+import { getAdminDb } from '@/lib/firebase-admin'
+import { DIGITAL_SERVICE_ORDERS_COLLECTION } from '@/lib/digital-services'
 import { getDigitalServicesConfig } from '@/lib/digital-services-config'
 import {
   computeDigitalAmountMwk,
   createPendingDigitalOrder,
   normalizeMalawiPhone,
-  siteOrigin,
-  splitBuyerName,
 } from '@/lib/digital-services-checkout'
+import { savePawaPayDeposit } from '@/lib/pawapay-deposits'
 import {
-  initiatePaychanguPayment,
-  paychanguConfigured,
-} from '@/lib/paychangu'
+  createPawaPayDeposit,
+  networkFromMalawiPhone,
+  pawapayConfigured,
+  providerForNetwork,
+  type PawaPayNetwork,
+} from '@/lib/pawapay'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,11 +26,11 @@ function isEmail(v: string) {
 
 export async function POST(request: Request) {
   try {
-    if (!paychanguConfigured()) {
+    if (!pawapayConfigured()) {
       return NextResponse.json(
         {
           error:
-            'Online payments are not configured yet. Add PAYCHANGU_SECRET_KEY in Netlify env.',
+            'Online payments are not configured yet. Add PAWAPAY_API_TOKEN in Netlify env.',
         },
         { status: 503 },
       )
@@ -111,6 +116,23 @@ export async function POST(request: Request) {
       )
     }
 
+    const guessed = networkFromMalawiPhone(buyerPhone)
+    const requested = String(body.network || '').trim().toLowerCase()
+    const network: PawaPayNetwork | '' =
+      requested === 'airtel' || requested === 'tnm' ? requested : guessed
+    if (!network) {
+      return NextResponse.json(
+        { error: 'Use an Airtel Money (099) or TNM Mpamba (088) number.' },
+        { status: 400 },
+      )
+    }
+    if (guessed && network !== guessed) {
+      return NextResponse.json(
+        { error: 'This number does not match the network you selected.' },
+        { status: 400 },
+      )
+    }
+
     const txRef = `vero-digital-${Date.now()}`
     const buyerUid = `web:${randomUUID()}`
     const orderId = await createPendingDigitalOrder({
@@ -126,30 +148,60 @@ export async function POST(request: Request) {
       source: 'web',
     })
 
-    const origin = siteOrigin()
-    const { firstName, lastName } = splitBuyerName(buyerName)
-    const description = isSubscription
-      ? `Digital: ${product.name} • MWK ${amountMwk}`
-      : `Digital: ${product.name} • $${usd} (MWK ${amountMwk})`
-
-    const { checkoutUrl } = await initiatePaychanguPayment({
-      txRef,
-      firstName,
-      lastName,
-      email: buyerEmail,
-      phone: buyerPhone,
-      amountMwk,
-      description,
-      callbackUrl: `${origin}/api/public/payments/paychangu/callback`,
-      returnUrl: `${origin}/digital-services/payment/return?tx_ref=${encodeURIComponent(txRef)}&order_id=${encodeURIComponent(orderId)}`,
-    })
+    const depositId = randomUUID()
+    try {
+      await savePawaPayDeposit({
+        depositId,
+        userId: buyerUid,
+        amount: amountMwk,
+        phone: buyerPhone,
+        provider: providerForNetwork(network),
+        reference: txRef,
+        orderId,
+        kind: 'digital_order',
+      })
+      await createPawaPayDeposit({
+        depositId,
+        amountMwk,
+        phone: buyerPhone,
+        network,
+        reference: txRef,
+      })
+      await getAdminDb()
+        .collection(DIGITAL_SERVICE_ORDERS_COLLECTION)
+        .doc(orderId)
+        .set(
+          {
+            depositId,
+            paymentProvider: 'pawapay',
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        )
+    } catch (err) {
+      await getAdminDb()
+        .collection(DIGITAL_SERVICE_ORDERS_COLLECTION)
+        .doc(orderId)
+        .set(
+          {
+            status: 'failed',
+            depositId,
+            paymentProvider: 'pawapay',
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        )
+        .catch(() => {})
+      throw err
+    }
 
     return NextResponse.json({
       success: true,
-      checkoutUrl,
+      depositId,
       orderId,
       txRef,
       amountMwk,
+      status: 'pending',
     })
   } catch (err) {
     console.error('Digital checkout POST:', err)

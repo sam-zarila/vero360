@@ -559,7 +559,7 @@ function Overview({
             (<code>released</code>) or the window passes (<code>auto_released</code>).
           </li>
           <li>
-            Merchant cashes out from available balance → PayChangu payout runs and the wallet is
+            Merchant cashes out from available balance and the wallet is
             debited instantly (<code>type: payout</code>, <code>status: completed</code>). Every
             cash-out is recorded under <strong>Payouts</strong>.
           </li>

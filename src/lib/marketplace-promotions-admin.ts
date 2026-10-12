@@ -2,7 +2,7 @@ import 'server-only'
 
 import { FieldValue, Timestamp, type DocumentData } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
-import { verifyPaychanguTransaction } from '@/lib/paychangu'
+import { confirmPawaPayReference } from '@/lib/pawapay-deposits'
 import {
   MARKETPLACE_PROMOTIONS_COLLECTION,
   isMarketplaceBoostLive,
@@ -196,14 +196,16 @@ export async function findMarketplacePromotionByTxRef(
 }
 
 /**
- * Confirm PayChangu payment and activate a promote order.
- * Fixes stuck `pending_payment` after the user already paid (CF activation missed).
+ * Confirm a PawaPay deposit and activate a promote order.
+ * Fixes stuck `pending_payment` after the customer already approved the prompt.
  */
 export async function settleMarketplacePromotionPayment(opts: {
   promoId?: string
   txRef?: string
-  /** Skip PayChangu verify (admin force-confirm). */
+  /** Skip PawaPay verify (admin force-confirm). */
   force?: boolean
+  /** Caller already confirmed the PawaPay deposit. */
+  alreadyConfirmed?: boolean
 }): Promise<{
   promo: MarketplacePromotion
   alreadyPaid: boolean
@@ -239,11 +241,12 @@ export async function settleMarketplacePromotionPayment(opts: {
   const txRef = txHint || promo.txRef || ''
   if (!txRef) throw new Error('This promotion has no payment reference (txRef)')
 
-  if (!opts.force) {
-    const verify = await verifyPaychanguTransaction(txRef)
+  if (!opts.force && !opts.alreadyConfirmed) {
+    const verify = await confirmPawaPayReference(txRef, promo.amountMwk)
     if (!verify.paid) {
       throw new Error(
-        `PayChangu still reports "${verify.status || 'pending'}". Wait for the bank/MoMo confirmation, then try again.`,
+        verify.failure ||
+          `PawaPay still reports "${verify.status || 'pending'}". Wait until the prompt is approved, then try again.`,
       )
     }
   }
@@ -280,7 +283,11 @@ export async function settleMarketplacePromotionPayment(opts: {
         paidAt: FieldValue.serverTimestamp(),
         expiresAt: Timestamp.fromDate(until),
         paymentVerifiedAt: FieldValue.serverTimestamp(),
-        paymentVerifiedBy: opts.force ? 'admin_force' : 'admin_paychangu_verify',
+        paymentVerifiedBy: opts.force
+          ? 'admin_force'
+          : opts.alreadyConfirmed
+            ? 'pawapay'
+            : 'admin_pawapay_verify',
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
@@ -294,7 +301,11 @@ export async function settleMarketplacePromotionPayment(opts: {
         paidAt: FieldValue.serverTimestamp(),
         expiresAt: Timestamp.fromDate(ends),
         paymentVerifiedAt: FieldValue.serverTimestamp(),
-        paymentVerifiedBy: opts.force ? 'admin_force' : 'admin_paychangu_verify',
+        paymentVerifiedBy: opts.force
+          ? 'admin_force'
+          : opts.alreadyConfirmed
+            ? 'pawapay'
+            : 'admin_pawapay_verify',
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },

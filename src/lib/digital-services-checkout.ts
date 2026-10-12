@@ -87,6 +87,8 @@ export async function createPendingDigitalOrder(input: {
     currency: 'MWK',
     status: 'pending_payment',
     txRef: input.txRef,
+    depositId: null,
+    paymentProvider: 'pawapay',
     buyerUid: input.buyerUid,
     buyerName: input.buyerName,
     buyerEmail: input.buyerEmail,
