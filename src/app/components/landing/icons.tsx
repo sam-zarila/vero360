@@ -346,13 +346,15 @@ export function VeroIcon({
 export function IconBadge({
   name,
   size = 22,
-  bg = 'var(--primary-light)',
+  bg = '#fff',
   color = 'var(--primary-dark)',
+  border,
 }: {
   name: VeroIconName
   size?: number
   bg?: string
   color?: string
+  border?: string
 }) {
   const box = Math.round(size * 2.15)
   return (
@@ -362,6 +364,7 @@ export function IconBadge({
         height: box,
         borderRadius: 14,
         background: bg,
+        border: border ?? (bg === '#fff' ? '1px solid var(--border)' : 'none'),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

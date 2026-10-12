@@ -5,6 +5,8 @@ export const DIGITAL_BRAND_IMAGES: Record<string, string> = {
   spotify: '/brands/spotify.svg',
   apple_music: '/brands/apple_music.svg',
   netflix: '/brands/netflix.svg',
+  chatgpt: '/brands/chatgpt.svg',
+  chatgpt_basic: '/brands/chatgpt.svg',
   chatgpt_plus: '/brands/chatgpt.svg',
   visa_gc: '/brands/visa.svg',
   paypal_gc: '/brands/paypal.svg',
@@ -26,6 +28,7 @@ export function digitalBrandImage(
   if (custom) return custom
   const k = key.trim().toLowerCase()
   if (k.startsWith('netflix')) return DIGITAL_BRAND_IMAGES.netflix || null
+  if (k.startsWith('chatgpt')) return DIGITAL_BRAND_IMAGES.chatgpt || null
   return DIGITAL_BRAND_IMAGES[k] || DIGITAL_BRAND_IMAGES[key] || null
 }
 

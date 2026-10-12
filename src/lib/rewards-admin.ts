@@ -2,15 +2,15 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import { USERS_COLLECTION } from '@/lib/users'
 import { WALLET_TX_COLLECTION } from '@/lib/finance'
 import {
-  COINS_PER_REDEEM,
+  MIN_CASH_OUT_MWK,
   MWK_PER_COIN,
-  MWK_PER_REDEEM,
   type RewardsSummary,
   type RewardsUserRow,
 } from '@/lib/rewards-rules'
 
 export {
   COINS_PER_REDEEM,
+  MIN_CASH_OUT_MWK,
   MWK_PER_COIN,
   MWK_PER_REDEEM,
   MAX_SPIN_COINS,
@@ -57,13 +57,13 @@ function tsToIso(value: unknown): string | null {
 
 export function deriveCoinBuckets(coinsRaw: number) {
   const coins = Math.max(0, Math.floor(coinsRaw))
-  const batches = Math.floor(coins / COINS_PER_REDEEM)
-  const withdrawableCoins = batches * COINS_PER_REDEEM
+  const canCashOut = coins * MWK_PER_COIN >= MIN_CASH_OUT_MWK
+  const withdrawableCoins = canCashOut ? coins : 0
   return {
     coins,
     withdrawableCoins,
-    withdrawableMwk: batches * MWK_PER_REDEEM,
-    pendingCoins: coins % COINS_PER_REDEEM,
+    withdrawableMwk: withdrawableCoins * MWK_PER_COIN,
+    pendingCoins: canCashOut ? 0 : coins,
     notionalMwk: coins * MWK_PER_COIN,
   }
 }

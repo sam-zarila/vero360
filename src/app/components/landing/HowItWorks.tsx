@@ -8,7 +8,7 @@ const steps = [
       ),
       title: 'Browse & search',
       desc: 'Browse marketplace, food, stays, jobs, and tenders in one place, then open Vero360 to continue.',
-      color: '#FFF7ED',
+      color: '#fff',
     },
     {
       num: '02',
@@ -20,7 +20,7 @@ const steps = [
       ),
       title: 'Book or order',
       desc: 'Choose a ride, meal, product, stay, or courier (Lilongwe) and confirm in the app.',
-      color: '#FEF3C7',
+      color: '#fff',
     },
     {
       num: '03',
@@ -34,7 +34,7 @@ const steps = [
       ),
       title: 'Track in real-time',
       desc: 'Follow your ride, delivery, or booking status live. Chat securely with providers.',
-      color: '#ECFDF5',
+      color: '#fff',
     },
     {
       num: '04',
@@ -45,7 +45,7 @@ const steps = [
       ),
       title: 'Pay securely',
       desc: 'Pay via mobile money. Funds are held securely until both parties are satisfied.',
-      color: '#FFF1F2',
+      color: '#fff',
     },
   ]
   
@@ -99,6 +99,7 @@ const steps = [
                   <div style={{
                     width: 52, height: 52, borderRadius: 16,
                     background: step.color,
+                    border: '1px solid var(--border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {step.icon}

@@ -25,12 +25,15 @@ export const BROWSE_CATALOGS: Record<
     title: string
     subtitle: string
     endpoint: string
+    /** Fast first page. The full `endpoint` loads after this paints. */
+    previewEndpoint?: string
     itemLabel: string
   }
 > = {
   marketplace: {
     title: 'Marketplace',
     subtitle: 'All products from verified merchants',
+    previewEndpoint: '/api/public/marketplace?limit=24',
     endpoint: '/api/public/marketplace?limit=2000',
     itemLabel: 'products',
   },
@@ -64,6 +67,19 @@ export const BROWSE_CATALOGS: Record<
     endpoint: '/api/tenders?limit=120',
     itemLabel: 'tenders',
   },
+}
+
+export async function fetchCatalogCards(
+  endpoint: string,
+  map?: (raw: unknown[]) => CatalogCard[],
+): Promise<CatalogCard[]> {
+  const res = await fetch(endpoint)
+  const data = (await res.json().catch(() => ({}))) as { items?: unknown; error?: unknown }
+  if (!res.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : 'Failed to load')
+  }
+  const raw = Array.isArray(data.items) ? data.items : []
+  return map ? map(raw) : (raw as CatalogCard[])
 }
 
 export function isBrowseCatalogId(value: string): value is BrowseCatalogId {

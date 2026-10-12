@@ -80,6 +80,12 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+    if (product.key === 'chatgpt') {
+      return NextResponse.json(
+        { error: 'Choose a ChatGPT plan first (Basic ChatGPT Plus or ChatGPT Plus).' },
+        { status: 400 },
+      )
+    }
 
     const selectedUsd =
       selectedUsdRaw === null || selectedUsdRaw === undefined || selectedUsdRaw === ''

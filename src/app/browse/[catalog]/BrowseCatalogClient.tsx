@@ -8,6 +8,7 @@ import DownloadAppModal from '@/app/components/landing/DownloadAppModal'
 import { CatalogCardGrid } from '@/app/components/landing/CatalogCardGrid'
 import {
   BROWSE_CATALOGS,
+  fetchCatalogCards,
   mapTenderItems,
   type BrowseCatalogId,
   type CatalogCard,
@@ -19,37 +20,49 @@ export default function BrowseCatalogClient({ catalog }: Props) {
   const meta = BROWSE_CATALOGS[catalog]
   const [items, setItems] = useState<CatalogCard[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [downloadOpen, setDownloadOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
+    const map = catalog === 'tenders' ? mapTenderItems : undefined
     async function load() {
       setLoading(true)
+      setLoadingMore(false)
       setError('')
       try {
-        const res = await fetch(meta.endpoint)
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data.error || 'Failed to load')
-        const raw = Array.isArray(data.items) ? data.items : []
-        const mapped =
-          catalog === 'tenders' ? mapTenderItems(raw) : (raw as CatalogCard[])
-        if (!cancelled) setItems(mapped)
+        const first = await fetchCatalogCards(meta.previewEndpoint || meta.endpoint, map)
+        if (cancelled) return
+        setItems(first)
+        setLoading(false)
+        if (!meta.previewEndpoint) return
+
+        setLoadingMore(true)
+        try {
+          const rest = await fetchCatalogCards(meta.endpoint, map)
+          if (!cancelled && rest.length > 0) setItems(rest)
+        } catch {
+          // Keep the first batch on screen if the full catalog is slow or fails.
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load')
           setItems([])
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setLoadingMore(false)
+        }
       }
     }
     void load()
     return () => {
       cancelled = true
     }
-  }, [catalog, meta.endpoint])
+  }, [catalog, meta.endpoint, meta.previewEndpoint])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -110,6 +123,7 @@ export default function BrowseCatalogClient({ catalog }: Props) {
             <p style={{ margin: '8px 0 0', fontSize: 15, color: 'var(--text-3)' }}>
               {meta.subtitle}
               {!loading ? ` · ${filtered.length} ${meta.itemLabel}` : ''}
+              {loadingMore ? ' · loading the rest…' : ''}
             </p>
           </div>
           <label style={{ display: 'block', minWidth: 220, flex: '1 1 240px', maxWidth: 360 }}>

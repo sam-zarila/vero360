@@ -103,12 +103,30 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
       active: true,
     },
     {
-      key: 'chatgpt_plus',
-      name: 'ChatGPT Plus',
-      subtitle: '1-month subscription',
+      key: 'chatgpt',
+      name: 'ChatGPT',
+      subtitle: 'Choose a plan (hub only, not sold alone)',
       category: 'streaming',
       brandTag: 'GPT',
-      fixedMwkPrice: 35000,
+      fixedMwkPrice: null,
+      active: true,
+    },
+    {
+      key: 'chatgpt_basic',
+      name: 'Basic ChatGPT Plus',
+      subtitle: 'Shared account for up to 15 students · school work · chats are not private',
+      category: 'streaming',
+      brandTag: 'Students',
+      fixedMwkPrice: 10000,
+      active: true,
+    },
+    {
+      key: 'chatgpt_plus',
+      name: 'ChatGPT Plus',
+      subtitle: 'Your own account · work and personal use · chats stay private',
+      category: 'streaming',
+      brandTag: 'Private',
+      fixedMwkPrice: 65000,
       active: true,
     },
     {
@@ -329,6 +347,18 @@ function mergeWithDefaults(saved: Partial<DigitalServicesConfig> | null): Digita
       name: p.name || prev?.name || p.key,
       category: p.category || prev?.category || 'gift_cards',
     })
+  }
+  // Older configs sold one ChatGPT Plus at MWK 35,000. Show the two plans.
+  const plus = byKey.get('chatgpt_plus')
+  if (plus && (plus.fixedMwkPrice == null || plus.fixedMwkPrice === 35000)) {
+    plus.fixedMwkPrice = 65000
+    plus.name = 'ChatGPT Plus'
+    plus.subtitle = 'Your own account · work and personal use · chats stay private'
+    plus.brandTag = 'Private'
+  }
+  if (plus && (plus.subtitle || '') === '1-month subscription') {
+    plus.subtitle = 'Your own account · work and personal use · chats stay private'
+    plus.brandTag = plus.brandTag === 'GPT' ? 'Private' : plus.brandTag
   }
   return {
     usdToMwkRate: rate,

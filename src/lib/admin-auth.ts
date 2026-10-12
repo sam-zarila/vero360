@@ -61,6 +61,35 @@ export async function ensureAdminProfile(opts: {
 
   if (!email) return null
 
+  // Same email, but the panel row is still on a deleted Firebase login.
+  const byEmail = await db
+    .collection(ADMINS_COLLECTION)
+    .where('email', '==', email)
+    .limit(1)
+    .get()
+  if (!byEmail.empty) {
+    const old = byEmail.docs[0]!
+    if (old.id !== opts.uid) {
+      await ref.set({
+        ...old.data(),
+        email,
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+      await old.ref.delete()
+      try {
+        await getAdminAuth().setCustomUserClaims(opts.uid, {
+          panel: true,
+          panelRole: normalizeAdminRole(old.data().role),
+        })
+      } catch (err) {
+        console.warn('setCustomUserClaims skipped:', err)
+      }
+    }
+    const fresh = await ref.get()
+    const source = fresh.exists ? fresh : old
+    return parsePanelAdmin(opts.uid, (source.data() || {}) as Record<string, unknown>)
+  }
+
   const existing = await db.collection(ADMINS_COLLECTION).limit(1).get()
   const isFirstAdmin = existing.empty
 

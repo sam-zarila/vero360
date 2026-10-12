@@ -10,7 +10,7 @@ import {
 import { adminFetch } from '@/lib/panel-client-auth'
 import { formatDateTime, formatMwk } from '@/lib/vero-api'
 import {
-  COINS_PER_REDEEM,
+  MIN_CASH_OUT_MWK,
   MWK_PER_COIN,
   type RewardsSummary,
   type RewardsUserRow,
@@ -153,12 +153,12 @@ function RewardsAdminInner() {
     {
       label: 'Withdrawable now',
       value: formatMwk(summary.totalWithdrawableMwk),
-      sub: `Full ${COINS_PER_REDEEM}-coin batches ready to cash out`,
+      sub: `Balances worth ${formatMwk(MIN_CASH_OUT_MWK)} or more, paid out in full`,
     },
     {
       label: 'Pending (not redeemable yet)',
       value: `${summary.totalPendingCoins.toLocaleString()} coins`,
-      sub: `Remainder under ${COINS_PER_REDEEM} · ${formatMwk(summary.totalPendingCoins * MWK_PER_COIN)}`,
+      sub: `Still under ${formatMwk(MIN_CASH_OUT_MWK)} · ${formatMwk(summary.totalPendingCoins * MWK_PER_COIN)}`,
     },
     {
       label: 'Already paid to wallets',

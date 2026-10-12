@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import {
   APP_LAUNCH_HEADLINE,
   APP_LAUNCH_LABEL,
@@ -9,6 +8,7 @@ import {
   type AppLaunchTimeLeft,
 } from '@/lib/app-launch'
 import StoreDownloadLinks from './StoreDownloadLinks'
+import Logo from './Logo'
 
 type Props = {
   open: boolean
@@ -72,7 +72,7 @@ export default function DownloadAppModal({ open, onClose }: Props) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Image src="/logo.png" alt="Vero360" width={40} height={40} style={{ height: 40, width: 'auto' }} />
+            <Logo height={48} />
             <h3 style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-display)' }}>
               {launched ? 'Download Vero360' : 'Coming Soon'}
             </h3>

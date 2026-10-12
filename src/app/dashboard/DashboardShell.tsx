@@ -275,7 +275,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             </button>
 
             <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Logo height={34} />
+              <Logo height={48} />
               <span
                 style={{
                   fontSize: 13,

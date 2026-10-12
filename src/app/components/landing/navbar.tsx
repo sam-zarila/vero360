@@ -80,7 +80,7 @@ export default function Navbar() {
           height: 72,
         }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
-            <Logo height={38} textColor={scrolled ? 'var(--text)' : '#fff'} />
+            <Logo height={56} />
           </Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="nav-links">
