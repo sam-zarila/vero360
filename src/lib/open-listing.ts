@@ -7,6 +7,7 @@ import {
   customSchemeHref,
 } from '@/lib/app-links'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { maskPhoneNumbers } from '@/lib/mask-phones'
 import { fetchPublicFoodById } from '@/lib/food'
 import { parseFirestoreMarketplaceListing } from '@/lib/marketplace'
 import type {
@@ -399,6 +400,8 @@ export async function listingFromProps(
         : kind === 'food'
           ? 'Food on Vero360'
           : 'Stay on Vero360'
+  if (kind === 'marketplace') description = maskPhoneNumbers(description)
+
   const title = name || defaultTitle
   const subtitle =
     [location, description].filter(Boolean).join(' · ') ||
