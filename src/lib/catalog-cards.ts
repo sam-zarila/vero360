@@ -72,8 +72,9 @@ export const BROWSE_CATALOGS: Record<
 export async function fetchCatalogCards(
   endpoint: string,
   map?: (raw: unknown[]) => CatalogCard[],
+  init?: RequestInit,
 ): Promise<CatalogCard[]> {
-  const res = await fetch(endpoint)
+  const res = await fetch(endpoint, init)
   const data = (await res.json().catch(() => ({}))) as { items?: unknown; error?: unknown }
   if (!res.ok) {
     throw new Error(typeof data.error === 'string' ? data.error : 'Failed to load')

@@ -35,14 +35,16 @@ export default function BrowseCatalogClient({ catalog }: Props) {
       try {
         const first = await fetchCatalogCards(meta.previewEndpoint || meta.endpoint, map)
         if (cancelled) return
-        setItems(first)
+        setItems(current => (current.length > first.length ? current : first))
         setLoading(false)
         if (!meta.previewEndpoint) return
 
         setLoadingMore(true)
         try {
-          const rest = await fetchCatalogCards(meta.endpoint, map)
-          if (!cancelled && rest.length > 0) setItems(rest)
+          const rest = await fetchCatalogCards(meta.endpoint, map, { cache: 'no-store' })
+          if (!cancelled && rest.length > 0) {
+            setItems(current => (rest.length < current.length ? current : rest))
+          }
         } catch {
           // Keep the first batch on screen if the full catalog is slow or fails.
         }

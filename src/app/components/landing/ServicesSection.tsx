@@ -96,6 +96,7 @@ export default function ServicesSection() {
   const [loadingByStrip, setLoadingByStrip] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(STRIPS.map(s => [s.id, true])),
   )
+  const [loadingRest, setLoadingRest] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -105,20 +106,32 @@ export default function ServicesSection() {
         try {
           const first = await fetchCatalogCards(strip.endpoint, map)
           if (cancelled) return
-          setItemsByStrip(prev => ({ ...prev, [strip.id]: first }))
+          setItemsByStrip(prev => {
+            const current = prev[strip.id] || []
+            if (current.length > first.length) return prev
+            return { ...prev, [strip.id]: first }
+          })
           setLoadingByStrip(prev => ({ ...prev, [strip.id]: false }))
 
           if (strip.id !== 'marketplace') return
+          setLoadingRest(true)
           try {
             const rest = await fetchCatalogCards(
               `/api/public/marketplace?limit=${MARKETPLACE_FETCH}`,
               map,
+              { cache: 'no-store' },
             )
             if (!cancelled && rest.length > 0) {
-              setItemsByStrip(prev => ({ ...prev, [strip.id]: rest }))
+              setItemsByStrip(prev => {
+                const current = prev[strip.id] || []
+                if (rest.length < current.length) return prev
+                return { ...prev, [strip.id]: rest }
+              })
             }
           } catch {
             // The first products stay on screen if the full catalog fails.
+          } finally {
+            if (!cancelled) setLoadingRest(false)
           }
         } catch {
           if (!cancelled) setItemsByStrip(prev => ({ ...prev, [strip.id]: [] }))
@@ -234,8 +247,11 @@ export default function ServicesSection() {
           {STRIPS.map(strip => {
             const loading = loadingByStrip[strip.id] !== false
             const items = itemsByStrip[strip.id] || []
-            const visible = items.slice(0, PREVIEW_COUNT)
-            const hasMore = items.length > PREVIEW_COUNT
+            const visible =
+              strip.id === 'marketplace' ? items : items.slice(0, PREVIEW_COUNT)
+            const hasMore = strip.id === 'marketplace'
+              ? false
+              : items.length > PREVIEW_COUNT
 
             return (
               <div key={strip.id}>
@@ -264,6 +280,7 @@ export default function ServicesSection() {
                             }}
                           >
                             ({items.length}
+                            {loadingRest && strip.id === 'marketplace' ? ', loading the rest…' : ''}
                             {items.length >= strip.fetchLimit ? '+' : ''})
                           </span>
                         ) : null}
