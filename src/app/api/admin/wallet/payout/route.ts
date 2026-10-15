@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { authErrorResponse, requireSuperAdmin } from '@/lib/admin-auth'
@@ -9,6 +10,12 @@ import {
   parseWallet,
 } from '@/lib/finance'
 import { initializePaychanguPayout } from '@/lib/paychangu'
+import {
+  initiatePawaPayPayout,
+  pawaPayProviderForOperator,
+  toPawaPayMsisdn,
+} from '@/lib/pawapay'
+import { reservePawaPayPayout, releasePawaPayReserve } from '@/lib/pawapay-ledger'
 import {
   MIN_PAYOUT_MWK,
   PAYOUT_BANKS,
@@ -86,6 +93,54 @@ export async function POST(request: Request) {
     let recipientName: string | null = null
     let recipientPhone: string | null = null
 
+    if (method === 'mobile_money') {
+      const operatorId = String(body.operatorId || '').trim()
+      const mobile = normalizeMalawiMobile(String(body.phone || ''))
+      const momo = PAYOUT_MOMO.find(m => m.id === operatorId)
+      const provider = pawaPayProviderForOperator(operatorId)
+      const phone = toPawaPayMsisdn(mobile)
+      if (!momo || !provider) {
+        return NextResponse.json(
+          { error: 'Select Airtel Money or MPamba.' },
+          { status: 400 },
+        )
+      }
+      if (!phone) {
+        return NextResponse.json(
+          { error: 'Enter a valid Malawi mobile number (e.g. 0999xxxxxx).' },
+          { status: 400 },
+        )
+      }
+      const payoutId = randomUUID()
+      const reserved = await reservePawaPayPayout({
+        walletId: walletDoc.id,
+        amount,
+        payoutId,
+        description: `${momo.name} payout via PawaPay`,
+        phone,
+        provider,
+      })
+      try {
+        await initiatePawaPayPayout({
+          payoutId,
+          amountMwk: amount,
+          phoneE164: phone,
+          provider,
+        })
+      } catch (err) {
+        await releasePawaPayReserve(payoutId, 'failed', err instanceof Error ? err.message : 'Payout failed')
+        throw err
+      }
+      return NextResponse.json({
+        success: true,
+        pending: true,
+        balance: reserved.balance,
+        transactionId: reserved.transactionId,
+        reference: payoutId,
+        message: 'PawaPay accepted the payout. The wallet updates when it confirms delivery.',
+      })
+    }
+
     if (method === 'bank') {
       const bankUuid = String(body.bankUuid || '').trim()
       const accountName = String(body.accountName || '').trim()
@@ -115,33 +170,7 @@ export async function POST(request: Request) {
       accountNumber = accNo
       recipientName = accountName
     } else {
-      const operatorId = String(body.operatorId || '').trim()
-      const mobile = normalizeMalawiMobile(String(body.phone || ''))
-      const momo = PAYOUT_MOMO.find(m => m.id === operatorId)
-      if (!momo) {
-        return NextResponse.json(
-          { error: 'Select Airtel Money or MPamba.' },
-          { status: 400 },
-        )
-      }
-      if (!/^0\d{8,9}$/.test(mobile)) {
-        return NextResponse.json(
-          { error: 'Enter a valid Malawi mobile number (e.g. 0999xxxxxx).' },
-          { status: 400 },
-        )
-      }
-      await initializePaychanguPayout({
-        method: 'mobile_money',
-        amount,
-        chargeId,
-        operatorId,
-        mobile,
-        email: email || undefined,
-      })
-      description = `${momo.name} Payout (admin)`
-      payoutMethod = 'mobile_money'
-      recipientPhone = mobile
-      recipientName = momo.name
+      return NextResponse.json({ error: 'Choose bank transfer or mobile money.' }, { status: 400 })
     }
 
     const transactionId = `TXN${Date.now()}`

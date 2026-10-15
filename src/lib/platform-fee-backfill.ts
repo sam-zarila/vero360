@@ -149,6 +149,13 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
       continue
     }
 
+    // A cleared wallet removes the fee rows. Honor the flag so those fees
+    // are not credited a second time on the next wallet load.
+    if (data.platformFeeCredited === true) {
+      skipped += 1
+      continue
+    }
+
     const veroShare = num(data.veroShareAmount)
     let fee = veroShare > 0 ? veroShare : num(data.serviceFeeAmount)
     if (!(fee > 0)) {

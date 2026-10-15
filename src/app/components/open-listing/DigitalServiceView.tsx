@@ -92,6 +92,7 @@ export default function DigitalServiceView({
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [waiting, setWaiting] = useState('')
   const [error, setError] = useState('')
 
   const unit = (product.unitLabel || '').trim() || 'USD'
@@ -141,9 +142,28 @@ export default function DigitalServiceView({
       if (!res.ok) {
         throw new Error(data.error || 'Could not start payment')
       }
-      const checkoutUrl = String(data.checkoutUrl || '').trim()
-      if (!checkoutUrl) throw new Error('No checkout URL returned')
-      window.location.href = checkoutUrl
+      const depositId = String(data.depositId || '').trim()
+      const txRef = String(data.txRef || '').trim()
+      const orderId = String(data.orderId || '').trim()
+      if (!depositId || !txRef || !orderId) {
+        throw new Error('Payment did not start')
+      }
+      setWaiting('Approve the prompt on your phone. This page updates when PawaPay confirms it.')
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        const check = await fetch(
+          `/api/public/payments/pawapay/deposit?depositId=${encodeURIComponent(depositId)}&tx_ref=${encodeURIComponent(txRef)}&order_id=${encodeURIComponent(orderId)}`,
+        )
+        const paid = await check.json().catch(() => ({}))
+        if (paid.paid) {
+          window.location.href = `/digital-services/payment/return?tx_ref=${encodeURIComponent(txRef)}&order_id=${encodeURIComponent(orderId)}&deposit_id=${encodeURIComponent(depositId)}`
+          return
+        }
+        if (paid.status === 'failed') {
+          throw new Error(paid.error || 'Payment was declined')
+        }
+      }
+      throw new Error('Still waiting for the phone prompt. If you approved it, refresh this page.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)
@@ -390,6 +410,9 @@ export default function DigitalServiceView({
               />
             </div>
 
+            {waiting ? (
+              <p style={{ fontWeight: 700, marginBottom: 10 }}>{waiting}</p>
+            ) : null}
             {error ? (
               <div
                 style={{
@@ -417,7 +440,7 @@ export default function DigitalServiceView({
               }}
             >
               {submitting
-                ? 'Opening PayChangu…'
+                ? 'Waiting for your phone…'
                 : `Pay ${formatMwk(amountMwk)} with mobile money`}
             </button>
             <p
@@ -429,8 +452,8 @@ export default function DigitalServiceView({
                 textAlign: 'center',
               }}
             >
-              You’ll complete payment securely on PayChangu (Airtel Money / TNM Mpamba
-              / bank). We’ll email fulfilment details after payment.
+              Airtel Money or TNM Mpamba will prompt the number above. Bank transfer
+              is not used for this checkout. We’ll email fulfilment details after payment.
             </p>
           </form>
         </div>

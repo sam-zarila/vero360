@@ -5,13 +5,13 @@ import {
   computeDigitalAmountMwk,
   createPendingDigitalOrder,
   normalizeMalawiPhone,
-  siteOrigin,
-  splitBuyerName,
 } from '@/lib/digital-services-checkout'
 import {
-  initiatePaychanguPayment,
-  paychanguConfigured,
-} from '@/lib/paychangu'
+  initiatePawaPayDeposit,
+  pawaPayConfigured,
+  providerFromMalawiPhone,
+  toPawaPayMsisdn,
+} from '@/lib/pawapay'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,11 +21,11 @@ function isEmail(v: string) {
 
 export async function POST(request: Request) {
   try {
-    if (!paychanguConfigured()) {
+    if (!pawaPayConfigured()) {
       return NextResponse.json(
         {
           error:
-            'Online payments are not configured yet. Add PAYCHANGU_SECRET_KEY in Netlify env.',
+            'Online payments are not configured yet. Add PAWAPAY_API_TOKEN in Netlify env.',
         },
         { status: 503 },
       )
@@ -120,27 +120,28 @@ export async function POST(request: Request) {
       source: 'web',
     })
 
-    const origin = siteOrigin()
-    const { firstName, lastName } = splitBuyerName(buyerName)
-    const description = isSubscription
-      ? `Digital: ${product.name} • MWK ${amountMwk}`
-      : `Digital: ${product.name} • $${usd} (MWK ${amountMwk})`
-
-    const { checkoutUrl } = await initiatePaychanguPayment({
-      txRef,
-      firstName,
-      lastName,
-      email: buyerEmail,
-      phone: buyerPhone,
+    const provider = providerFromMalawiPhone(buyerPhone)
+    const local = buyerPhone.replace(/^\+/, '').replace(/^265/, '0')
+    const phone = toPawaPayMsisdn(local)
+    if (!provider || !phone) {
+      return NextResponse.json(
+        { error: 'Use an Airtel Money (099) or TNM Mpamba (088) number.' },
+        { status: 400 },
+      )
+    }
+    const depositId = randomUUID()
+    await initiatePawaPayDeposit({
+      depositId,
       amountMwk,
-      description,
-      callbackUrl: `${origin}/api/public/payments/paychangu/callback`,
-      returnUrl: `${origin}/digital-services/payment/return?tx_ref=${encodeURIComponent(txRef)}&order_id=${encodeURIComponent(orderId)}`,
+      phoneE164: phone,
+      provider,
+      reference: txRef,
     })
 
     return NextResponse.json({
       success: true,
-      checkoutUrl,
+      pending: true,
+      depositId,
       orderId,
       txRef,
       amountMwk,

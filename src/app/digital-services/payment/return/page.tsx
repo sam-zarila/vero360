@@ -9,6 +9,7 @@ function PaymentReturnInner() {
   const params = useSearchParams()
   const txRef = params.get('tx_ref') || ''
   const orderId = params.get('order_id') || ''
+  const depositId = params.get('deposit_id') || ''
   const [status, setStatus] = useState<'checking' | 'paid' | 'pending' | 'error'>(
     'checking',
   )
@@ -27,10 +28,10 @@ function PaymentReturnInner() {
       try {
         const qs = new URLSearchParams({ tx_ref: txRef })
         if (orderId) qs.set('order_id', orderId)
-        const res = await fetch(
-          `/api/public/payments/paychangu/callback?${qs.toString()}`,
-          { cache: 'no-store' },
-        )
+        const path = depositId
+          ? `/api/public/payments/pawapay/deposit?depositId=${encodeURIComponent(depositId)}&${qs.toString()}`
+          : `/api/public/payments/paychangu/callback?${qs.toString()}`
+        const res = await fetch(path, { cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (cancelled) return
         if (data.paid) {
@@ -44,7 +45,7 @@ function PaymentReturnInner() {
         if (tries >= 8) {
           setStatus('pending')
           setMessage(
-            'We’re still waiting for PayChangu confirmation. If you paid, keep this reference and contact support. Your order will update automatically.',
+            'We’re still waiting for payment confirmation. If you approved the prompt, keep this reference and contact support.',
           )
           return
         }
@@ -65,7 +66,7 @@ function PaymentReturnInner() {
     return () => {
       cancelled = true
     }
-  }, [txRef, orderId])
+  }, [txRef, orderId, depositId])
 
   const tone =
     status === 'paid'

@@ -59,6 +59,7 @@ export default function SuperAdminWalletPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [cashOutOpen, setCashOutOpen] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -108,6 +109,29 @@ export default function SuperAdminWalletPage() {
 
   const canCashOut = (summary.balance || 0) >= MIN_PAYOUT_MWK && !!wallet
 
+  async function clearWallet() {
+    const ok = window.confirm(
+      'Clear the platform wallet? Available balance, pending balance, and wallet history will be set to zero. Money still held in escrow is not touched.',
+    )
+    if (!ok) return
+    setClearing(true)
+    setError('')
+    setNotice('')
+    try {
+      const headers = await panelAuthHeaders()
+      const res = await fetch('/api/admin/wallet/clear', { method: 'POST', headers })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not clear platform wallet')
+      const cleared = formatMwk(Number(data.balanceCleared) || 0)
+      await load()
+      setNotice(`Cleared ${cleared} from the platform wallet.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not clear platform wallet')
+    } finally {
+      setClearing(false)
+    }
+  }
+
   return (
     <div>
       <div
@@ -133,6 +157,19 @@ export default function SuperAdminWalletPage() {
           </Link>
           <button type="button" onClick={() => void load()} style={secondaryBtn}>
             {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void clearWallet()}
+            disabled={clearing || loading || !wallet}
+            style={{
+              ...secondaryBtn,
+              color: '#991B1B',
+              borderColor: '#FECACA',
+              opacity: clearing || loading || !wallet ? 0.5 : 1,
+            }}
+          >
+            {clearing ? 'Clearing…' : 'Clear wallet'}
           </button>
           <button
             type="button"
@@ -477,7 +514,7 @@ function CashOutDialog({
         <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800 }}>Pay out</h3>
         <p style={{ margin: '0 0 16px', color: '#6B7280', fontSize: 13 }}>
           Available {formatMwk(available)}. Minimum MWK {MIN_PAYOUT_MWK.toLocaleString()}.
-          PayChangu sends the money, then this wallet is debited.
+          Mobile money is sent instantly through PawaPay. Bank transfers stay on PayChangu.
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
