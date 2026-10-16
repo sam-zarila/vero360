@@ -27,6 +27,7 @@ import {
   DashboardThumbFallback,
 } from '@/app/dashboard/DashboardChrome'
 import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
+import { useMarkOrdersSeen, useOrdersPendingBadge } from '../AdminAlertsProvider'
 
 const SECTION = DASHBOARD_SECTION_MAP.orders
 
@@ -83,6 +84,12 @@ export default function OrdersAdminPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  const markOrdersSeen = useMarkOrdersSeen()
+  const unseenPending = useOrdersPendingBadge()
+  useEffect(() => {
+    if (unseenPending > 0) markOrdersSeen?.()
+  }, [unseenPending, markOrdersSeen])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

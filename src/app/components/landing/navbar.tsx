@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import DownloadAppModal from './DownloadAppModal'
+import { scrollToHashTarget } from './HashScroll'
 import Logo from './Logo'
 
 const navLinks = [
@@ -86,6 +87,9 @@ export default function Navbar() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="nav-links">
             {navLinks.map(link => (
               <Link key={link.label} href={link.href} style={linkStyle(scrolled)}
+                onClick={e => {
+                  if (scrollToHashTarget(link.href)) e.preventDefault()
+                }}
                 onMouseEnter={e => (e.currentTarget.style.background = scrolled ? 'var(--surface-2)' : 'rgba(255,255,255,0.15)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >{link.label}</Link>
@@ -208,7 +212,10 @@ export default function Navbar() {
         }}>
           {navLinks.map(link => (
             <Link key={link.label} href={link.href}
-              onClick={() => setMenuOpen(false)}
+              onClick={e => {
+                if (scrollToHashTarget(link.href)) e.preventDefault()
+                setMenuOpen(false)
+              }}
               style={{
                 display: 'block', padding: '14px 0',
                 fontSize: 16, fontWeight: 500, color: 'var(--text-2)',

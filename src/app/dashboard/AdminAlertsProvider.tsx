@@ -70,6 +70,11 @@ export function useOrdersPendingBadge() {
   return ctx?.orders.pending ?? 0
 }
 
+export function useMarkOrdersSeen() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.orders.markOrdersSeen
+}
+
 export function useNewUsersBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.users.newCount ?? 0

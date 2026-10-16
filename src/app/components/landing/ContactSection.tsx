@@ -66,7 +66,7 @@ export default function ContactSection() {
   }
 
   return (
-    <section id="contact" style={{ padding: '100px 24px', background: 'var(--surface)' }}>
+    <section id="contact" style={{ padding: '100px 24px', background: 'var(--surface)', scrollMarginTop: 88 }}>
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <span style={{

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
+import { scrollToHashTarget } from './HashScroll'
 import Logo from './Logo'
 import { VeroIcon } from './icons'
 
@@ -120,7 +121,15 @@ function openHelpCenter() {
                           Help center
                         </button>
                       ) : (
-                        <Link href={linkHrefs[link] ?? '#'} className="footer-link">{link}</Link>
+                        <Link
+                          href={linkHrefs[link] ?? '#'}
+                          className="footer-link"
+                          onClick={e => {
+                            if (scrollToHashTarget(linkHrefs[link] ?? '')) e.preventDefault()
+                          }}
+                        >
+                          {link}
+                        </Link>
                       )}
                     </li>
                   ))}

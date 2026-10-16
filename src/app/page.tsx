@@ -7,6 +7,7 @@ import HowItWorks from './components/landing/HowItWorks'
 import ServicesSection from './components/landing/ServicesSection'
 import TestimonialsSection from './components/landing/Testimonialssection'
 import ContactSection from './components/landing/ContactSection'
+import { HashScroll } from './components/landing/HashScroll'
 import AboutUsSection from './components/landing/AboutUsSection'
 import CTASection from './components/Ctasection'
 import Footer from './components/landing/Footer '
@@ -15,6 +16,7 @@ import Footer from './components/landing/Footer '
 export default function Page() {
   return (
     <div>
+      <HashScroll />
       <Navbar />
       <HeroSection />
       <TrustBar />

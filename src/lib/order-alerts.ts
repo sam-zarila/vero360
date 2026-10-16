@@ -5,16 +5,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 const POLL_MS = 12_000
 const STORAGE_KEY = 'vero_orders_last_pending_ids'
+const SEEN_KEY = 'vero_orders_seen_pending_ids'
 
 export type OrderAlertState = {
+  /** Pending orders this admin has not opened yet. */
   pending: number
   toast: string | null
   clearToast: () => void
+  markOrdersSeen: () => void
 }
 
-function readKnownIds(): number[] {
+function readIds(storage: Storage, key: string): number[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = storage.getItem(key)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed)
@@ -25,9 +28,9 @@ function readKnownIds(): number[] {
   }
 }
 
-function writeKnownIds(ids: number[]) {
+function writeIds(storage: Storage, key: string, ids: number[]) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 200)))
+    storage.setItem(key, JSON.stringify(ids.slice(0, 500)))
   } catch {
     // ignore quota / private mode
   }
@@ -60,10 +63,29 @@ function notifyBrowser(title: string, body: string) {
  * Polls pending marketplace orders for admin badges / toasts.
  */
 export function useOrderAlerts(enabled = true): OrderAlertState {
-  const [pending, setPending] = useState(0)
+  const [pendingIds, setPendingIds] = useState<number[]>([])
+  const [seenIds, setSeenIds] = useState<number[]>([])
   const [toast, setToast] = useState<string | null>(null)
   const primed = useRef(false)
   const clearToast = useCallback(() => setToast(null), [])
+
+  useEffect(() => {
+    setSeenIds(readIds(localStorage, SEEN_KEY))
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SEEN_KEY) setSeenIds(readIds(localStorage, SEEN_KEY))
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  const markOrdersSeen = useCallback(() => {
+    setToast(null)
+    setSeenIds(prev => {
+      const next = [...new Set([...pendingIds, ...prev])]
+      writeIds(localStorage, SEEN_KEY, next)
+      return next
+    })
+  }, [pendingIds])
 
   useEffect(() => {
     if (!enabled) return
@@ -80,21 +102,20 @@ export function useOrderAlerts(enabled = true): OrderAlertState {
         }
         if (cancelled) return
 
-        const pendingIds = Array.isArray(data.pendingIds)
+        const ids = Array.isArray(data.pendingIds)
           ? data.pendingIds.map(Number).filter(n => Number.isFinite(n) && n > 0)
           : []
-        const count = typeof data.pending === 'number' ? data.pending : pendingIds.length
-        setPending(count)
+        setPendingIds(ids)
 
-        const known = readKnownIds()
+        const known = readIds(sessionStorage, STORAGE_KEY)
         if (!primed.current) {
-          writeKnownIds(pendingIds.length ? pendingIds : known)
+          writeIds(sessionStorage, STORAGE_KEY, ids.length ? ids : known)
           primed.current = true
           return
         }
 
         const knownSet = new Set(known)
-        const fresh = pendingIds.filter(id => !knownSet.has(id))
+        const fresh = ids.filter(id => !knownSet.has(id))
         if (fresh.length > 0) {
           const message =
             fresh.length === 1
@@ -102,9 +123,9 @@ export function useOrderAlerts(enabled = true): OrderAlertState {
               : `${fresh.length} new marketplace orders. Review in Orders`
           setToast(message)
           notifyBrowser('New marketplace order', message)
-          writeKnownIds([...new Set([...known, ...pendingIds])])
+          writeIds(sessionStorage, STORAGE_KEY, [...new Set([...known, ...ids])])
         } else {
-          writeKnownIds(pendingIds)
+          writeIds(sessionStorage, STORAGE_KEY, ids)
         }
       } catch {
         // keep last known pending
@@ -123,5 +144,8 @@ export function useOrderAlerts(enabled = true): OrderAlertState {
     }
   }, [enabled])
 
-  return { pending, toast, clearToast }
+  const seenSet = new Set(seenIds)
+  const pending = pendingIds.filter(id => !seenSet.has(id)).length
+
+  return { pending, toast, clearToast, markOrdersSeen }
 }

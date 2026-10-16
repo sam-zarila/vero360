@@ -268,9 +268,11 @@ export default function HelpCenterInbox() {
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-4)', marginBottom: 4 }}>
                     {session.visitorEmail || 'No email'} · {session.status}
-                    {session.source === 'app' || session.id.startsWith('app_')
-                      ? ' · App'
-                      : ''}
+                    {session.type === 'inquiry' || session.source === 'website_contact'
+                      ? ' · Contact form'
+                      : session.source === 'app' || session.id.startsWith('app_')
+                        ? ' · App'
+                        : ''}
                   </div>
                   <div
                     style={{

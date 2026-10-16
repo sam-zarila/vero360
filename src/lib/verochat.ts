@@ -363,8 +363,8 @@ export async function deleteSession(sessionId: string) {
 }
 
 export function isHelpCenterSession(session: { id: string; type?: string }) {
-  if (session.type === 'newsletter' || session.type === 'inquiry') return false
-  if (session.id.startsWith('newsletter__') || session.id.startsWith('inquiry__')) return false
+  if (session.type === 'newsletter') return false
+  if (session.id.startsWith('newsletter__')) return false
   return true
 }
 

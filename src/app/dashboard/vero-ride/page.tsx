@@ -19,6 +19,7 @@ import {
 } from '@/app/dashboard/DashboardChrome'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import { FrontDeskContactPanel } from './FrontDeskContactPanel'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 const SECTION = DASHBOARD_SECTION_MAP['vero-ride']
 
@@ -49,6 +50,8 @@ export default function VeroRideDriversPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [deletingId, setDeletingId] = useState<FleetDriver['id'] | null>(null)
+  const confirmDelete = useConfirmDelete()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -73,6 +76,30 @@ export default function VeroRideDriversPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  const removeDriver = async (driver: FleetDriver) => {
+    const ok = await confirmDelete(
+      driver.name || `driver #${driver.id}`,
+      'This removes the driver application and its vehicles. The user account stays, so they can apply again.',
+    )
+    if (!ok) return
+    setDeletingId(driver.id)
+    setError('')
+    try {
+      const headers = await panelAuthHeaders()
+      const res = await adminFetch(`/api/admin/drivers/${driver.id}`, {
+        method: 'DELETE',
+        headers,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -223,17 +250,28 @@ export default function VeroRideDriversPage() {
             const pendingVehicle = driver.taxis.some(
               t => t.status === 'PENDING_REVIEW',
             )
+            const deletable =
+              driver.status === 'PENDING_VERIFICATION' || driver.status === 'REJECTED'
             return (
-              <Link
+              <div
                 key={driver.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                }}
+              >
+              <Link
                 href={`/dashboard/vero-ride/${driver.id}`}
                 style={{
                   textDecoration: 'none',
                   color: 'inherit',
                   display: 'block',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 14,
+                  flex: 1,
+                  minWidth: 0,
                   padding: '14px 16px',
                 }}
               >
@@ -290,6 +328,27 @@ export default function VeroRideDriversPage() {
                   </div>
                 </div>
               </Link>
+              {deletable ? (
+                <button
+                  type="button"
+                  onClick={() => void removeDriver(driver)}
+                  disabled={deletingId === driver.id}
+                  aria-label={`Delete ${driver.name}`}
+                  style={{
+                    border: 'none',
+                    borderLeft: '1px solid var(--border)',
+                    background: '#FEF2F2',
+                    color: '#B91C1C',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    padding: '0 16px',
+                    cursor: deletingId === driver.id ? 'wait' : 'pointer',
+                  }}
+                >
+                  {deletingId === driver.id ? 'Deleting…' : 'Delete'}
+                </button>
+              ) : null}
+              </div>
             )
           })}
         </div>
