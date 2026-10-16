@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { authErrorResponse, requireSuperAdmin } from '@/lib/admin-auth'
+import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
+import { isFullAdminRole } from '@/lib/admins'
 import { getAdminDb } from '@/lib/firebase-admin'
 import {
   ORDER_ESCROW_COLLECTION,
+  PLATFORM_WALLET_USER_ID,
   WALLETS_COLLECTION,
   WALLET_TX_COLLECTION,
   buildFinanceSummary,
@@ -24,8 +26,13 @@ function mergeTx(into: WalletTxRow[], row: WalletTxRow) {
 }
 
 export async function GET(request: Request) {
+  let showPlatform = false
   try {
-    await requireSuperAdmin(request)
+    const actor = await requirePanelAdmin(request)
+    if (!isFullAdminRole(actor.admin.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    showPlatform = actor.admin.role === 'super_admin'
   } catch (err) {
     const auth = authErrorResponse(err)
     if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -101,11 +108,23 @@ export async function GET(request: Request) {
       }
     }
 
-    const allTxSorted = transactions.sort((a, b) => {
+    let allTxSorted = transactions.sort((a, b) => {
       const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
       const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
       return bt - at
     })
+
+    if (!showPlatform) {
+      const platformWalletIds = new Set(
+        [PLATFORM_WALLET_USER_ID, ...wallets.filter(w => w.isPlatform).map(w => w.walletId)],
+      )
+      wallets = wallets.filter(w => !w.isPlatform)
+      allTxSorted = allTxSorted.filter(
+        t =>
+          !platformWalletIds.has(t.walletId) &&
+          t.userId !== PLATFORM_WALLET_USER_ID,
+      )
+    }
 
     wallets = withWalletPayoutTotals(wallets, allTxSorted)
 
@@ -137,7 +156,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      summary,
+      canViewPlatformWallet: showPlatform,
+      summary: showPlatform ? summary : { ...summary, platformBalance: 0 },
       wallets,
       transactions: allTx,
       payouts,

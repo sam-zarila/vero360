@@ -71,6 +71,7 @@ function FinanceAdminInner() {
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])
   const [escrow, setEscrow] = useState<EscrowRow[]>([])
   const [summary, setSummary] = useState<FinanceSummary>(EMPTY_SUMMARY)
+  const [canViewPlatformWallet, setCanViewPlatformWallet] = useState(false)
   const [query, setQuery] = useState('')
   const [escrowFilter, setEscrowFilter] = useState<EscrowFilter>('all')
   const [payoutMerchant, setPayoutMerchant] = useState<string>('all')
@@ -89,6 +90,7 @@ function FinanceAdminInner() {
       setTransactions(data.transactions || [])
       setEscrow(data.escrow || [])
       setSummary(data.summary || EMPTY_SUMMARY)
+      setCanViewPlatformWallet(data.canViewPlatformWallet === true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load finance data')
     } finally {
@@ -262,7 +264,13 @@ function FinanceAdminInner() {
         <p style={{ color: 'var(--muted)' }}>Loading finance data…</p>
       ) : null}
 
-      {tab === 'overview' ? <Overview summary={summary} onGo={setTab} /> : null}
+      {tab === 'overview' ? (
+        <Overview
+          summary={summary}
+          onGo={setTab}
+          showPlatformWallet={canViewPlatformWallet}
+        />
+      ) : null}
 
       {tab === 'escrow' ? (
         <>
@@ -464,9 +472,11 @@ function FinanceAdminInner() {
 function Overview({
   summary,
   onGo,
+  showPlatformWallet,
 }: {
   summary: FinanceSummary
   onGo: (t: Tab) => void
+  showPlatformWallet: boolean
 }) {
   const cards: Array<{
     label: string
@@ -505,12 +515,16 @@ function Overview({
       sub: `${summary.payoutCount} payouts · ${summary.merchantsWithPayouts} merchants`,
       go: 'payouts',
     },
-    {
-      label: 'Super admin wallet',
-      value: formatMwk(summary.platformBalance),
-      sub: '10% marketplace fee — open Admin wallet',
-      href: '/dashboard/wallet',
-    },
+    ...(showPlatformWallet
+      ? [
+          {
+            label: 'Super admin wallet',
+            value: formatMwk(summary.platformBalance),
+            sub: '10% marketplace fee — open Admin wallet',
+            href: '/dashboard/wallet',
+          },
+        ]
+      : []),
   ]
 
   return (

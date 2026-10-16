@@ -263,7 +263,6 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'wallet',
     color: '#15803D',
     bg: '#F0FDF4',
-    superAdminOnly: true,
   },
   {
     id: 'wallet',
@@ -427,7 +426,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
   {
     title: 'System',
     items: [
-      { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
+      { href: '/dashboard/finance', label: 'Finance', icon: 'wallet' },
       { href: '/dashboard/wallet', label: 'Platform wallet', icon: 'wallet', superAdminOnly: true },
       { href: '/dashboard/audit', label: 'Audit trail', icon: 'shield', superAdminOnly: true },
       {

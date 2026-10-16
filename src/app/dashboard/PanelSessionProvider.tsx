@@ -109,7 +109,6 @@ export function usePanelSession() {
 
 /** Paths only super admins may open. */
 export const SUPER_ADMIN_ONLY_PATHS = [
-  '/dashboard/finance',
   '/dashboard/wallet',
   '/dashboard/admins',
   '/dashboard/rewards',

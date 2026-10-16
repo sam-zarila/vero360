@@ -271,7 +271,7 @@ export default function AdminsPage() {
 
       <DashboardPageHeader
         sectionId="admins"
-        description="Classify panel users as super admin, admin, marketer, or agent. Agents onboard merchants/drivers and verify Vero Ride drivers. Marketers only access Marketing. Super admins manage accounts; normal admins cannot see Finance or Admins."
+        description="Manage panel accounts and their roles."
         actions={
           <>
             <DashboardRefreshButton
