@@ -428,11 +428,8 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'System',
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
-<<<<<<< HEAD
       { href: '/dashboard/wallet', label: 'Platform wallet', icon: 'wallet', superAdminOnly: true },
-=======
       { href: '/dashboard/audit', label: 'Audit trail', icon: 'shield', superAdminOnly: true },
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
       {
         href: '/dashboard/rewards',
         label: 'Vero Coins',

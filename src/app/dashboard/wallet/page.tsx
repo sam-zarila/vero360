@@ -430,10 +430,10 @@ function CashOutDialog({
 }) {
   const [method, setMethod] = useState<'bank' | 'mobile_money'>('bank')
   const [amount, setAmount] = useState(String(Math.floor(available)))
-  const [bankUuid, setBankUuid] = useState(PAYOUT_BANKS[0].uuid)
+  const [bankUuid, setBankUuid] = useState<string>(PAYOUT_BANKS[0].uuid)
   const [accountName, setAccountName] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
-  const [operatorId, setOperatorId] = useState(PAYOUT_MOMO[0].id)
+  const [operatorId, setOperatorId] = useState<string>(PAYOUT_MOMO[0].id)
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)

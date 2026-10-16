@@ -11,18 +11,11 @@ import {
 } from '@/lib/digital-services-checkout'
 import { savePawaPayDeposit } from '@/lib/pawapay-deposits'
 import {
-<<<<<<< HEAD
-  initiatePawaPayDeposit,
-  pawaPayConfigured,
-  providerFromMalawiPhone,
-  toPawaPayMsisdn,
-=======
   createPawaPayDeposit,
   networkFromMalawiPhone,
-  pawapayConfigured,
+  pawaPayConfigured,
   providerForNetwork,
   type PawaPayNetwork,
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
 } from '@/lib/pawapay'
 
 export const dynamic = 'force-dynamic'
@@ -33,11 +26,7 @@ function isEmail(v: string) {
 
 export async function POST(request: Request) {
   try {
-<<<<<<< HEAD
     if (!pawaPayConfigured()) {
-=======
-    if (!pawapayConfigured()) {
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
       return NextResponse.json(
         {
           error:
@@ -159,29 +148,6 @@ export async function POST(request: Request) {
       source: 'web',
     })
 
-<<<<<<< HEAD
-    const provider = providerFromMalawiPhone(buyerPhone)
-    const local = buyerPhone.replace(/^\+/, '').replace(/^265/, '0')
-    const phone = toPawaPayMsisdn(local)
-    if (!provider || !phone) {
-      return NextResponse.json(
-        { error: 'Use an Airtel Money (099) or TNM Mpamba (088) number.' },
-        { status: 400 },
-      )
-    }
-    const depositId = randomUUID()
-    await initiatePawaPayDeposit({
-      depositId,
-      amountMwk,
-      phoneE164: phone,
-      provider,
-      reference: txRef,
-    })
-
-    return NextResponse.json({
-      success: true,
-      pending: true,
-=======
     const depositId = randomUUID()
     try {
       await savePawaPayDeposit({
@@ -231,7 +197,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
+      pending: true,
       depositId,
       orderId,
       txRef,

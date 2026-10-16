@@ -93,13 +93,9 @@ export default function DigitalServiceView({
   const [phone, setPhone] = useState('')
   const [network, setNetwork] = useState<'airtel' | 'tnm'>('airtel')
   const [submitting, setSubmitting] = useState(false)
-<<<<<<< HEAD
-  const [waiting, setWaiting] = useState('')
-=======
   const [waiting, setWaiting] = useState(false)
   const [paid, setPaid] = useState(false)
   const [depositId, setDepositId] = useState('')
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
   const [error, setError] = useState('')
 
   const unit = (product.unitLabel || '').trim() || 'USD'
@@ -200,35 +196,10 @@ export default function DigitalServiceView({
       if (!res.ok) {
         throw new Error(data.error || 'Could not start payment')
       }
-<<<<<<< HEAD
-      const depositId = String(data.depositId || '').trim()
-      const txRef = String(data.txRef || '').trim()
-      const orderId = String(data.orderId || '').trim()
-      if (!depositId || !txRef || !orderId) {
-        throw new Error('Payment did not start')
-      }
-      setWaiting('Approve the prompt on your phone. This page updates when PawaPay confirms it.')
-      for (let attempt = 0; attempt < 40; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 3000))
-        const check = await fetch(
-          `/api/public/payments/pawapay/deposit?depositId=${encodeURIComponent(depositId)}&tx_ref=${encodeURIComponent(txRef)}&order_id=${encodeURIComponent(orderId)}`,
-        )
-        const paid = await check.json().catch(() => ({}))
-        if (paid.paid) {
-          window.location.href = `/digital-services/payment/return?tx_ref=${encodeURIComponent(txRef)}&order_id=${encodeURIComponent(orderId)}&deposit_id=${encodeURIComponent(depositId)}`
-          return
-        }
-        if (paid.status === 'failed') {
-          throw new Error(paid.error || 'Payment was declined')
-        }
-      }
-      throw new Error('Still waiting for the phone prompt. If you approved it, refresh this page.')
-=======
       const id = String(data.depositId || '').trim()
       if (!id) throw new Error('PawaPay did not start the payment.')
       setDepositId(id)
       setWaiting(true)
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)
@@ -511,11 +482,6 @@ export default function DigitalServiceView({
               />
             </div>
 
-<<<<<<< HEAD
-            {waiting ? (
-              <p style={{ fontWeight: 700, marginBottom: 10 }}>{waiting}</p>
-            ) : null}
-=======
             {paid ? (
               <div
                 style={{
@@ -550,7 +516,6 @@ export default function DigitalServiceView({
               </div>
             ) : null}
 
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
             {error ? (
               <div
                 style={{
@@ -577,11 +542,6 @@ export default function DigitalServiceView({
                 opacity: submitting || waiting || paid ? 0.7 : 1,
               }}
             >
-<<<<<<< HEAD
-              {submitting
-                ? 'Waiting for your phone…'
-                : `Pay ${formatMwk(amountMwk)} with mobile money`}
-=======
               {paid
                 ? 'Payment received'
                 : waiting
@@ -589,7 +549,6 @@ export default function DigitalServiceView({
                   : submitting
                     ? 'Sending prompt…'
                     : `Pay ${formatMwk(amountMwk)} with mobile money`}
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
             </button>
             <p
               style={{
@@ -600,13 +559,8 @@ export default function DigitalServiceView({
                 textAlign: 'center',
               }}
             >
-<<<<<<< HEAD
-              Airtel Money or TNM Mpamba will prompt the number above. Bank transfer
-              is not used for this checkout. We’ll email fulfilment details after payment.
-=======
               Approve the prompt on your Airtel Money or TNM Mpamba phone.
               Secured by PawaPay. We’ll email fulfilment details after payment.
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
             </p>
           </form>
         </div>

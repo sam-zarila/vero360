@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     const db = getAdminDb()
 
     // Repair released holds that never credited the 10% platform fee.
-    let backfill = { credited: 0, amount: 0, skipped: 0 }
+    let backfill = { credited: 0, amount: 0, skipped: 0, mergedDuplicates: 0 }
     try {
       backfill = await backfillMissingPlatformFees(db)
     } catch (err) {

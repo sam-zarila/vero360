@@ -27,7 +27,7 @@ export const PLATFORM_WALLET_USER_ID = 'super_admin'
 
 export function serviceFeePercentLabel(row: {
   serviceType?: string
-  feeRate?: number
+  feeRate?: number | null
 }): string {
   const rate =
     typeof row.feeRate === 'number' && Number.isFinite(row.feeRate) && row.feeRate > 0

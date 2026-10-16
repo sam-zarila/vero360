@@ -1,34 +1,14 @@
 import 'server-only'
 
-<<<<<<< HEAD
 import { PAYOUT_MOMO } from '@/lib/payout-destinations'
 
 const SANDBOX = 'https://api.sandbox.pawapay.io'
 const LIVE = 'https://api.pawapay.io'
 
 export type PawaPayProvider = 'AIRTEL_MWI' | 'TNM_MWI'
-
-export function getPawaPayToken(): string {
-  return (process.env.PAWAPAY_API_TOKEN || '').trim()
-}
-
-export function pawaPayConfigured(): boolean {
-  return getPawaPayToken().length > 0
-}
-
-export function pawaPayBaseUrl(): string {
-  const mode = (process.env.PAWAPAY_ENV || '').trim().toLowerCase()
-=======
-const SANDBOX = 'https://api.sandbox.pawapay.io'
-const LIVE = 'https://api.pawapay.io'
-
 export type PawaPayNetwork = 'airtel' | 'tnm'
 
-export function pawapayConfigured(): boolean {
-  return pawapayToken().length > 0
-}
-
-function pawapayToken(): string {
+export function getPawaPayToken(): string {
   let token = String(process.env.PAWAPAY_API_TOKEN || '')
     .replace(/^\uFEFF/, '')
     .trim()
@@ -41,14 +21,18 @@ function pawapayToken(): string {
   return token.replace(/^Bearer\s+/i, '').replace(/\s+/g, '')
 }
 
-function baseUrl(): string {
+export function pawaPayConfigured(): boolean {
+  return getPawaPayToken().length > 0
+}
+
+export const pawapayConfigured = pawaPayConfigured
+
+export function pawaPayBaseUrl(): string {
   const mode = String(process.env.PAWAPAY_ENV || '').trim().toLowerCase()
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
   if (mode === 'live' || mode === 'production') return LIVE
   return SANDBOX
 }
 
-<<<<<<< HEAD
 /** PayChangu operator ids used by the merchant wallet and admin payout form. */
 export function pawaPayProviderForOperator(operatorId: string): PawaPayProvider | null {
   const id = operatorId.trim()
@@ -68,11 +52,14 @@ export function toPawaPayMsisdn(localMobile: string): string {
   return `265${mobile.slice(1)}`
 }
 
-export type PawaPayPayoutResult = {
-  payoutId: string
-  status: string
-  failureMessage: string
-=======
+/** PawaPay expects 265XXXXXXXX with no plus. */
+export function toMsisdn(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  if (digits.startsWith('265') && digits.length >= 12) return digits
+  if (digits.startsWith('0') && digits.length >= 9) return `265${digits.slice(1)}`
+  return ''
+}
+
 export function networkFromMalawiPhone(phone: string): PawaPayNetwork | '' {
   const digits = phone.replace(/\D/g, '')
   const local = digits.startsWith('265') ? `0${digits.slice(3)}` : digits
@@ -81,16 +68,16 @@ export function networkFromMalawiPhone(phone: string): PawaPayNetwork | '' {
   return ''
 }
 
-export function providerForNetwork(network: PawaPayNetwork): string {
+export function providerForNetwork(network: PawaPayNetwork): PawaPayProvider {
   return network === 'airtel' ? 'AIRTEL_MWI' : 'TNM_MWI'
 }
 
-/** PawaPay expects 265XXXXXXXX with no plus. */
-export function toMsisdn(phone: string): string {
+export function providerFromMalawiPhone(phone: string): PawaPayProvider | null {
   const digits = phone.replace(/\D/g, '')
-  if (digits.startsWith('265') && digits.length >= 12) return digits
-  if (digits.startsWith('0') && digits.length >= 9) return `265${digits.slice(1)}`
-  return ''
+  const local = digits.startsWith('265') ? `0${digits.slice(3)}` : digits
+  if (/^09\d{8}$/.test(local)) return 'AIRTEL_MWI'
+  if (/^08\d{8}$/.test(local)) return 'TNM_MWI'
+  return null
 }
 
 export function explainPawaPayFailure(raw: string): string {
@@ -118,7 +105,6 @@ export function explainPawaPayFailure(raw: string): string {
     return 'The payment was not completed. Approve the prompt on your phone and try again.'
   }
   return raw
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
 }
 
 function failureMessage(body: Record<string, unknown>): string {
@@ -129,55 +115,18 @@ function failureMessage(body: Record<string, unknown>): string {
     const message = String(record.failureMessage || record.failureCode || '').trim()
     if (message) return message
   }
-<<<<<<< HEAD
-  const message = String(body.message || body.error || '').trim()
-  return message || 'PawaPay rejected the payout'
-}
-
-export function providerFromMalawiPhone(phone: string): PawaPayProvider | null {
-  const digits = phone.replace(/\D/g, '')
-  const local = digits.startsWith('265') ? `0${digits.slice(3)}` : digits
-  if (/^09\d{8}$/.test(local)) return 'AIRTEL_MWI'
-  if (/^08\d{8}$/.test(local)) return 'TNM_MWI'
-  return null
-}
-
-export async function initiatePawaPayDeposit(input: {
-  depositId: string
-  amountMwk: number
-  phoneE164: string
-  provider: PawaPayProvider
-  reference: string
-}): Promise<PawaPayPayoutResult> {
-  const token = getPawaPayToken()
-  if (!token) {
-    throw new Error('PawaPay is not configured. Set PAWAPAY_API_TOKEN.')
-  }
-  const res = await fetch(`${pawaPayBaseUrl()}/v2/deposits`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      depositId: input.depositId,
-      amount: String(Math.round(input.amountMwk)),
-      currency: 'MWK',
-      clientReferenceId: input.reference.slice(0, 64),
-=======
-  return String(body.message || body.error || 'PawaPay rejected the payment')
+  return String(body.message || body.error || '').trim()
 }
 
 async function pawapayRequest(
   path: string,
   init: RequestInit,
 ): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const token = pawapayToken()
+  const token = getPawaPayToken()
   if (!token) {
     throw new Error('PawaPay is not configured. Set PAWAPAY_API_TOKEN.')
   }
-  const res = await fetch(`${baseUrl()}${path}`, {
+  const res = await fetch(`${pawaPayBaseUrl()}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -189,6 +138,30 @@ async function pawapayRequest(
   })
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
   return { ok: res.ok, status: res.status, body }
+}
+
+/** ACCEPTED only means PawaPay queued it; the final state comes later. */
+function assertAccepted(ok: boolean, httpStatus: number, body: Record<string, unknown>): string {
+  if (!ok) {
+    throw new Error(
+      explainPawaPayFailure(failureMessage(body) || `PawaPay HTTP ${httpStatus}`),
+    )
+  }
+  const status = String(body.status || '').toUpperCase()
+  if (status !== 'ACCEPTED' && status !== 'DUPLICATE_IGNORED') {
+    throw new Error(
+      explainPawaPayFailure(
+        failureMessage(body) || `Unexpected PawaPay status ${status || 'unknown'}`,
+      ),
+    )
+  }
+  return status
+}
+
+export type PawaPayPayoutResult = {
+  payoutId: string
+  status: string
+  failureMessage: string
 }
 
 export async function createPawaPayDeposit(input: {
@@ -205,115 +178,17 @@ export async function createPawaPayDeposit(input: {
     throw new Error('Enter a valid amount.')
   }
   const reference = String(input.reference || input.depositId).slice(0, 64)
-  const { ok, body } = await pawapayRequest('/v2/deposits', {
+  const { ok, status, body } = await pawapayRequest('/v2/deposits', {
     method: 'POST',
     body: JSON.stringify({
       depositId: input.depositId,
       amount: String(amount),
       currency: 'MWK',
       clientReferenceId: reference,
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
       customerMessage: 'Vero360',
       payer: {
         type: 'MMO',
         accountDetails: {
-<<<<<<< HEAD
-          phoneNumber: input.phoneE164,
-          provider: input.provider,
-        },
-      },
-      metadata: [{ orderId: input.reference.slice(0, 64) }],
-    }),
-  })
-  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
-  if (!res.ok) throw new Error(failureMessage(body) || `PawaPay HTTP ${res.status}`)
-  const status = String(body.status || '').toUpperCase()
-  if (status === 'REJECTED') throw new Error(failureMessage(body))
-  if (status !== 'ACCEPTED' && status !== 'DUPLICATE_IGNORED') {
-    throw new Error(failureMessage(body) || `Unexpected PawaPay status ${status || 'unknown'}`)
-  }
-  return { payoutId: input.depositId, status, failureMessage: '' }
-}
-
-export async function readPawaPayDeposit(depositId: string): Promise<{
-  status: 'completed' | 'failed' | 'pending'
-  reference: string
-  failure: string
-}> {
-  const token = getPawaPayToken()
-  if (!token) throw new Error('PawaPay is not configured. Set PAWAPAY_API_TOKEN.')
-  const res = await fetch(`${pawaPayBaseUrl()}/v2/deposits/${encodeURIComponent(depositId)}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    cache: 'no-store',
-  })
-  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
-  const data = (body.data && typeof body.data === 'object' ? body.data : body) as Record<string, unknown>
-  const status = String(data.status || '').toUpperCase()
-  const direct = String(data.clientReferenceId || '')
-  const metadata = Array.isArray(data.metadata) ? data.metadata : []
-  const fromMeta = metadata
-    .map(row => row as Record<string, unknown>)
-    .map(row => String(row.orderId || row.fieldValue || ''))
-    .find(value => value.length > 0)
-  const value = direct || fromMeta || ''
-  if (status === 'COMPLETED') return { status: 'completed', reference: value, failure: '' }
-  if (status === 'FAILED' || status === 'REJECTED') {
-    return { status: 'failed', reference: value, failure: failureMessage(data) }
-  }
-  return { status: 'pending', reference: value, failure: '' }
-}
-
-export async function initiatePawaPayPayout(input: {
-  payoutId: string
-  amountMwk: number
-  phoneE164: string
-  provider: PawaPayProvider
-}): Promise<PawaPayPayoutResult> {
-  const token = getPawaPayToken()
-  if (!token) {
-    throw new Error('PawaPay is not configured. Set PAWAPAY_API_TOKEN.')
-  }
-
-  const res = await fetch(`${pawaPayBaseUrl()}/v2/payouts`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      payoutId: input.payoutId,
-      amount: String(Math.round(input.amountMwk)),
-      currency: 'MWK',
-      recipient: {
-        type: 'MMO',
-        accountDetails: {
-          phoneNumber: input.phoneE164,
-          provider: input.provider,
-        },
-      },
-    }),
-  })
-
-  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
-  if (!res.ok) {
-    throw new Error(failureMessage(body) || `PawaPay HTTP ${res.status}`)
-  }
-
-  const status = String(body.status || '').toUpperCase()
-  if (status === 'REJECTED') {
-    throw new Error(failureMessage(body))
-  }
-  if (status !== 'ACCEPTED' && status !== 'DUPLICATE_IGNORED') {
-    throw new Error(failureMessage(body) || `Unexpected PawaPay status ${status || 'unknown'}`)
-  }
-
-  return {
-    payoutId: String(body.payoutId || input.payoutId),
-    status,
-    failureMessage: '',
-  }
-=======
           phoneNumber: phone,
           provider: providerForNetwork(input.network),
         },
@@ -321,19 +196,29 @@ export async function initiatePawaPayPayout(input: {
       metadata: [{ orderId: reference }],
     }),
   })
-  if (!ok) throw new Error(explainPawaPayFailure(failureMessage(body)))
-  const status = String(body.status || '').toUpperCase()
-  if (status === 'REJECTED') {
-    throw new Error(explainPawaPayFailure(failureMessage(body)))
-  }
-  if (status !== 'ACCEPTED' && status !== 'DUPLICATE_IGNORED') {
-    throw new Error(explainPawaPayFailure(failureMessage(body)))
-  }
-  return { status }
+  return { status: assertAccepted(ok, status, body) }
+}
+
+export async function initiatePawaPayDeposit(input: {
+  depositId: string
+  amountMwk: number
+  phoneE164: string
+  provider: PawaPayProvider
+  reference: string
+}): Promise<PawaPayPayoutResult> {
+  const { status } = await createPawaPayDeposit({
+    depositId: input.depositId,
+    amountMwk: input.amountMwk,
+    phone: input.phoneE164,
+    network: input.provider === 'AIRTEL_MWI' ? 'airtel' : 'tnm',
+    reference: input.reference,
+  })
+  return { payoutId: input.depositId, status, failureMessage: '' }
 }
 
 export type PawaPayDepositState = {
   status: 'completed' | 'failed' | 'pending'
+  reference: string
   failure: string
 }
 
@@ -350,15 +235,50 @@ export async function readPawaPayDeposit(depositId: string): Promise<PawaPayDepo
     : data && typeof data === 'object'
       ? (data as Record<string, unknown>)
       : body
+  const direct = String(remote.clientReferenceId || '')
+  const metadata = Array.isArray(remote.metadata) ? remote.metadata : []
+  const fromMeta = metadata
+    .map(row => row as Record<string, unknown>)
+    .map(row => String(row.orderId || row.fieldValue || ''))
+    .find(value => value.length > 0)
+  const reference = direct || fromMeta || ''
   const status = String(remote.status || '').toUpperCase()
-  if (!ok && !status) return { status: 'pending', failure: '' }
-  if (status === 'COMPLETED') return { status: 'completed', failure: '' }
+  if (!ok && !status) return { status: 'pending', reference, failure: '' }
+  if (status === 'COMPLETED') return { status: 'completed', reference, failure: '' }
   if (status === 'FAILED' || status === 'REJECTED') {
     return {
       status: 'failed',
+      reference,
       failure: explainPawaPayFailure(failureMessage(remote)),
     }
   }
-  return { status: 'pending', failure: '' }
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
+  return { status: 'pending', reference, failure: '' }
+}
+
+export async function initiatePawaPayPayout(input: {
+  payoutId: string
+  amountMwk: number
+  phoneE164: string
+  provider: PawaPayProvider
+}): Promise<PawaPayPayoutResult> {
+  const { ok, status, body } = await pawapayRequest('/v2/payouts', {
+    method: 'POST',
+    body: JSON.stringify({
+      payoutId: input.payoutId,
+      amount: String(Math.round(input.amountMwk)),
+      currency: 'MWK',
+      recipient: {
+        type: 'MMO',
+        accountDetails: {
+          phoneNumber: input.phoneE164,
+          provider: input.provider,
+        },
+      },
+    }),
+  })
+  return {
+    payoutId: String(body.payoutId || input.payoutId),
+    status: assertAccepted(ok, status, body),
+    failureMessage: '',
+  }
 }

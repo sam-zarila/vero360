@@ -30,17 +30,10 @@ function PaymentReturnInner() {
         if (depositId) qs.set('deposit_id', depositId)
         if (txRef) qs.set('tx_ref', txRef)
         if (orderId) qs.set('order_id', orderId)
-<<<<<<< HEAD
-        const path = depositId
-          ? `/api/public/payments/pawapay/deposit?depositId=${encodeURIComponent(depositId)}&${qs.toString()}`
-          : `/api/public/payments/paychangu/callback?${qs.toString()}`
-        const res = await fetch(path, { cache: 'no-store' })
-=======
         const res = await fetch(
           `/api/public/payments/pawapay/status?${qs.toString()}`,
           { cache: 'no-store' },
         )
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
         const data = await res.json().catch(() => ({}))
         if (cancelled) return
         if (data.paid) {
@@ -63,11 +56,7 @@ function PaymentReturnInner() {
         if (tries >= 8) {
           setStatus('pending')
           setMessage(
-<<<<<<< HEAD
-            'We’re still waiting for payment confirmation. If you approved the prompt, keep this reference and contact support.',
-=======
             'We’re still waiting for PawaPay confirmation. If you approved the prompt, keep this reference and contact support. Your order will update automatically.',
->>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
           )
           return
         }
