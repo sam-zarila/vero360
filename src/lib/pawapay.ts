@@ -82,6 +82,9 @@ export function providerFromMalawiPhone(phone: string): PawaPayProvider | null {
 
 export function explainPawaPayFailure(raw: string): string {
   const text = raw.toLowerCase()
+  if (text.includes('not been configured') || text.includes('provider_temporarily_unavailable')) {
+    return 'This mobile-money network is not switched on for Vero360 payments yet. Try the other network or try again later.'
+  }
   if (text.includes('not approve') || text.includes('payment_not_approved')) {
     return 'The prompt was not approved. Open it on your phone, enter your PIN, then try again.'
   }
