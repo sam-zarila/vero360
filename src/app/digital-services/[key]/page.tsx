@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import ChatGptPlanPickerView from '@/app/components/open-listing/ChatGptPlanPickerView'
 import DigitalServiceView from '@/app/components/open-listing/DigitalServiceView'
 import NetflixPlanPickerView from '@/app/components/open-listing/NetflixPlanPickerView'
 import {
@@ -11,8 +12,14 @@ import {
   formatDigitalPriceLabel,
 } from '@/lib/digital-brand-images'
 import {
+  buildPublicChatGptPlans,
+  isChatGptHubKey,
+  isChatGptPlanKey,
+} from '@/lib/chatgpt-plans'
+import {
   buildPublicNetflixPlans,
   isNetflixHubKey,
+  isNetflixPlanKey,
 } from '@/lib/netflix-plans'
 
 type Props = { params: Promise<{ key: string }> }
@@ -47,6 +54,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           'Pick Mobile, Basic, Standard, or Premium Netflix on Vero360.',
       }
     }
+    if (isChatGptHubKey(key)) {
+      return {
+        title: 'ChatGPT · Choose your plan · Vero360',
+        description:
+          'Basic ChatGPT Plus for students, or a private ChatGPT Plus account for one person.',
+      }
+    }
     const config = await loadConfigSafe()
     const product = config.products.find(p => p.key === key && p.active !== false)
     if (!product) return { title: 'Digital Service · Vero360' }
@@ -72,6 +86,19 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
       <NetflixPlanPickerView
         plans={plans}
         brandImage={digitalBrandImage('netflix', hub?.imageUrl)}
+      />
+    )
+  }
+
+  if (isChatGptHubKey(key)) {
+    const hub = config.products.find(p => p.key === 'chatgpt')
+    if (hub && hub.active === false) notFound()
+    const plans = buildPublicChatGptPlans(config.products)
+    if (!plans.length) notFound()
+    return (
+      <ChatGptPlanPickerView
+        plans={plans}
+        brandImage={digitalBrandImage('chatgpt', hub?.imageUrl)}
       />
     )
   }
@@ -113,12 +140,15 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
             : config.usdToMwkRate || 4700,
         unitLabel: product.unitLabel || null,
         isFixedPrice,
-        backHref: product.key.startsWith('netflix_')
+        backHref: isNetflixPlanKey(product.key)
           ? '/digital-services/netflix'
-          : '/browse/digital-services',
-        backLabel: product.key.startsWith('netflix_')
-          ? 'Choose your plan'
-          : 'All digital',
+          : isChatGptPlanKey(product.key)
+            ? '/digital-services/chatgpt'
+            : '/browse/digital-services',
+        backLabel:
+          isNetflixPlanKey(product.key) || isChatGptPlanKey(product.key)
+            ? 'Choose your plan'
+            : 'All digital',
       }}
     />
   )

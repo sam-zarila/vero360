@@ -1,16 +1,28 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
+import { FieldValue } from 'firebase-admin/firestore'
+import { getAdminDb } from '@/lib/firebase-admin'
+import { DIGITAL_SERVICE_ORDERS_COLLECTION } from '@/lib/digital-services'
 import { getDigitalServicesConfig } from '@/lib/digital-services-config'
 import {
   computeDigitalAmountMwk,
   createPendingDigitalOrder,
   normalizeMalawiPhone,
 } from '@/lib/digital-services-checkout'
+import { savePawaPayDeposit } from '@/lib/pawapay-deposits'
 import {
+<<<<<<< HEAD
   initiatePawaPayDeposit,
   pawaPayConfigured,
   providerFromMalawiPhone,
   toPawaPayMsisdn,
+=======
+  createPawaPayDeposit,
+  networkFromMalawiPhone,
+  pawapayConfigured,
+  providerForNetwork,
+  type PawaPayNetwork,
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
 } from '@/lib/pawapay'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +33,11 @@ function isEmail(v: string) {
 
 export async function POST(request: Request) {
   try {
+<<<<<<< HEAD
     if (!pawaPayConfigured()) {
+=======
+    if (!pawapayConfigured()) {
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
       return NextResponse.json(
         {
           error:
@@ -80,6 +96,12 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+    if (product.key === 'chatgpt') {
+      return NextResponse.json(
+        { error: 'Choose a ChatGPT plan first (Basic ChatGPT Plus or ChatGPT Plus).' },
+        { status: 400 },
+      )
+    }
 
     const selectedUsd =
       selectedUsdRaw === null || selectedUsdRaw === undefined || selectedUsdRaw === ''
@@ -105,6 +127,23 @@ export async function POST(request: Request) {
       )
     }
 
+    const guessed = networkFromMalawiPhone(buyerPhone)
+    const requested = String(body.network || '').trim().toLowerCase()
+    const network: PawaPayNetwork | '' =
+      requested === 'airtel' || requested === 'tnm' ? requested : guessed
+    if (!network) {
+      return NextResponse.json(
+        { error: 'Use an Airtel Money (099) or TNM Mpamba (088) number.' },
+        { status: 400 },
+      )
+    }
+    if (guessed && network !== guessed) {
+      return NextResponse.json(
+        { error: 'This number does not match the network you selected.' },
+        { status: 400 },
+      )
+    }
+
     const txRef = `vero-digital-${Date.now()}`
     const buyerUid = `web:${randomUUID()}`
     const orderId = await createPendingDigitalOrder({
@@ -120,6 +159,7 @@ export async function POST(request: Request) {
       source: 'web',
     })
 
+<<<<<<< HEAD
     const provider = providerFromMalawiPhone(buyerPhone)
     const local = buyerPhone.replace(/^\+/, '').replace(/^265/, '0')
     const phone = toPawaPayMsisdn(local)
@@ -141,10 +181,62 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       pending: true,
+=======
+    const depositId = randomUUID()
+    try {
+      await savePawaPayDeposit({
+        depositId,
+        userId: buyerUid,
+        amount: amountMwk,
+        phone: buyerPhone,
+        provider: providerForNetwork(network),
+        reference: txRef,
+        orderId,
+        kind: 'digital_order',
+      })
+      await createPawaPayDeposit({
+        depositId,
+        amountMwk,
+        phone: buyerPhone,
+        network,
+        reference: txRef,
+      })
+      await getAdminDb()
+        .collection(DIGITAL_SERVICE_ORDERS_COLLECTION)
+        .doc(orderId)
+        .set(
+          {
+            depositId,
+            paymentProvider: 'pawapay',
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        )
+    } catch (err) {
+      await getAdminDb()
+        .collection(DIGITAL_SERVICE_ORDERS_COLLECTION)
+        .doc(orderId)
+        .set(
+          {
+            status: 'failed',
+            depositId,
+            paymentProvider: 'pawapay',
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        )
+        .catch(() => {})
+      throw err
+    }
+
+    return NextResponse.json({
+      success: true,
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
       depositId,
       orderId,
       txRef,
       amountMwk,
+      status: 'pending',
     })
   } catch (err) {
     console.error('Digital checkout POST:', err)

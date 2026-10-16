@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import {
   createAnnouncement,
   listAnnouncements,
@@ -94,6 +95,13 @@ export async function POST(request: Request) {
       videoFileName,
       postedAt: postedAtRaw || null,
       active,
+    })
+    const actor = await requirePanelAdmin(request)
+    await recordPanelAudit(actor, {
+      action: 'create',
+      resource: 'announcement',
+      resourceId: item.id,
+      summary: `Posted announcement “${item.title}”`,
     })
     return NextResponse.json({ success: true, item }, { status: 201 })
   } catch (err) {

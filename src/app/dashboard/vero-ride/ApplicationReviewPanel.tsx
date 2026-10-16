@@ -98,16 +98,25 @@ function Field({
   label,
   value,
   warn,
+  href,
 }: {
   label: string
   value: string
   warn?: string
+  href?: string
 }) {
+  const shown = href ? (
+    <a href={href} style={{ color: 'inherit', textDecoration: 'underline' }}>
+      {value}
+    </a>
+  ) : (
+    value
+  )
   return (
     <div>
       <div style={{ fontSize: 11, color: 'var(--muted)' }}>{label}</div>
       <div style={{ fontWeight: 600, fontSize: 14 }}>
-        {value}
+        {shown}
         {warn ? (
           <span style={{ color: '#B91C1C', fontWeight: 700 }}> · {warn}</span>
         ) : null}
@@ -196,6 +205,12 @@ export function ApplicationReviewPanel({
                 ? 'Driver must be 18 or older'
                 : undefined
             }
+          />
+          <Field
+            label="Phone"
+            value={driver.phone || '—'}
+            href={driver.phone ? `tel:${driver.phone}` : undefined}
+            warn={driver.phone ? undefined : 'No number to call'}
           />
         </div>
         <div

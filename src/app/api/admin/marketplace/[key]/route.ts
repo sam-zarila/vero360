@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import type { CollectionReference } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { MARKETPLACE_ITEMS_COLLECTION } from '@/lib/marketplace'
@@ -19,6 +20,7 @@ type Ctx = { params: Promise<{ key: string }> }
 export async function DELETE(_request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(_request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(_request)
   const { key: rawKey } = await ctx.params
   const key = decodeURIComponent(rawKey || '').trim()
   if (!key) {
@@ -36,6 +38,12 @@ export async function DELETE(_request: Request, ctx: Ctx) {
       }
       await deleteNestListing(sqlId)
       await cleanupFirestoreMirrors(col, sqlId, null)
+      await recordPanelAudit(actor, {
+        action: 'delete',
+        resource: 'marketplace',
+        resourceId: key,
+        summary: `Removed marketplace listing ${key}`,
+      })
       return NextResponse.json({ success: true, deleted: true, key })
     }
 
@@ -61,6 +69,12 @@ export async function DELETE(_request: Request, ctx: Ctx) {
       await cleanupFirestoreMirrors(col, sqlId, key)
     }
 
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'marketplace',
+      resourceId: key,
+      summary: `Removed marketplace listing ${key}`,
+    })
     return NextResponse.json({ success: true, deleted: true, key, sqlId })
   } catch (err) {
     console.error('Admin marketplace DELETE error:', err)

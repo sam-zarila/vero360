@@ -16,6 +16,7 @@ import {
   type CreateAdminInput,
   type PanelAdmin,
 } from '@/lib/admins'
+import { recordAudit, recordPanelAudit } from '@/lib/audit-trail-admin'
 
 export async function GET(request: Request) {
   try {
@@ -145,6 +146,26 @@ export async function POST(request: Request) {
 
     const snap = await db.collection(ADMINS_COLLECTION).doc(user.uid).get()
     const admin = parsePanelAdmin(user.uid, (snap.data() || {}) as Record<string, unknown>)
+
+    if (actor) {
+      await recordPanelAudit(actor, {
+        action: 'create',
+        resource: 'admin',
+        resourceId: admin.id,
+        summary: `Created ${admin.role} ${admin.email}`,
+      })
+    } else {
+      await recordAudit({
+        action: 'create',
+        resource: 'admin',
+        resourceId: admin.id,
+        summary: `Bootstrap created super admin ${admin.email}`,
+        actorUid: admin.id,
+        actorEmail: admin.email,
+        actorName: admin.displayName,
+        actorRole: 'bootstrap',
+      })
+    }
 
     return NextResponse.json(
       {

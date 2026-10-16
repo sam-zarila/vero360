@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
 import { parseAdminRide } from '@/lib/rides'
 import { nestAdminFetch } from '@/lib/nest-admin'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function POST(request: Request, ctx: Ctx) {
   try {
-    await requirePanelAdmin(request)
+    const actor = await requirePanelAdmin(request)
     const { id } = await ctx.params
     const payload = await request.json().catch(() => ({}))
 
@@ -26,6 +27,12 @@ export async function POST(request: Request, ctx: Ctx) {
     }
 
     const ride = parseAdminRide(body)
+    await recordPanelAudit(actor, {
+      action: 'mark_paid',
+      resource: 'ride',
+      resourceId: id,
+      summary: `Marked ride ${ride?.id || id} as paid`,
+    })
     return NextResponse.json({ success: true, ride })
   } catch (err) {
     const auth = authErrorResponse(err)

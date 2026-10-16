@@ -147,7 +147,7 @@ export function SignupGuidePage({ audience }: { audience: SellBannerAudience | S
         }}
       >
         <div style={{ maxWidth: 880, margin: '0 auto' }}>
-          <Logo height={42} textColor="#fff" />
+          <Logo height={56} />
           <Link
             href="/"
             style={{

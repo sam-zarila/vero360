@@ -78,7 +78,7 @@ function openHelpCenter() {
             {/* Brand */}
             <div>
               <div style={{ marginBottom: 16 }}>
-                <Logo height={36} textColor="#fff" />
+                <Logo height={64} />
               </div>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 24 }}>
                 Malawi&apos;s all-in-one super app. Marketplace, rides, food, courier, jobs, and more on one secure platform.

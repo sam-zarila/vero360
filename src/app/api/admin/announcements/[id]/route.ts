@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import {
   deleteAnnouncement,
   resolveAnnouncementExternalVideo,
@@ -67,6 +68,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
         postedAt: body.postedAt,
         active: body.active,
         ...videoPatch,
+      })
+      const actor = await requirePanelAdmin(request)
+      await recordPanelAudit(actor, {
+        action: 'update',
+        resource: 'announcement',
+        resourceId: id,
+        summary: `Updated announcement “${item.title}”`,
       })
       return NextResponse.json({ success: true, item })
     }
@@ -139,6 +147,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
     }
 
     const item = await updateAnnouncement(id, patch)
+    const actor = await requirePanelAdmin(request)
+    await recordPanelAudit(actor, {
+      action: 'update',
+      resource: 'announcement',
+      resourceId: id,
+      summary: `Updated announcement “${item.title}”`,
+    })
     return NextResponse.json({ success: true, item })
   } catch (err) {
     const status =
@@ -161,6 +176,13 @@ export async function DELETE(request: Request, ctx: Ctx) {
 
   try {
     await deleteAnnouncement(id)
+    const actor = await requirePanelAdmin(request)
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'announcement',
+      resourceId: id,
+      summary: 'Deleted an announcement',
+    })
     return NextResponse.json({ success: true })
   } catch (err) {
     const status =

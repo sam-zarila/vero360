@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { enrichMerchantReports } from '@/lib/enrich-merchant-reports'
@@ -14,6 +15,7 @@ type Ctx = { params: Promise<{ id: string }> }
 export async function PATCH(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(request)
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'Invalid report id' }, { status: 400 })
@@ -64,6 +66,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
       console.warn('Merchant report enrich after PATCH skipped:', err)
     }
 
+    await recordPanelAudit(actor, {
+      action: 'update',
+      resource: 'merchant_report',
+      resourceId: id,
+      summary: `Set merchant report ${id} to ${status}`,
+    })
     return NextResponse.json({ success: true, item })
   } catch (err) {
     console.error('Admin merchant report PATCH error:', err)
@@ -77,6 +85,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
 export async function DELETE(_request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(_request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(_request)
   const { id } = await ctx.params
   if (!id?.trim()) {
     return NextResponse.json({ error: 'Invalid report id' }, { status: 400 })
@@ -90,6 +99,12 @@ export async function DELETE(_request: Request, ctx: Ctx) {
     }
 
     await ref.delete()
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'merchant_report',
+      resourceId: id,
+      summary: `Deleted merchant report ${id}`,
+    })
     return NextResponse.json({ success: true, deleted: true, id })
   } catch (err) {
     console.error('Admin merchant report DELETE error:', err)

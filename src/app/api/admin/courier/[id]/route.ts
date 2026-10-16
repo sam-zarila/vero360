@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import {
   apiErrorMessage,
   getVeroAuthHeader,
@@ -12,6 +13,7 @@ type Ctx = { params: Promise<{ id: string }> }
 export async function DELETE(request: Request, ctx: Ctx) {
   const denied = await denyUnlessPanelAdmin(request)
   if (denied) return denied
+  const actor = await requirePanelAdmin(request)
   const { id } = await ctx.params
   const auth = getVeroAuthHeader(request)
 
@@ -30,6 +32,12 @@ export async function DELETE(request: Request, ctx: Ctx) {
         { status: res.status },
       )
     }
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'courier',
+      resourceId: id,
+      summary: `Deleted courier delivery ${id}`,
+    })
     return NextResponse.json({ success: true, deleted: true })
   } catch (err) {
     console.error('Admin courier DELETE error:', err)

@@ -275,7 +275,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             </button>
 
             <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Logo height={34} />
+              <Logo height={48} />
               <span
                 style={{
                   fontSize: 13,
@@ -359,6 +359,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               padding: '16px 16px 8px',
               borderBottom: '1px solid var(--border)',
               marginBottom: 8,
+              flexShrink: 0,
             }}
           >
             <span style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--font-display)' }}>
@@ -383,6 +384,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
           <nav
             aria-label="Admin navigation"
+            className="dashboard-sidebar-nav"
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -390,6 +392,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               padding: '20px 12px 28px',
               overflowY: 'auto',
               flex: 1,
+              minHeight: 0,
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
             }}
           >
             {navGroups.map(group => (
@@ -910,13 +915,23 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             left: 0 !important;
             bottom: 0 !important;
             z-index: 50;
-            min-height: 100vh !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
             transform: translateX(-105%);
             transition: transform 0.2s ease;
             box-shadow: var(--shadow-lg);
           }
           .dashboard-sidebar.is-open {
-            transform: translateX(0);
+            transform: none;
+          }
+          .dashboard-sidebar-nav {
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
           }
           .dashboard-sidebar-mobile-head {
             display: flex !important;

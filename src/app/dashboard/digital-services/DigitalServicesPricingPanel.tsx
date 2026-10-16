@@ -50,7 +50,7 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
     category: p.category,
     brandTag: (p.brandTag || '').trim() || undefined,
     fixedMwkPrice: isSub
-      ? p.key === 'netflix'
+      ? p.key === 'netflix' || p.key === 'chatgpt'
         ? null
         : Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
       : null,
@@ -66,6 +66,17 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
         : null,
     imageUrl: (p.imageUrl || '').trim() || undefined,
     active: p.active !== false,
+  }
+}
+
+function chatGptPlanHint(key: string): string {
+  switch (key) {
+    case 'chatgpt_basic':
+      return 'For students · shared login for up to 15 · school work · chats are not private · MWK 10,000'
+    case 'chatgpt_plus':
+      return 'Private · one account · work and personal use · MWK 65,000'
+    default:
+      return ''
   }
 }
 
@@ -316,7 +327,12 @@ export function DigitalServicesPricingPanel() {
     (p) => p.category === 'streaming' || p.category === 'subscription',
   )
   const netflixPlans = subs.filter((p) => p.key.startsWith('netflix_'))
-  const otherSubs = subs.filter((p) => !p.key.startsWith('netflix'))
+  const chatGptPlans = subs.filter(
+    (p) => p.key === 'chatgpt_basic' || p.key === 'chatgpt_plus',
+  )
+  const otherSubs = subs.filter(
+    (p) => !p.key.startsWith('netflix') && p.key !== 'chatgpt_basic' && p.key !== 'chatgpt_plus',
+  )
   const cryptos = products.filter((p) => p.category === 'crypto')
   const gifts = products.filter(
     (p) =>
@@ -810,6 +826,87 @@ export function DigitalServicesPricingPanel() {
             ) : null}
           </div>
 
+          <h3 style={sectionTitle}>ChatGPT plans (MWK / month)</h3>
+          <p style={{ margin: '0 0 10px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.45 }}>
+            App and website users tap ChatGPT, then Choose your plan. Basic is the
+            shared student login (up to 15). ChatGPT Plus is one private account.
+          </p>
+          <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+            {chatGptPlans.map((p) => (
+              <article
+                key={p.key}
+                style={{
+                  ...cardStyle,
+                  opacity: p.active === false ? 0.72 : 1,
+                  borderColor:
+                    p.key === 'chatgpt_plus'
+                      ? '#FDBA74'
+                      : p.active === false
+                        ? '#FECACA'
+                        : '#E5E7EB',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <strong style={{ fontSize: 14 }}>
+                    {p.name}
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: '#EA580C',
+                      }}
+                    >
+                      {p.key === 'chatgpt_basic' ? 'For students' : 'Private'}
+                    </span>
+                  </strong>
+                  <label style={checkLabel} title="When off, this plan is hidden">
+                    <input
+                      type="checkbox"
+                      checked={p.active !== false}
+                      disabled={saving}
+                      onChange={(e) => void toggleActive(p.key, e.target.checked)}
+                    />
+                    {p.active !== false ? 'Active' : 'Out of stock'}
+                  </label>
+                </div>
+                <p style={{ margin: '6px 0 0', color: '#6B7280', fontSize: 12.5, lineHeight: 1.4 }}>
+                  {p.subtitle || chatGptPlanHint(p.key)}
+                </p>
+                <div style={rowStyle}>
+                  <label style={fieldLabel}>
+                    Display name
+                    <input
+                      value={p.name}
+                      onChange={(e) => updateProduct(p.key, { name: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={fieldLabel}>
+                    MWK price / month
+                    <input
+                      type="number"
+                      min={0}
+                      value={p.fixedMwkPrice ?? 0}
+                      onChange={(e) =>
+                        updateProduct(p.key, {
+                          fixedMwkPrice: Number(e.target.value) || 0,
+                        })
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </article>
+            ))}
+            {chatGptPlans.length === 0 ? (
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+                ChatGPT plans will appear after you reload prices (Basic MWK 10,000 and
+                Plus MWK 65,000).
+              </p>
+            ) : null}
+          </div>
+
           <h3 style={sectionTitle}>Other subscriptions (fixed MWK)</h3>
           <div style={{ display: 'grid', gap: 10 }}>
             {otherSubs.map((p) => (
@@ -844,9 +941,11 @@ export function DigitalServicesPricingPanel() {
                       style={inputStyle}
                     />
                   </label>
-                  {p.key === 'netflix' ? (
+                  {p.key === 'netflix' || p.key === 'chatgpt' ? (
                     <p style={{ margin: 0, fontSize: 12.5, color: '#6B7280', alignSelf: 'end', paddingBottom: 10 }}>
-                      Hub only. Prices are on the Netflix plans above.
+                      {p.key === 'chatgpt'
+                        ? 'Hub only. Prices are on the ChatGPT plans above.'
+                        : 'Hub only. Prices are on the Netflix plans above.'}
                     </p>
                   ) : (
                     <label style={fieldLabel}>

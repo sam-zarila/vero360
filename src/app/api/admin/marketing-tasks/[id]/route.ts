@@ -10,6 +10,7 @@ import {
   updateMarketingTask,
 } from '@/lib/marketing-tasks-admin'
 import type { UpdateMarketingTaskInput } from '@/lib/marketing-tasks'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,6 +71,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
         },
         { allowAssignee: true, allowApprovedBy: true },
       )
+      await recordPanelAudit(actor, {
+        action: 'approve',
+        resource: 'marketing_task',
+        resourceId: id,
+        summary: `Approved task “${item.taskTitle}”`,
+      })
       return NextResponse.json({ success: true, item, message: 'Task approved' })
     }
 
@@ -106,6 +113,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
             }
           : undefined,
     })
+    await recordPanelAudit(actor, {
+      action: 'update',
+      resource: 'marketing_task',
+      resourceId: id,
+      summary: `Updated task “${item.taskTitle}”`,
+    })
     return NextResponse.json({ success: true, item })
   } catch (err) {
     const auth = authErrorResponse(err)
@@ -128,13 +141,14 @@ export async function DELETE(request: Request, ctx: Ctx) {
     const isAdmin = isFullAdminRole(actor.admin.role)
     const isMarketer = isMarketerRole(actor.admin.role)
 
-    if (isAdmin) {
+    if (isAdmin || (isMarketer && existing.marketerUid === actor.uid)) {
       await deleteMarketingTask(id)
-      return NextResponse.json({ success: true })
-    }
-
-    if (isMarketer && existing.marketerUid === actor.uid) {
-      await deleteMarketingTask(id)
+      await recordPanelAudit(actor, {
+        action: 'delete',
+        resource: 'marketing_task',
+        resourceId: id,
+        summary: `Deleted task “${existing.taskTitle}”`,
+      })
       return NextResponse.json({ success: true })
     }
 

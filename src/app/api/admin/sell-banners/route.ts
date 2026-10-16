@@ -6,6 +6,7 @@ import {
   uploadSellBannerImage,
 } from '@/lib/sell-banners-admin'
 import { parseSellBannerAudience } from '@/lib/sell-banners'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +52,12 @@ export async function POST(request: Request) {
         active: String(form.get('active') ?? 'true') !== 'false',
         createdByEmail: admin.email,
       })
+      await recordPanelAudit(admin, {
+        action: 'create',
+        resource: 'sell_banner',
+        resourceId: item.id,
+        summary: `Created ${item.audience} sell banner “${item.title}”`,
+      })
       return NextResponse.json({ success: true, item }, { status: 201 })
     }
 
@@ -72,6 +79,12 @@ export async function POST(request: Request) {
       sortOrder:
         typeof body.sortOrder === 'number' ? body.sortOrder : undefined,
       createdByEmail: admin.email,
+    })
+    await recordPanelAudit(admin, {
+      action: 'create',
+      resource: 'sell_banner',
+      resourceId: item.id,
+      summary: `Created ${item.audience} sell banner “${item.title}”`,
     })
     return NextResponse.json({ success: true, item }, { status: 201 })
   } catch (err) {

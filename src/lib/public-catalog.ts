@@ -354,13 +354,14 @@ export async function listPublicDigitalServices(
 
     return config.products
       .filter(p => p.active !== false)
-      // Plans are chosen via the Netflix hub page, not as separate catalog cards.
+      // Plans are chosen on the Netflix and ChatGPT pages, not as separate cards.
       .filter(p => !String(p.key || '').startsWith('netflix_'))
+      .filter(p => p.key !== 'chatgpt_basic' && p.key !== 'chatgpt_plus')
       .slice(0, take)
       .map(p => {
         const isSub =
           p.category === 'streaming' || p.category === 'subscription'
-        const isNetflixHub = p.key === 'netflix'
+        const isPlanHub = p.key === 'netflix' || p.key === 'chatgpt'
         const unitRate =
           typeof p.mwkPerUnit === 'number' && p.mwkPerUnit > 0
             ? p.mwkPerUnit
@@ -373,7 +374,7 @@ export async function listPublicDigitalServices(
           Array.isArray(p.usdAmounts) && p.usdAmounts.length > 0
             ? Math.round(Number(p.usdAmounts[0]) * unitRate)
             : null
-        const price = isNetflixHub ? null : isSub ? fixed : fixed ?? fromUsd
+        const price = isPlanHub ? null : isSub ? fixed : fixed ?? fromUsd
         const unit = (p.unitLabel || '').trim()
         const amounts =
           Array.isArray(p.usdAmounts) && p.usdAmounts.length
@@ -384,7 +385,7 @@ export async function listPublicDigitalServices(
         const metaParts = [
           digitalCategoryLabel(p.category),
           p.brandTag || null,
-          isNetflixHub
+          isPlanHub
             ? 'Choose a plan'
             : !isSub && amounts
               ? amounts

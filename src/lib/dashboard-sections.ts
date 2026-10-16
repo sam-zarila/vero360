@@ -33,6 +33,7 @@ export type DashboardSectionId =
   | 'verochat'
   | 'get-started'
   | 'settings'
+  | 'audit'
 
 export type DashboardSection = {
   id: DashboardSectionId
@@ -238,6 +239,15 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     bg: '#ECFDF5',
   },
   {
+    id: 'audit',
+    title: 'Audit trail',
+    desc: 'Who changed accounts, content, and payments',
+    icon: 'shield',
+    color: '#6D28D9',
+    bg: '#F5F3FF',
+    superAdminOnly: true,
+  },
+  {
     id: 'admins',
     title: 'Admins',
     desc: 'Super admins and panel admins',
@@ -267,7 +277,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'rewards',
     title: 'Vero Coins',
-    desc: '1 coin = MWK 50 · 10 coins = MWK 500 cash-out',
+    desc: '1 coin = MWK 50 · cash out from MWK 1,000 · jackpot MWK 5,000',
     icon: 'sparkles',
     color: '#D97706',
     bg: '#FFFBEB',
@@ -418,7 +428,11 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     title: 'System',
     items: [
       { href: '/dashboard/finance', label: 'Finance', icon: 'wallet', superAdminOnly: true },
+<<<<<<< HEAD
       { href: '/dashboard/wallet', label: 'Platform wallet', icon: 'wallet', superAdminOnly: true },
+=======
+      { href: '/dashboard/audit', label: 'Audit trail', icon: 'shield', superAdminOnly: true },
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
       {
         href: '/dashboard/rewards',
         label: 'Vero Coins',

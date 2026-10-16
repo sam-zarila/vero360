@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
 import { formatMwk } from '@/lib/vero-api'
@@ -91,8 +91,15 @@ export default function DigitalServiceView({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [network, setNetwork] = useState<'airtel' | 'tnm'>('airtel')
   const [submitting, setSubmitting] = useState(false)
+<<<<<<< HEAD
   const [waiting, setWaiting] = useState('')
+=======
+  const [waiting, setWaiting] = useState(false)
+  const [paid, setPaid] = useState(false)
+  const [depositId, setDepositId] = useState('')
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
   const [error, setError] = useState('')
 
   const unit = (product.unitLabel || '').trim() || 'USD'
@@ -115,8 +122,58 @@ export default function DigitalServiceView({
     customUsd,
   ])
 
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, '')
+    const local = digits.startsWith('265') ? `0${digits.slice(3)}` : digits
+    if (local.startsWith('09')) setNetwork('airtel')
+    else if (local.startsWith('08')) setNetwork('tnm')
+  }, [phone])
+
+  useEffect(() => {
+    if (!waiting || !depositId || paid) return
+    let cancelled = false
+    let timer = 0
+
+    async function check() {
+      try {
+        const res = await fetch(
+          `/api/public/payments/pawapay/status?deposit_id=${encodeURIComponent(depositId)}`,
+          { cache: 'no-store' },
+        )
+        const data = await res.json().catch(() => ({}))
+        if (cancelled) return
+        if (data.paid) {
+          setPaid(true)
+          setWaiting(false)
+          setSubmitting(false)
+          return
+        }
+        if (data.status === 'failed') {
+          setWaiting(false)
+          setSubmitting(false)
+          setError(
+            data.failure ||
+              data.error ||
+              'The prompt was not approved. Try again.',
+          )
+          return
+        }
+      } catch {
+        if (cancelled) return
+      }
+      timer = window.setTimeout(check, 3000)
+    }
+
+    timer = window.setTimeout(check, 2500)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [waiting, depositId, paid])
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
+    if (waiting || paid) return
     setError('')
     setSubmitting(true)
     try {
@@ -136,12 +193,14 @@ export default function DigitalServiceView({
           buyerEmail: email.trim(),
           buyerPhone: phone.trim(),
           selectedUsd: usdPayload,
+          network,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(data.error || 'Could not start payment')
       }
+<<<<<<< HEAD
       const depositId = String(data.depositId || '').trim()
       const txRef = String(data.txRef || '').trim()
       const orderId = String(data.orderId || '').trim()
@@ -164,6 +223,12 @@ export default function DigitalServiceView({
         }
       }
       throw new Error('Still waiting for the phone prompt. If you approved it, refresh this page.')
+=======
+      const id = String(data.depositId || '').trim()
+      if (!id) throw new Error('PawaPay did not start the payment.')
+      setDepositId(id)
+      setWaiting(true)
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)
@@ -387,12 +452,48 @@ export default function DigitalServiceView({
                 id="buyer-phone"
                 style={input}
                 required
+                disabled={waiting || paid}
                 inputMode="tel"
                 autoComplete="tel"
-                placeholder="0881234567"
+                placeholder="099 or 088 number"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
               />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <span style={label}>Network</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(
+                  [
+                    ['airtel', 'Airtel Money (099)'],
+                    ['tnm', 'TNM Mpamba (088)'],
+                  ] as const
+                ).map(([id, text]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={waiting || paid}
+                    onClick={() => setNetwork(id)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 8px',
+                      borderRadius: 12,
+                      border:
+                        network === id
+                          ? '2px solid #EA580C'
+                          : '1px solid var(--border)',
+                      background: network === id ? '#FFF7ED' : '#fff',
+                      color: '#111827',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: waiting || paid ? 'default' : 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={label} htmlFor="buyer-email">
@@ -410,9 +511,46 @@ export default function DigitalServiceView({
               />
             </div>
 
+<<<<<<< HEAD
             {waiting ? (
               <p style={{ fontWeight: 700, marginBottom: 10 }}>{waiting}</p>
             ) : null}
+=======
+            {paid ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: '#ECFDF5',
+                  color: '#065F46',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                Payment received. We’ll email fulfilment details shortly.
+              </div>
+            ) : null}
+
+            {waiting ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: '#FFF7ED',
+                  color: '#9A3412',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  marginBottom: 10,
+                  lineHeight: 1.5,
+                }}
+              >
+                A prompt was sent to your phone. Approve it with your PIN.
+                Secured by PawaPay.
+              </div>
+            ) : null}
+
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
             {error ? (
               <div
                 style={{
@@ -431,17 +569,27 @@ export default function DigitalServiceView({
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || waiting || paid}
               style={{
                 ...btn,
                 background: 'linear-gradient(135deg, #EA580C, #F97316)',
                 color: '#fff',
-                opacity: submitting ? 0.7 : 1,
+                opacity: submitting || waiting || paid ? 0.7 : 1,
               }}
             >
+<<<<<<< HEAD
               {submitting
                 ? 'Waiting for your phone…'
                 : `Pay ${formatMwk(amountMwk)} with mobile money`}
+=======
+              {paid
+                ? 'Payment received'
+                : waiting
+                  ? 'Waiting for approval…'
+                  : submitting
+                    ? 'Sending prompt…'
+                    : `Pay ${formatMwk(amountMwk)} with mobile money`}
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
             </button>
             <p
               style={{
@@ -452,8 +600,13 @@ export default function DigitalServiceView({
                 textAlign: 'center',
               }}
             >
+<<<<<<< HEAD
               Airtel Money or TNM Mpamba will prompt the number above. Bank transfer
               is not used for this checkout. We’ll email fulfilment details after payment.
+=======
+              Approve the prompt on your Airtel Money or TNM Mpamba phone.
+              Secured by PawaPay. We’ll email fulfilment details after payment.
+>>>>>>> b27f17e1ec721d07e637ed8271680a19a894dc87
             </p>
           </form>
         </div>

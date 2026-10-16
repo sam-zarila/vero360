@@ -7,6 +7,7 @@ import {
   AGENT_REGISTRATIONS_COLLECTION,
   parseAgentRegistration,
 } from '@/lib/agent-registrations'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,6 +65,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
     }
 
     const registration = await setAgentRegistrationVerified(id, body.isVerified)
+    await recordPanelAudit(actor, {
+      action: body.isVerified ? 'verify' : 'unverify',
+      resource: 'agent_registration',
+      resourceId: id,
+      summary: `${body.isVerified ? 'Verified' : 'Unverified'} ${registration.role} ${registration.email || registration.phone}`,
+    })
     return NextResponse.json({ success: true, registration })
   } catch (err) {
     const auth = authErrorResponse(err)

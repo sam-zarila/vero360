@@ -336,7 +336,7 @@ export default function HomepageAdsAdminPage() {
 
       <DashboardPageHeader
         sectionId="homepage-ads"
-        description="Post complimentary homepage slider ads from the panel (no PayChangu), or manage paid ads from the app."
+        description="Post complimentary homepage slider ads from the panel (no customer payment), or manage paid ads from the app."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button

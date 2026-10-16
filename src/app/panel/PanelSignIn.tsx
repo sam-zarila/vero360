@@ -203,7 +203,7 @@ export default function PanelSignIn() {
       >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Link href="/" style={{ display: 'inline-flex', marginBottom: 24 }}>
-            <Logo height={44} showText={false} />
+            <Logo height={72} />
           </Link>
           <h1
             style={{

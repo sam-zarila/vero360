@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
+import { buyerFacingPrice } from '@/lib/buyer-commission'
 import { formatMwk } from '@/lib/vero-api'
 import { listingDetailHref, type CatalogCard } from '@/lib/catalog-cards'
 
@@ -52,8 +53,13 @@ function CatalogCardItem({
   onActivate?: (card: CatalogCard) => void
   scroll?: boolean
 }) {
-  const priceLabel =
-    card.price != null && card.price > 0 ? formatMwk(card.price) : null
+  const shownPrice =
+    card.price != null && card.price > 0
+      ? (card.href || '').startsWith('/marketplace')
+        ? buyerFacingPrice(card.price)
+        : card.price
+      : null
+  const priceLabel = shownPrice != null ? formatMwk(shownPrice) : null
   const href = listingDetailHref(card)
 
   const content = (

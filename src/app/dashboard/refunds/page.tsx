@@ -149,7 +149,7 @@ export default function RefundsAdminPage() {
 
       <DashboardPageHeader
         sectionId="refunds"
-        description="Review and complete marketplace refunds. Track pending requests and mark completed after PayChangu processing."
+        description="Review and complete marketplace refunds. Track pending requests and mark completed after the refund is processed."
         actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
       />
 

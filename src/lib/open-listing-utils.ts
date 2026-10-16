@@ -1,3 +1,4 @@
+import { buyerFacingPrice } from '@/lib/buyer-commission'
 import { formatMwk } from '@/lib/vero-api'
 import type { ListingModel } from '@/lib/open-listing-types'
 
@@ -8,7 +9,10 @@ export function listingPriceLabel(listing: ListingModel) {
     listing.kind === 'food'
   ) {
     const n = Number(String(listing.price).replace(/,/g, ''))
-    if (Number.isFinite(n) && n > 0) return formatMwk(n)
+    if (Number.isFinite(n) && n > 0) {
+      const shown = listing.kind === 'marketplace' ? buyerFacingPrice(n) : n
+      return formatMwk(shown)
+    }
     if (!listing.price) return ''
     return `MWK ${listing.price}`
   }

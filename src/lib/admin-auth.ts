@@ -61,6 +61,40 @@ export async function ensureAdminProfile(opts: {
 
   if (!email) return null
 
+  // Same email, but the panel row is still on a deleted Firebase login.
+  const exact = await db.collection(ADMINS_COLLECTION).where('email', '==', email).limit(5).get()
+  let matches = exact.docs
+  if (matches.length === 0) {
+    const all = await db.collection(ADMINS_COLLECTION).get()
+    matches = all.docs.filter(
+      doc => String(doc.data().email || '').trim().toLowerCase() === email,
+    )
+  }
+  if (matches.length > 0) {
+    const old =
+      matches.find(doc => normalizeAdminRole(doc.data().role) === 'super_admin') ||
+      matches[0]!
+    if (old.id !== opts.uid) {
+      await ref.set({
+        ...old.data(),
+        email,
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+      await old.ref.delete()
+      try {
+        await getAdminAuth().setCustomUserClaims(opts.uid, {
+          panel: true,
+          panelRole: normalizeAdminRole(old.data().role),
+        })
+      } catch (err) {
+        console.warn('setCustomUserClaims skipped:', err)
+      }
+    }
+    const fresh = await ref.get()
+    const source = fresh.exists ? fresh : old
+    return parsePanelAdmin(opts.uid, (source.data() || {}) as Record<string, unknown>)
+  }
+
   const existing = await db.collection(ADMINS_COLLECTION).limit(1).get()
   const isFirstAdmin = existing.empty
 
@@ -113,21 +147,6 @@ export async function verifyPanelAdmin(
       displayName: token.name || null,
     })
 
-    if (!admin) {
-      // Fallback: lookup by email if doc id mismatched
-      if (email) {
-        const qs = await getAdminDb()
-          .collection(ADMINS_COLLECTION)
-          .where('email', '==', email)
-          .limit(1)
-          .get()
-        if (!qs.empty) {
-          const doc = qs.docs[0]!
-          admin = parsePanelAdmin(doc.id, doc.data() as Record<string, unknown>)
-        }
-      }
-    }
-
     if (!admin) return null
     if (admin.status === 'suspended') {
       if (email && isConfiguredSuperAdminEmail(email)) {
@@ -143,7 +162,7 @@ export async function verifyPanelAdmin(
 
     // Touch last login (best-effort)
     try {
-      await getAdminDb().collection(ADMINS_COLLECTION).doc(admin.id).set(
+      await getAdminDb().collection(ADMINS_COLLECTION).doc(uid).set(
         { lastLoginAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() },
         { merge: true },
       )
@@ -151,7 +170,12 @@ export async function verifyPanelAdmin(
       // ignore
     }
 
-    return { token, uid: admin.id, email: admin.email || email, admin }
+    return {
+      token,
+      uid,
+      email: admin.email || email,
+      admin: { ...admin, id: uid },
+    }
   } catch (err) {
     console.warn('verifyPanelAdmin failed:', err)
     return null

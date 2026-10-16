@@ -6,6 +6,7 @@ import DownloadAppModal from './DownloadAppModal'
 import { CatalogCardGrid } from './CatalogCardGrid'
 import { IconBadge, type VeroIconName } from './icons'
 import {
+  fetchCatalogCards,
   mapTenderItems,
   type CatalogCard,
 } from '@/lib/catalog-cards'
@@ -18,11 +19,13 @@ type StripConfig = {
   subtitle: string
   viewMoreLabel: string
   endpoint: string
+  fetchLimit: number
 }
 
 const PREVIEW_COUNT = 12
-/** Only fetch what the strip shows (+ a little headroom). */
+/** Home strips stay small. Marketplace uses the same cap as the full browse page. */
 const PREVIEW_FETCH = 24
+const MARKETPLACE_FETCH = 2000
 
 const STRIPS: StripConfig[] = [
   {
@@ -33,6 +36,7 @@ const STRIPS: StripConfig[] = [
     subtitle: 'Shop products from verified merchants',
     viewMoreLabel: 'View more products',
     endpoint: `/api/public/marketplace?limit=${PREVIEW_FETCH}`,
+    fetchLimit: MARKETPLACE_FETCH,
   },
   {
     id: 'food',
@@ -42,6 +46,7 @@ const STRIPS: StripConfig[] = [
     subtitle: 'Order from restaurants near you',
     viewMoreLabel: 'View more meals',
     endpoint: `/api/public/food?limit=${PREVIEW_FETCH}`,
+    fetchLimit: PREVIEW_FETCH,
   },
   {
     id: 'stay',
@@ -51,6 +56,7 @@ const STRIPS: StripConfig[] = [
     subtitle: 'Hotels, lodges, and short stays',
     viewMoreLabel: 'View more stays',
     endpoint: `/api/public/stays?limit=${PREVIEW_FETCH}`,
+    fetchLimit: PREVIEW_FETCH,
   },
   {
     id: 'digital-services',
@@ -60,6 +66,7 @@ const STRIPS: StripConfig[] = [
     subtitle: 'Subscriptions, gift cards, and gaming top-ups',
     viewMoreLabel: 'View more digital services',
     endpoint: `/api/public/digital-services?limit=${PREVIEW_FETCH}`,
+    fetchLimit: PREVIEW_FETCH,
   },
   {
     id: 'jobs',
@@ -69,6 +76,7 @@ const STRIPS: StripConfig[] = [
     subtitle: 'Find work across Malawi and beyond',
     viewMoreLabel: 'View more jobs',
     endpoint: `/api/public/jobs?limit=${PREVIEW_FETCH}`,
+    fetchLimit: PREVIEW_FETCH,
   },
   {
     id: 'tenders',
@@ -78,6 +86,7 @@ const STRIPS: StripConfig[] = [
     subtitle: 'Open opportunities and RFPs',
     viewMoreLabel: 'View more tenders',
     endpoint: `/api/tenders?limit=${PREVIEW_FETCH}`,
+    fetchLimit: PREVIEW_FETCH,
   },
 ]
 
@@ -87,19 +96,43 @@ export default function ServicesSection() {
   const [loadingByStrip, setLoadingByStrip] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(STRIPS.map(s => [s.id, true])),
   )
+  const [loadingRest, setLoadingRest] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     for (const strip of STRIPS) {
       void (async () => {
+        const map = strip.id === 'tenders' ? mapTenderItems : undefined
         try {
-          const res = await fetch(strip.endpoint)
-          const data = await res.json().catch(() => ({}))
-          const raw = Array.isArray(data.items) ? data.items : []
-          const items =
-            strip.id === 'tenders' ? mapTenderItems(raw) : (raw as CatalogCard[])
+          const first = await fetchCatalogCards(strip.endpoint, map)
           if (cancelled) return
-          setItemsByStrip(prev => ({ ...prev, [strip.id]: items }))
+          setItemsByStrip(prev => {
+            const current = prev[strip.id] || []
+            if (current.length > first.length) return prev
+            return { ...prev, [strip.id]: first }
+          })
+          setLoadingByStrip(prev => ({ ...prev, [strip.id]: false }))
+
+          if (strip.id !== 'marketplace') return
+          setLoadingRest(true)
+          try {
+            const rest = await fetchCatalogCards(
+              `/api/public/marketplace?limit=${MARKETPLACE_FETCH}`,
+              map,
+              { cache: 'no-store' },
+            )
+            if (!cancelled && rest.length > 0) {
+              setItemsByStrip(prev => {
+                const current = prev[strip.id] || []
+                if (rest.length < current.length) return prev
+                return { ...prev, [strip.id]: rest }
+              })
+            }
+          } catch {
+            // The first products stay on screen if the full catalog fails.
+          } finally {
+            if (!cancelled) setLoadingRest(false)
+          }
         } catch {
           if (!cancelled) setItemsByStrip(prev => ({ ...prev, [strip.id]: [] }))
         } finally {
@@ -214,8 +247,11 @@ export default function ServicesSection() {
           {STRIPS.map(strip => {
             const loading = loadingByStrip[strip.id] !== false
             const items = itemsByStrip[strip.id] || []
-            const visible = items.slice(0, PREVIEW_COUNT)
-            const hasMore = items.length > PREVIEW_COUNT
+            const visible =
+              strip.id === 'marketplace' ? items : items.slice(0, PREVIEW_COUNT)
+            const hasMore = strip.id === 'marketplace'
+              ? false
+              : items.length > PREVIEW_COUNT
 
             return (
               <div key={strip.id}>
@@ -244,7 +280,8 @@ export default function ServicesSection() {
                             }}
                           >
                             ({items.length}
-                            {items.length >= PREVIEW_FETCH ? '+' : ''})
+                            {loadingRest && strip.id === 'marketplace' ? ', loading the rest…' : ''}
+                            {items.length >= strip.fetchLimit ? '+' : ''})
                           </span>
                         ) : null}
                       </h3>

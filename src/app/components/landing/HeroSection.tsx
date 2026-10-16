@@ -1,8 +1,8 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import DownloadAppModal from './DownloadAppModal'
+import Logo from './Logo'
 import LandingCrawlTicker, { type LandingCrawlItem } from './LandingCrawlTicker'
 import { VeroIcon, type VeroIconName } from './icons'
 
@@ -284,16 +284,7 @@ export default function HeroSection() {
 
                 {/* Logo row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Image
-                      src="/logo.png"
-                      alt="Vero360"
-                      width={24}
-                      height={24}
-                      style={{ height: 24, width: 'auto', borderRadius: 6 }}
-                    />
-                    <span style={{ color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: 'var(--font-display)' }}>Vero360</span>
-                  </div>
+                  <Logo height={40} />
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%',
                     background: 'rgba(255,255,255,0.2)',
@@ -362,7 +353,8 @@ export default function HeroSection() {
                       <div key={s.label} style={{ textAlign: 'center' }}>
                         <div style={{
                           width: 40, height: 40, borderRadius: 12,
-                          background: 'var(--primary-light)',
+                          background: '#fff',
+                          border: '1px solid var(--border)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           margin: '0 auto 4px',
                         }}>
@@ -389,7 +381,8 @@ export default function HeroSection() {
                 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10,
-                    background: 'var(--primary-light)',
+                    background: '#fff',
+                    border: '1px solid var(--border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <VeroIcon name="food" size={16} color="var(--primary-dark)" />
@@ -413,7 +406,7 @@ export default function HeroSection() {
                   <div key={n.label} style={{ textAlign: 'center', minWidth: 40 }}>
                     <div style={{
                       marginBottom: 2,
-                      background: n.active ? 'var(--primary-light)' : 'transparent',
+                      background: n.active ? '#fff' : 'transparent',
                       borderRadius: 8, padding: '4px 6px',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     }}>

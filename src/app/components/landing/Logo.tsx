@@ -6,24 +6,27 @@ type LogoProps = {
   textColor?: string
 }
 
-export default function Logo({ height = 40, showText = true, textColor }: LogoProps) {
+export default function Logo({ height = 52 }: LogoProps) {
+  const radius = Math.round(height * 0.22)
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        background: '#fff',
+        borderRadius: radius,
+        lineHeight: 0,
+        boxShadow: '0 1px 4px rgba(15, 23, 42, 0.14)',
+      }}
+    >
       <Image
-        src="/logo.png"
-        alt="Vero360"
+        src="/logo-white.png"
+        alt="Vero's 360"
         width={height}
         height={height}
-        style={{ height, width: 'auto', objectFit: 'contain' }}
+        style={{ height, width: height, objectFit: 'contain', borderRadius: radius }}
         priority
       />
-      {showText && (
-        <span style={{
-          fontFamily: 'var(--font-display)', fontWeight: 800,
-          fontSize: height * 0.55, letterSpacing: '-0.5px',
-          color: textColor,
-        }}>Vero360</span>
-      )}
     </span>
   )
 }

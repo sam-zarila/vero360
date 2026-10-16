@@ -113,6 +113,7 @@ export const SUPER_ADMIN_ONLY_PATHS = [
   '/dashboard/wallet',
   '/dashboard/admins',
   '/dashboard/rewards',
+  '/dashboard/audit',
 ] as const
 
 export const MARKETER_HOME = '/dashboard/marketing/tasks'
