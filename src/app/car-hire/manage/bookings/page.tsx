@@ -350,7 +350,13 @@ export default function ProviderBookingsPage() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
                         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>
-                          {booking.bookingNumber}
+                          <Link
+                            href={`/car-hire/manage/bookings/${booking.id}`}
+                            aria-label={`Open booking ${booking.bookingNumber}`}
+                            style={{ color: 'inherit', textDecoration: 'none' }}
+                          >
+                            {booking.bookingNumber}
+                          </Link>
                         </h2>
                         <StatusBadge
                           tone={bookingStatusTone(booking.bookingStatus)}
@@ -416,6 +422,12 @@ export default function ProviderBookingsPage() {
                         Hold expires {formatDateTime(booking.holdExpiresAt)}
                       </p>
                     ) : null}
+                    <Link
+                      href={`/car-hire/manage/bookings/${booking.id}`}
+                      style={{ ...inlineLink, display: 'inline-block', marginTop: 8, fontSize: 12 }}
+                    >
+                      Booking details →
+                    </Link>
                   </div>
                 </div>
 

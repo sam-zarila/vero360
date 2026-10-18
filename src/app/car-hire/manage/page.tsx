@@ -158,12 +158,19 @@ export default function ProviderOverviewPage() {
         title="Overview"
         description="Actionable fleet and booking status for your operator workspace. Counts come from the backend; refresh for the latest state."
         actions={
-          <button type="button" onClick={() => void load()} style={ghostButton}>
-            Refresh
-          </button>
+          <>
+            <Link href="/car-hire/manage/performance" style={ghostButton}>
+              Performance
+            </Link>
+            <Link href="/car-hire/manage/team" style={ghostButton}>
+              Team
+            </Link>
+            <button type="button" onClick={() => void load()} style={ghostButton}>
+              Refresh
+            </button>
+          </>
         }
       />
-
       <div
         style={{
           display: 'flex',

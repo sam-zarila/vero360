@@ -8,6 +8,9 @@
 
 import { formatMwk, resolveVeroMediaUrl, unwrapList } from '@/lib/vero-api'
 
+/** Re-exported so provider views can resolve relative media paths from the car-hire module. */
+export { resolveVeroMediaUrl }
+
 export type StatusTone = { bg: string; color: string; border: string }
 
 export type CarListing = {
@@ -721,4 +724,617 @@ export function maintenanceCategoryLabel(category: string | null | undefined): s
   if (raw === 'SAFETY') return 'Safety hold'
   if (raw === 'MAINTENANCE') return 'Maintenance'
   return prettyStatus(category)
+}
+
+/* ------------------------------------------------------------------------- */
+/* Handover inspections                                                      */
+/* ------------------------------------------------------------------------- */
+
+export type InspectionType = 'PICKUP' | 'RETURN'
+
+export type ConditionGrade = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'DAMAGED'
+
+export type InspectionAcknowledgement = {
+  id: string
+  /** `RENTER` or `OWNER`; kept as a tolerant string for forward compatibility. */
+  party: string
+  decision: string
+  note: string | null
+  createdAt: string | null
+}
+
+export type HandoverInspection = {
+  id: string
+  bookingId: string
+  type: string
+  actorRole: string
+  odometer: number | null
+  fuelLevel: number | null
+  condition: string | null
+  checklist: Record<string, string>
+  notes: string | null
+  media: string[]
+  status: string
+  acknowledgedAt: string | null
+  declinedAt: string | null
+  disputeReason: string | null
+  createdAt: string | null
+  acknowledgements: InspectionAcknowledgement[]
+}
+
+export type InspectionList = {
+  inspections: HandoverInspection[]
+  pickup: HandoverInspection[]
+  returns: HandoverInspection[]
+  latestPickup: HandoverInspection | null
+  latestReturn: HandoverInspection | null
+}
+
+export type SubmitInspectionInput = {
+  odometer?: number
+  fuelLevel?: number
+  condition?: ConditionGrade
+  checklist?: Record<string, string>
+  notes?: string
+  media?: string[]
+}
+
+export type AcknowledgeInspectionInput = {
+  decision: 'ACCEPTED' | 'DECLINED'
+  note?: string
+}
+
+function stringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => {
+        if (typeof item === 'string') return item.trim()
+        const record = asRecord(item)
+        if (!record) return ''
+        return str(first(record, ['url', 'src', 'imageUrl', 'href', 'name', 'label']))
+      })
+      .filter(Boolean)
+  }
+  const raw = str(value)
+  if (!raw) return []
+  return raw
+    .split(/[,;|]/)
+    .map(part => part.trim())
+    .filter(Boolean)
+}
+
+/** Tolerant map parser: accepts `{ exterior: "OK" }` and `[{ key, value }]`. */
+function checklistOf(value: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  const record = asRecord(value)
+  if (record) {
+    for (const [key, item] of Object.entries(record)) {
+      const text = str(item)
+      if (text) out[key] = text
+    }
+    return out
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const row = asRecord(item)
+      if (!row) continue
+      const key = str(first(row, ['key', 'label', 'name', 'item']))
+      const text = str(first(row, ['value', 'status', 'result', 'state'])) || 'OK'
+      if (key) out[key] = text
+    }
+  }
+  return out
+}
+
+function acknowledgementOf(value: unknown): InspectionAcknowledgement | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const party = (str(first(row, ['party', 'actorRole', 'actor_role'])) || '').toUpperCase()
+  const id = str(first(row, ['id', 'acknowledgementId']))
+  if (!id && !party) return null
+  return {
+    id,
+    party,
+    decision: (str(row.decision) || 'PENDING').toUpperCase(),
+    note: str(first(row, ['note', 'message', 'comment'])) || null,
+    createdAt: asIso(first(row, ['createdAt', 'created_at'])),
+  }
+}
+
+export function parseInspection(value: unknown): HandoverInspection | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const id = str(first(row, ['id', 'inspectionId']))
+  if (!id) return null
+  const rawAcks = Array.isArray(row.acknowledgements) ? row.acknowledgements : []
+  return {
+    id,
+    bookingId: str(first(row, ['bookingId', 'booking_id'])),
+    type: (str(row.type) || '').toUpperCase(),
+    actorRole: (str(first(row, ['actorRole', 'actor_role', 'role'])) || '').toUpperCase(),
+    odometer: asOptionalNumber(row.odometer),
+    fuelLevel: asOptionalNumber(first(row, ['fuelLevel', 'fuel_level'])),
+    condition: (str(row.condition) || '').toUpperCase() || null,
+    checklist: checklistOf(row.checklist),
+    notes: str(row.notes) || null,
+    media: stringList(row.media),
+    status: (str(first(row, ['status', 'inspectionStatus'])) || 'PENDING').toUpperCase(),
+    acknowledgedAt: asIso(first(row, ['acknowledgedAt', 'acknowledged_at'])),
+    declinedAt: asIso(first(row, ['declinedAt', 'declined_at'])),
+    disputeReason: str(first(row, ['disputeReason', 'dispute_reason'])) || null,
+    createdAt: asIso(first(row, ['createdAt', 'created_at'])),
+    acknowledgements: rawAcks
+      .map(acknowledgementOf)
+      .filter((ack): ack is InspectionAcknowledgement => !!ack),
+  }
+}
+
+export function parseInspections(body: unknown): HandoverInspection[] {
+  const out: HandoverInspection[] = []
+  const seen = new Set<string>()
+  for (const row of rowsOf(body)) {
+    const inspection = parseInspection(row)
+    if (!inspection || seen.has(inspection.id)) continue
+    seen.add(inspection.id)
+    out.push(inspection)
+  }
+  return out
+}
+
+function mostRecent(rows: HandoverInspection[]): HandoverInspection | null {
+  let best: HandoverInspection | null = null
+  for (const row of rows) {
+    if (!best) {
+      best = row
+      continue
+    }
+    const at = row.createdAt ? Date.parse(row.createdAt) : Number.NaN
+    const bestAt = best.createdAt ? Date.parse(best.createdAt) : Number.NaN
+    if (Number.isFinite(at) && (!Number.isFinite(bestAt) || at > bestAt)) best = row
+  }
+  return best
+}
+
+export function parseInspectionList(body: unknown): InspectionList {
+  const inspections = parseInspections(body)
+  const pickup = inspections.filter(item => item.type === 'PICKUP')
+  const returns = inspections.filter(item => item.type === 'RETURN')
+  return {
+    inspections,
+    pickup,
+    returns,
+    latestPickup: mostRecent(pickup),
+    latestReturn: mostRecent(returns),
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Incidents                                                                 */
+/* ------------------------------------------------------------------------- */
+
+export type IncidentType =
+  | 'ACCIDENT'
+  | 'BREAKDOWN'
+  | 'THEFT'
+  | 'UNSAFE_VEHICLE'
+  | 'NO_SHOW'
+  | 'FAILED_PICKUP'
+  | 'OWNER_UNAVAILABLE'
+  | 'OTHER'
+
+export type IncidentRemedy =
+  | 'NONE'
+  | 'REPLACEMENT'
+  | 'REFUND'
+  | 'PARTIAL_REFUND'
+  | 'EXTENSION'
+  | 'ESCALATION'
+
+export type IncidentReport = {
+  id: string
+  bookingId: string
+  type: string
+  status: string
+  description: string
+  occurredAt: string | null
+  contactPhone: string | null
+  remedy: string | null
+  resolution: string | null
+  evidence: string[]
+  createdAt: string | null
+}
+
+export type ReportIncidentInput = {
+  type: IncidentType
+  description: string
+  occurredAt?: string
+  contactPhone?: string
+}
+
+export type ResolveIncidentInput = {
+  resolution: string
+  remedy?: IncidentRemedy
+}
+
+export function parseIncident(value: unknown): IncidentReport | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const id = str(first(row, ['id', 'incidentId']))
+  if (!id) return null
+  return {
+    id,
+    bookingId: str(first(row, ['bookingId', 'booking_id'])),
+    type: (str(row.type) || 'OTHER').toUpperCase(),
+    status: (str(first(row, ['status', 'incidentStatus'])) || 'OPEN').toUpperCase(),
+    description: str(first(row, ['description', 'details', 'message'])),
+    occurredAt: asIso(first(row, ['occurredAt', 'occurred_at'])),
+    contactPhone: str(first(row, ['contactPhone', 'contact_phone', 'phone'])) || null,
+    remedy: (str(row.remedy) || '').toUpperCase() || null,
+    resolution: str(first(row, ['resolution', 'resolutionNotes', 'outcome'])) || null,
+    evidence: stringList(row.evidence),
+    createdAt: asIso(first(row, ['createdAt', 'created_at'])),
+  }
+}
+
+export function parseIncidents(body: unknown): IncidentReport[] {
+  const out: IncidentReport[] = []
+  const seen = new Set<string>()
+  for (const row of rowsOf(body)) {
+    const incident = parseIncident(row)
+    if (!incident || seen.has(incident.id)) continue
+    seen.add(incident.id)
+    out.push(incident)
+  }
+  return out
+}
+
+/* ------------------------------------------------------------------------- */
+/* Support cases                                                             */
+/* ------------------------------------------------------------------------- */
+
+export type SupportCaseCategory =
+  | 'BOOKING'
+  | 'PAYMENT'
+  | 'DAMAGE'
+  | 'HANDOVER'
+  | 'SAFETY'
+  | 'OTHER'
+
+export type SupportCase = {
+  id: string
+  bookingId: string
+  category: string
+  subject: string
+  message: string
+  status: string
+  resolution: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export type OpenSupportCaseInput = {
+  category: SupportCaseCategory
+  subject: string
+  message: string
+}
+
+export function parseSupportCase(value: unknown): SupportCase | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const id = str(first(row, ['id', 'caseId']))
+  if (!id) return null
+  return {
+    id,
+    bookingId: str(first(row, ['bookingId', 'booking_id'])),
+    category: (str(row.category) || 'OTHER').toUpperCase(),
+    subject: str(row.subject) || 'Support case',
+    message: str(first(row, ['message', 'description', 'body'])),
+    status: (str(row.status) || 'OPEN').toUpperCase(),
+    resolution: str(first(row, ['resolution', 'resolutionNotes'])) || null,
+    createdAt: asIso(first(row, ['createdAt', 'created_at'])),
+    updatedAt: asIso(first(row, ['updatedAt', 'updated_at'])),
+  }
+}
+
+export function parseSupportCases(body: unknown): SupportCase[] {
+  const out: SupportCase[] = []
+  const seen = new Set<string>()
+  for (const row of rowsOf(body)) {
+    const supportCase = parseSupportCase(row)
+    if (!supportCase || seen.has(supportCase.id)) continue
+    seen.add(supportCase.id)
+    out.push(supportCase)
+  }
+  return out
+}
+
+/* ------------------------------------------------------------------------- */
+/* Booking extensions                                                        */
+/* ------------------------------------------------------------------------- */
+
+export type BookingExtension = {
+  id: string
+  bookingId: string
+  requestedEndAt: string | null
+  previousEndAt: string | null
+  status: string
+  /** Null when the API omits the amount — never coerce to 0. */
+  additionalAmount: number | null
+  currency: string
+  decisionReason: string | null
+  createdAt: string | null
+}
+
+export function parseBookingExtension(value: unknown): BookingExtension | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const id = str(first(row, ['id', 'extensionId']))
+  if (!id) return null
+  return {
+    id,
+    bookingId: str(first(row, ['bookingId', 'booking_id'])),
+    requestedEndAt: asIso(first(row, ['requestedEndAt', 'requested_end_at', 'newEndAt'])),
+    previousEndAt: asIso(first(row, ['previousEndAt', 'previous_end_at', 'oldEndAt'])),
+    status: (str(row.status) || 'PENDING').toUpperCase(),
+    additionalAmount: asOptionalNumber(
+      first(row, ['additionalAmount', 'additional_amount', 'amount']),
+    ),
+    currency: str(row.currency) || 'MWK',
+    decisionReason: str(first(row, ['decisionReason', 'decision_reason', 'reason'])) || null,
+    createdAt: asIso(first(row, ['createdAt', 'created_at'])),
+  }
+}
+
+export function parseBookingExtensions(body: unknown): BookingExtension[] {
+  const out: BookingExtension[] = []
+  const seen = new Set<string>()
+  for (const row of rowsOf(body)) {
+    const extension = parseBookingExtension(row)
+    if (!extension || seen.has(extension.id)) continue
+    seen.add(extension.id)
+    out.push(extension)
+  }
+  return out
+}
+
+/* ------------------------------------------------------------------------- */
+/* Operators / team                                                          */
+/* ------------------------------------------------------------------------- */
+
+export type OperatorMembership = {
+  role: string
+  permissions: string[]
+  status: string
+}
+
+export type OperatorSummary = {
+  id: string
+  type: string
+  displayName: string
+  status: string
+  membership: OperatorMembership | null
+}
+
+export type OperatorInvitation = {
+  id: string
+  email: string
+  token: string | null
+  status: string
+  expiresAt: string | null
+  permissions: string[]
+}
+
+export function parseOperator(value: unknown): OperatorSummary | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const id = str(first(row, ['id', 'operatorId']))
+  if (!id) return null
+  const membershipRow = asRecord(row.membership)
+  const membership: OperatorMembership | null = membershipRow
+    ? {
+        role: (str(first(membershipRow, ['role', 'membershipRole'])) || '').toUpperCase(),
+        permissions: stringList(membershipRow.permissions ?? row.permissions),
+        status: (str(first(membershipRow, ['status', 'membershipStatus'])) || '').toUpperCase(),
+      }
+    : null
+  return {
+    id,
+    type: (str(row.type) || '').toUpperCase(),
+    displayName: str(first(row, ['displayName', 'name', 'businessName'])) || `Operator ${id}`,
+    status: (str(row.status) || '').toUpperCase(),
+    membership,
+  }
+}
+
+export function parseOperators(body: unknown): OperatorSummary[] {
+  const out: OperatorSummary[] = []
+  const seen = new Set<string>()
+  for (const row of rowsOf(body)) {
+    const operator = parseOperator(row)
+    if (!operator || seen.has(operator.id)) continue
+    seen.add(operator.id)
+    out.push(operator)
+  }
+  return out
+}
+
+export function parseOperatorInvitation(body: unknown): OperatorInvitation | null {
+  const record = asRecord(body)
+  const row = asRecord(record?.data) ?? record
+  if (!row) return null
+  const id = str(first(row, ['id', 'invitationId']))
+  const email = str(row.email)
+  if (!id && !email) return null
+  return {
+    id,
+    email,
+    token: str(row.token) || null,
+    status: (str(row.status) || 'PENDING').toUpperCase(),
+    expiresAt: asIso(first(row, ['expiresAt', 'expires_at'])),
+    permissions: stringList(row.permissions),
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Performance analytics                                                     */
+/* ------------------------------------------------------------------------- */
+
+export type AnalyticsStatusCount = {
+  status: string
+  count: number
+}
+
+export type ProviderAnalytics = {
+  /** Null when the API omits the figure — the UI renders an em dash, never 0. */
+  revenue: number | null
+  bookings: number | null
+  completed: number | null
+  cancelled: number | null
+  completionRate: number | null
+  currency: string
+  byStatus: AnalyticsStatusCount[]
+  asOf: string | null
+  from: string | null
+  to: string | null
+}
+
+function optionalCount(value: unknown): number | null {
+  const record = asRecord(value)
+  if (record) return asOptionalNumber(first(record, ['total', 'count', 'value', 'bookings']))
+  return asOptionalNumber(value)
+}
+
+function analyticsByStatus(value: unknown): AnalyticsStatusCount[] {
+  const out: AnalyticsStatusCount[] = []
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const row = asRecord(item)
+      if (!row) continue
+      const status = str(first(row, ['status', 'code', 'key', 'name'])).toUpperCase()
+      if (!status) continue
+      out.push({ status, count: asNumber(first(row, ['count', 'total', 'value', 'bookings'])) })
+    }
+    return out
+  }
+  const record = asRecord(value)
+  if (record) {
+    for (const [key, item] of Object.entries(record)) {
+      const status = key.trim().toUpperCase()
+      if (!status) continue
+      const nested = asRecord(item)
+      out.push({
+        status,
+        count: nested
+          ? asNumber(first(nested, ['count', 'total', 'value']))
+          : asNumber(item),
+      })
+    }
+  }
+  return out
+}
+
+export function parseProviderAnalytics(body: unknown): ProviderAnalytics | null {
+  const record = asRecord(body)
+  const row = asRecord(record?.data) ?? record
+  if (!row) return null
+  const revenueRow = asRecord(row.revenue)
+  const rawRate = asOptionalNumber(first(row, ['completionRate', 'completion_rate']))
+  return {
+    revenue: revenueRow
+      ? asOptionalNumber(first(revenueRow, ['amount', 'total', 'value', 'gross', 'net']))
+      : asOptionalNumber(row.revenue),
+    bookings: optionalCount(row.bookings),
+    completed: optionalCount(
+      first(row, ['completed', 'completedBookings', 'completed_bookings']),
+    ),
+    cancelled: optionalCount(
+      first(row, ['cancelled', 'canceled', 'cancelledBookings', 'cancelled_bookings']),
+    ),
+    // The backend may send a 0–1 ratio or a 0–100 percentage; normalise to a percentage.
+    completionRate:
+      rawRate == null ? null : rawRate > 0 && rawRate <= 1 ? rawRate * 100 : rawRate,
+    currency: str(row.currency) || (revenueRow ? str(revenueRow.currency) : '') || 'MWK',
+    byStatus: analyticsByStatus(row.byStatus ?? row.by_status),
+    asOf: asIso(first(row, ['asOf', 'as_of'])),
+    from: asIso(row.from),
+    to: asIso(row.to),
+  }
+}
+
+/** Completion rate as a percentage, derived only from figures the API returned. */
+export function analyticsCompletionRate(analytics: ProviderAnalytics): number | null {
+  if (analytics.completionRate != null) return analytics.completionRate
+  if (analytics.bookings == null || analytics.completed == null || analytics.bookings <= 0) {
+    return null
+  }
+  return (analytics.completed / analytics.bookings) * 100
+}
+
+/** Wraps a single-booking response that may be raw or nested under `data`. */
+export function parseCarHireBookingResponse(body: unknown): CarHireBooking | null {
+  const direct = parseCarHireBooking(body)
+  if (direct) return direct
+  for (const row of rowsOf(body)) {
+    const booking = parseCarHireBooking(row)
+    if (booking) return booking
+  }
+  return null
+}
+
+/* ------------------------------------------------------------------------- */
+/* Labels                                                                    */
+/* ------------------------------------------------------------------------- */
+
+export function inspectionTypeLabel(type: string | null | undefined): string {
+  const raw = str(type).toUpperCase()
+  if (raw === 'PICKUP') return 'Pickup inspection'
+  if (raw === 'RETURN') return 'Return inspection'
+  return prettyStatus(type)
+}
+
+export function inspectionStatusLabel(status: string | null | undefined): string {
+  const raw = str(status).toUpperCase()
+  if (!raw) return 'Status not recorded'
+  if (['PENDING', 'PENDING_ACKNOWLEDGEMENT', 'AWAITING_ACKNOWLEDGEMENT'].includes(raw)) {
+    return 'Awaiting acknowledgement'
+  }
+  if (['ACKNOWLEDGED', 'ACCEPTED', 'CONFIRMED'].includes(raw)) return 'Acknowledged'
+  if (['DECLINED', 'DISPUTED'].includes(raw)) return 'Declined'
+  if (['CLOSED', 'COMPLETED'].includes(raw)) return 'Closed'
+  return prettyStatus(status)
+}
+
+export function incidentTypeLabel(type: string | null | undefined): string {
+  const raw = str(type).toUpperCase()
+  if (raw === 'ACCIDENT') return 'Accident'
+  if (raw === 'BREAKDOWN') return 'Breakdown'
+  if (raw === 'THEFT') return 'Theft'
+  if (raw === 'UNSAFE_VEHICLE') return 'Unsafe vehicle'
+  if (raw === 'NO_SHOW') return 'Renter no-show'
+  if (raw === 'FAILED_PICKUP') return 'Failed pickup'
+  if (raw === 'OWNER_UNAVAILABLE') return 'Owner unavailable'
+  if (raw === 'OTHER') return 'Other'
+  return prettyStatus(type)
+}
+
+export function incidentStatusLabel(status: string | null | undefined): string {
+  const raw = str(status).toUpperCase()
+  if (raw === 'OPEN' || raw === 'REPORTED') return 'Open'
+  if (raw === 'ACKNOWLEDGED') return 'Acknowledged'
+  if (raw === 'INVESTIGATING') return 'Investigating'
+  if (raw === 'ESCALATED') return 'Escalated'
+  if (raw === 'RESOLVED') return 'Resolved'
+  if (raw === 'CLOSED') return 'Closed'
+  if (raw === 'CANCELLED') return 'Cancelled'
+  return prettyStatus(status)
+}
+
+export function extensionStatusLabel(status: string | null | undefined): string {
+  const raw = str(status).toUpperCase()
+  if (['PENDING', 'REQUESTED'].includes(raw)) return 'Awaiting decision'
+  if (raw === 'APPROVED') return 'Approved'
+  if (raw === 'DECLINED') return 'Declined'
+  if (raw === 'CANCELLED') return 'Cancelled'
+  if (raw === 'EXPIRED') return 'Expired'
+  return prettyStatus(status)
 }

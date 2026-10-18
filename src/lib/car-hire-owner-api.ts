@@ -14,15 +14,36 @@ import {
   veroEndpoint,
 } from '@/lib/vero-api'
 import {
+  parseBookingExtensions,
+  parseCarHireBookingResponse,
   parseCarHireBookings,
   parseCarListings,
+  parseIncidents,
+  parseInspectionList,
   parseMaintenanceBlocks,
+  parseOperatorInvitation,
+  parseOperators,
+  parseProviderAnalytics,
   parseProviderSummary,
+  parseSupportCases,
+  type AcknowledgeInspectionInput,
+  type BookingExtension,
   type CarHireBooking,
   type CarListing,
   type CreateMaintenanceBlockInput,
+  type IncidentReport,
+  type InspectionList,
+  type InspectionType,
   type MaintenanceBlock,
+  type OpenSupportCaseInput,
+  type OperatorInvitation,
+  type OperatorSummary,
+  type ProviderAnalytics,
   type ProviderSummary,
+  type ReportIncidentInput,
+  type ResolveIncidentInput,
+  type SubmitInspectionInput,
+  type SupportCase,
 } from '@/lib/car-hire'
 
 export class ProviderApiError extends Error {
@@ -167,4 +188,187 @@ export async function rejectBooking(
     method: 'POST',
     body: JSON.stringify({ reason: reason.trim() }),
   })
+}
+
+function bookingPath(bookingId: number | string): string {
+  return `bookings/${encodeURIComponent(String(bookingId))}`
+}
+
+export async function getBooking(bookingId: number | string): Promise<CarHireBooking | null> {
+  const body = await providerFetch(bookingPath(bookingId))
+  return parseCarHireBookingResponse(body)
+}
+
+/* ------------------------------------------------------------------------- */
+/* Handover inspections                                                      */
+/* ------------------------------------------------------------------------- */
+
+export async function getInspections(bookingId: number | string): Promise<InspectionList> {
+  const body = await providerFetch(`${bookingPath(bookingId)}/inspections`)
+  return parseInspectionList(body)
+}
+
+export async function submitInspection(
+  bookingId: number | string,
+  type: InspectionType,
+  input: SubmitInspectionInput,
+): Promise<void> {
+  await providerFetch(`${bookingPath(bookingId)}/inspections/${type.toLowerCase()}`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function acknowledgeInspection(
+  bookingId: number | string,
+  inspectionId: string,
+  input: AcknowledgeInspectionInput,
+): Promise<void> {
+  await providerFetch(
+    `${bookingPath(bookingId)}/inspections/${encodeURIComponent(inspectionId)}/acknowledge`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+  )
+}
+
+/* ------------------------------------------------------------------------- */
+/* Incidents                                                                 */
+/* ------------------------------------------------------------------------- */
+
+export async function getIncidents(bookingId: number | string): Promise<IncidentReport[]> {
+  const body = await providerFetch(`${bookingPath(bookingId)}/incidents`)
+  return parseIncidents(body)
+}
+
+export async function reportIncident(
+  bookingId: number | string,
+  input: ReportIncidentInput,
+): Promise<void> {
+  await providerFetch(`${bookingPath(bookingId)}/incidents`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function resolveIncident(
+  bookingId: number | string,
+  incidentId: string,
+  input: ResolveIncidentInput,
+): Promise<void> {
+  await providerFetch(
+    `${bookingPath(bookingId)}/incidents/${encodeURIComponent(incidentId)}/resolve`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+  )
+}
+
+/* ------------------------------------------------------------------------- */
+/* Support cases                                                             */
+/* ------------------------------------------------------------------------- */
+
+export async function getSupportCases(bookingId: number | string): Promise<SupportCase[]> {
+  const body = await providerFetch(`${bookingPath(bookingId)}/support-cases`)
+  return parseSupportCases(body)
+}
+
+export async function openSupportCase(
+  bookingId: number | string,
+  input: OpenSupportCaseInput,
+): Promise<void> {
+  await providerFetch(`${bookingPath(bookingId)}/support-cases`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+/* ------------------------------------------------------------------------- */
+/* Extensions                                                                */
+/* ------------------------------------------------------------------------- */
+
+export async function getExtensions(
+  bookingId: number | string,
+): Promise<BookingExtension[]> {
+  const body = await providerFetch(`${bookingPath(bookingId)}/extensions`)
+  return parseBookingExtensions(body)
+}
+
+export async function approveExtension(
+  bookingId: number | string,
+  extensionId: string,
+): Promise<void> {
+  await providerFetch(
+    `${bookingPath(bookingId)}/extensions/${encodeURIComponent(extensionId)}/approve`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+  )
+}
+
+export async function declineExtension(
+  bookingId: number | string,
+  extensionId: string,
+  reason?: string,
+): Promise<void> {
+  const trimmed = reason?.trim() ?? ''
+  await providerFetch(
+    `${bookingPath(bookingId)}/extensions/${encodeURIComponent(extensionId)}/decline`,
+    {
+      method: 'POST',
+      body: JSON.stringify(trimmed ? { reason: trimmed } : {}),
+    },
+  )
+}
+
+/* ------------------------------------------------------------------------- */
+/* Team                                                                      */
+/* ------------------------------------------------------------------------- */
+
+export async function getMyOperators(): Promise<OperatorSummary[]> {
+  const body = await providerFetch('operators/mine')
+  return parseOperators(body)
+}
+
+export async function inviteMember(
+  operatorId: string,
+  input: { email: string; permissions?: string[] },
+): Promise<OperatorInvitation | null> {
+  const body = await providerFetch(
+    `operators/${encodeURIComponent(operatorId)}/invitations`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        email: input.email.trim(),
+        ...(input.permissions && input.permissions.length > 0
+          ? { permissions: input.permissions }
+          : {}),
+      }),
+    },
+  )
+  return parseOperatorInvitation(body)
+}
+
+export async function revokeMember(operatorId: string, userId: string): Promise<void> {
+  await providerFetch(
+    `operators/${encodeURIComponent(operatorId)}/members/${encodeURIComponent(userId)}`,
+    { method: 'DELETE' },
+  )
+}
+
+/* ------------------------------------------------------------------------- */
+/* Performance                                                               */
+/* ------------------------------------------------------------------------- */
+
+export async function getAnalytics(from?: string, to?: string): Promise<ProviderAnalytics> {
+  const query = queryString({ from, to })
+  const body = await providerFetch(`owner/analytics${query}`)
+  const analytics = parseProviderAnalytics(body)
+  if (!analytics) {
+    throw new ProviderApiError('The performance analytics could not be read.', 502, body)
+  }
+  return analytics
 }
