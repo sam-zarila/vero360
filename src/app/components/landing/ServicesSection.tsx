@@ -59,6 +59,16 @@ const STRIPS: StripConfig[] = [
     fetchLimit: PREVIEW_FETCH,
   },
   {
+    id: 'car-hire',
+    browsePath: '/car-hire',
+    icon: 'car',
+    title: 'Car Hire',
+    subtitle: 'Rent a car for the road with provider-managed availability',
+    viewMoreLabel: 'View more cars',
+    endpoint: `/api/public/car-hire?limit=${PREVIEW_FETCH}`,
+    fetchLimit: PREVIEW_FETCH,
+  },
+  {
     id: 'digital-services',
     browsePath: '/browse/digital-services',
     icon: 'sparkles',
@@ -194,7 +204,7 @@ export default function ServicesSection() {
               margin: '0 auto',
             }}
           >
-            Marketplace, food, stays, digital services, jobs, and tenders from the same catalogs
+            Marketplace, food, stays, car hire, digital services, jobs, and tenders from the same catalogs
             as the app. Tap a product for details, or view more to see the full list.
           </p>
         </div>
