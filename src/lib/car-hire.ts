@@ -339,6 +339,60 @@ export function parseCarListings(body: unknown): CarListing[] {
   return out
 }
 
+/** Fields a provider may set on a vehicle they own. */
+export type VehicleInput = {
+  make: string
+  model: string
+  year: number
+  licensePlate: string
+  color: string
+  dailyRate: number
+  seats?: number | null
+  transmission?: string
+  fuelType?: string
+  bodyType?: string
+  pickupArea?: string
+  description?: string
+  imageUrl?: string
+  images?: string[]
+  depositAmount?: number
+  minRentalDays?: number
+  maxRentalDays?: number | null
+  isAvailable?: boolean
+}
+
+/**
+ * Owner fleet row. Adds the private fields the owner endpoint returns but the
+ * public listing parsers deliberately drop (registration plate, operator link).
+ */
+export type OwnerVehicle = CarListing & {
+  licensePlate: string | null
+  operatorId: number | null
+}
+
+export function parseOwnerVehicles(body: unknown): OwnerVehicle[] {
+  const byId = new Map<number, Record<string, unknown>>()
+  for (const row of rowsOf(body)) {
+    const record = asRecord(row)
+    if (!record) continue
+    const id = asNumber(first(record, ['id', 'carId', 'car_id']))
+    if (id > 0) byId.set(id, record)
+  }
+
+  return parseCarListings(body).map(car => {
+    const record = byId.get(car.id)
+    return {
+      ...car,
+      licensePlate: record
+        ? str(first(record, ['licensePlate', 'license_plate'])) || null
+        : null,
+      operatorId: record
+        ? asOptionalNumber(first(record, ['operatorId', 'operator_id']))
+        : null,
+    }
+  })
+}
+
 function parseRenter(row: Record<string, unknown>): {
   name: string | null
   phone: string | null

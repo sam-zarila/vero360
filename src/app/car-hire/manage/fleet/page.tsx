@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import {
   carHireStatusTone,
@@ -9,13 +9,16 @@ import {
   listingStatusLabel,
   maintenanceCategoryLabel,
   resolveCarImage,
-  type CarListing,
   type MaintenanceCategory,
+  type OwnerVehicle,
+  type VehicleInput,
 } from '@/lib/car-hire'
 import {
   createMaintenanceBlock,
+  createVehicle,
   getFleet,
   ProviderApiError,
+  updateVehicle,
 } from '@/lib/car-hire-owner-api'
 import { formatMwk } from '@/lib/vero-api'
 import { useProviderAuth } from '../components/ProviderShell'
@@ -51,10 +54,168 @@ type BlockForm = {
   confirming: boolean
 }
 
+type VehicleForm = {
+  mode: 'create' | 'edit'
+  carId: number | null
+  make: string
+  model: string
+  year: string
+  licensePlate: string
+  color: string
+  dailyRate: string
+  depositAmount: string
+  minRentalDays: string
+  maxRentalDays: string
+  seats: string
+  transmission: string
+  fuelType: string
+  bodyType: string
+  pickupArea: string
+  description: string
+  imageUrl: string
+  isAvailable: boolean
+}
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+function emptyVehicleForm(): VehicleForm {
+  return {
+    mode: 'create',
+    carId: null,
+    make: '',
+    model: '',
+    year: String(CURRENT_YEAR),
+    licensePlate: '',
+    color: '',
+    dailyRate: '',
+    depositAmount: '0',
+    minRentalDays: '1',
+    maxRentalDays: '',
+    seats: '5',
+    transmission: 'AUTOMATIC',
+    fuelType: 'PETROL',
+    bodyType: 'SEDAN',
+    pickupArea: '',
+    description: '',
+    imageUrl: '',
+    isAvailable: true,
+  }
+}
+
+function vehicleFormFrom(car: OwnerVehicle): VehicleForm {
+  return {
+    mode: 'edit',
+    carId: car.id,
+    make: car.make === 'Vehicle' ? '' : car.make,
+    model: car.model,
+    year: car.year ? String(car.year) : String(CURRENT_YEAR),
+    licensePlate: car.licensePlate ?? '',
+    color: car.color ?? '',
+    dailyRate: car.dailyRate > 0 ? String(car.dailyRate) : '',
+    depositAmount: String(car.depositAmount ?? 0),
+    minRentalDays: String(car.minRentalDays || 1),
+    maxRentalDays: car.maxRentalDays ? String(car.maxRentalDays) : '',
+    seats: car.seats ? String(car.seats) : '',
+    transmission: car.transmission ?? 'AUTOMATIC',
+    fuelType: car.fuelType ?? 'PETROL',
+    bodyType: car.bodyType ?? 'SEDAN',
+    pickupArea: car.pickupArea ?? '',
+    description: car.description ?? '',
+    imageUrl: car.imageUrl ?? '',
+    isAvailable: car.isAvailable !== false,
+  }
+}
+
+/** Returns an error string, or '' when the form is valid. */
+function validateVehicleForm(form: VehicleForm): string {
+  if (!form.make.trim()) return 'Enter the vehicle make (for example Toyota).'
+  if (!form.model.trim()) return 'Enter the vehicle model (for example Corolla).'
+  const year = Number(form.year)
+  if (!Number.isInteger(year) || year < 1950 || year > CURRENT_YEAR + 1) {
+    return `Enter a model year between 1950 and ${CURRENT_YEAR + 1}.`
+  }
+  if (!form.licensePlate.trim()) return 'Enter the registration plate. It stays private.'
+  if (!form.color.trim()) return 'Enter the vehicle colour.'
+  const dailyRate = Number(form.dailyRate)
+  if (!Number.isFinite(dailyRate) || dailyRate <= 0) {
+    return 'Enter a daily rate greater than zero.'
+  }
+  const deposit = Number(form.depositAmount || 0)
+  if (!Number.isFinite(deposit) || deposit < 0) {
+    return 'The deposit cannot be negative.'
+  }
+  const seats = Number(form.seats || 0)
+  if (form.seats.trim() && (!Number.isInteger(seats) || seats < 1 || seats > 60)) {
+    return 'Enter a seat count between 1 and 60.'
+  }
+  const minDays = Number(form.minRentalDays || 1)
+  if (!Number.isInteger(minDays) || minDays < 1) {
+    return 'The minimum rental must be at least one day.'
+  }
+  if (form.maxRentalDays.trim()) {
+    const maxDays = Number(form.maxRentalDays)
+    if (!Number.isInteger(maxDays) || maxDays < minDays) {
+      return 'The maximum rental must be a whole number of days, at least the minimum.'
+    }
+  }
+  if (form.imageUrl.trim() && !/^https?:\/\//i.test(form.imageUrl.trim())) {
+    return 'The photo URL must start with http:// or https://.'
+  }
+  return ''
+}
+
+function vehiclePayload(form: VehicleForm): VehicleInput {
+  const editing = form.mode === 'edit'
+  const imageUrl = form.imageUrl.trim()
+  const pickupArea = form.pickupArea.trim()
+  const description = form.description.trim()
+
+  const payload: VehicleInput = {
+    make: form.make.trim(),
+    model: form.model.trim(),
+    year: Number(form.year),
+    licensePlate: form.licensePlate.trim().toUpperCase(),
+    color: form.color.trim(),
+    dailyRate: Number(form.dailyRate),
+    depositAmount: Number(form.depositAmount || 0),
+    minRentalDays: Number(form.minRentalDays || 1),
+    maxRentalDays: form.maxRentalDays.trim() ? Number(form.maxRentalDays) : null,
+    isAvailable: form.isAvailable,
+    ...(form.transmission ? { transmission: form.transmission } : {}),
+    ...(form.fuelType ? { fuelType: form.fuelType } : {}),
+    ...(form.bodyType ? { bodyType: form.bodyType } : {}),
+  }
+
+  // An omitted field means "leave unchanged" on the owner update endpoint, so
+  // edits explicitly clear the values the owner blanked out.
+  if (form.seats.trim()) payload.seats = Number(form.seats)
+  else if (editing) payload.seats = null
+
+  if (pickupArea) payload.pickupArea = pickupArea
+  else if (editing) payload.pickupArea = ''
+
+  if (description) payload.description = description
+  else if (editing) payload.description = ''
+
+  if (imageUrl) {
+    payload.imageUrl = imageUrl
+    payload.images = [imageUrl]
+  } else if (editing) {
+    payload.imageUrl = ''
+    payload.images = []
+  }
+
+  return payload
+}
+
+const TRANSMISSIONS = ['AUTOMATIC', 'MANUAL']
+const FUEL_TYPES = ['PETROL', 'DIESEL', 'HYBRID', 'ELECTRIC']
+const BODY_TYPES = ['SEDAN', 'HATCHBACK', 'SUV', 'PICKUP', 'VAN', 'COUPE']
+
 export default function ProviderFleetPage() {
   const { signOutNow } = useProviderAuth()
   const [state, setState] = useState<ViewState>('loading')
-  const [fleet, setFleet] = useState<CarListing[]>([])
+  const [fleet, setFleet] = useState<OwnerVehicle[]>([])
   const [error, setError] = useState('')
   const [sessionExpired, setSessionExpired] = useState(false)
   const [query, setQuery] = useState('')
@@ -63,6 +224,9 @@ export default function ProviderFleetPage() {
   const [blockBusy, setBlockBusy] = useState(false)
   const [blockError, setBlockError] = useState('')
   const [notice, setNotice] = useState('')
+  const [vehicleForm, setVehicleForm] = useState<VehicleForm | null>(null)
+  const [vehicleBusy, setVehicleBusy] = useState(false)
+  const [vehicleError, setVehicleError] = useState('')
 
   const load = useCallback(async () => {
     setState('loading')
@@ -97,7 +261,7 @@ export default function ProviderFleetPage() {
     )
   }, [fleet, query])
 
-  function openBlockForm(car: CarListing) {
+  function openBlockForm(car: OwnerVehicle) {
     const range = defaultBlockRange()
     setBlock({
       carId: car.id,
@@ -111,6 +275,8 @@ export default function ProviderFleetPage() {
     setBlockError('')
     setNotice('')
     setExpandedId(null)
+    setVehicleForm(null)
+    setVehicleError('')
   }
 
   async function submitBlock() {
@@ -155,6 +321,72 @@ export default function ProviderFleetPage() {
       setBlock(current => (current ? { ...current, confirming: false } : current))
     } finally {
       setBlockBusy(false)
+    }
+  }
+
+  function openCreateForm() {
+    setVehicleForm(emptyVehicleForm())
+    setVehicleError('')
+    setNotice('')
+    setBlock(null)
+    setBlockError('')
+    setExpandedId(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openEditForm(car: OwnerVehicle) {
+    setVehicleForm(vehicleFormFrom(car))
+    setVehicleError('')
+    setNotice('')
+    setBlock(null)
+    setBlockError('')
+    setExpandedId(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function submitVehicle() {
+    if (!vehicleForm) return
+    setVehicleError('')
+    const invalid = validateVehicleForm(vehicleForm)
+    if (invalid) {
+      setVehicleError(invalid)
+      return
+    }
+
+    const payload = vehiclePayload(vehicleForm)
+    const editingId = vehicleForm.carId
+    setVehicleBusy(true)
+    try {
+      if (editingId != null) {
+        await updateVehicle(editingId, payload)
+        setNotice(`${payload.make} ${payload.model} was updated.`)
+      } else {
+        await createVehicle(payload)
+        setNotice(
+          `${payload.make} ${payload.model} was submitted. If listing review is enabled it stays hidden from search until Vero360 operations approves it.`,
+        )
+      }
+      setVehicleForm(null)
+      await load()
+    } catch (err) {
+      if (err instanceof ProviderApiError && err.status === 401) {
+        setVehicleError('Your session expired. Sign out and sign in again.')
+      } else if (err instanceof ProviderApiError && err.status === 403) {
+        setVehicleError(
+          'Vero360 operations controls publication and suspension. Save the listing without changing its publication status and contact support if it needs review.',
+        )
+      } else if (err instanceof ProviderApiError && err.status === 400) {
+        setVehicleError(
+          err.message ||
+            'Some vehicle details were rejected. Check the plate, year, rate, and seat count.',
+        )
+      } else {
+        setVehicleError(
+          err instanceof Error ? err.message : 'Could not save the vehicle listing.',
+        )
+      }
+    } finally {
+      setVehicleBusy(false)
     }
   }
 
@@ -203,11 +435,18 @@ export default function ProviderFleetPage() {
       <ProviderPageHeading
         eyebrow="Provider workspace"
         title="Fleet"
-        description="Listing status and operational availability are separate. Blocks prevent new bookings for the selected dates but do not unpublish a listing."
+        description="Add and edit the vehicles you own. Listing status and operational availability are separate; date blocks prevent new bookings without unpublishing a listing."
         actions={
-          <button type="button" onClick={() => void load()} style={ghostButton}>
-            Refresh fleet
-          </button>
+          <>
+            {vehicleForm ? null : (
+              <button type="button" onClick={openCreateForm} style={primaryButton}>
+                Add vehicle
+              </button>
+            )}
+            <button type="button" onClick={() => void load()} style={ghostButton}>
+              Refresh fleet
+            </button>
+          </>
         }
       />
 
@@ -215,6 +454,23 @@ export default function ProviderFleetPage() {
         <div style={{ marginBottom: 14 }}>
           <ProviderNotice tone="success">{notice}</ProviderNotice>
         </div>
+      ) : null}
+
+      {vehicleForm ? (
+        <VehicleEditor
+          form={vehicleForm}
+          busy={vehicleBusy}
+          error={vehicleError}
+          onChange={next => {
+            setVehicleForm(next)
+            setVehicleError('')
+          }}
+          onCancel={() => {
+            setVehicleForm(null)
+            setVehicleError('')
+          }}
+          onSubmit={() => void submitVehicle()}
+        />
       ) : null}
 
       <div
@@ -245,11 +501,11 @@ export default function ProviderFleetPage() {
       {fleet.length === 0 ? (
         <ProviderEmpty
           title="No vehicles in this workspace"
-          body="Create or submit a vehicle listing in the Vero360 app. Once the listing belongs to your approved operator, it appears here. Vehicle approval is separate from operator approval."
+          body="Add your first vehicle to start receiving car-hire bookings. You will need the make, model, year, registration plate, colour, and daily rate. Vehicle approval is separate from operator approval."
           action={
-            <Link href="/car-hire/manage/bookings" style={ghostButton}>
-              Open bookings
-            </Link>
+            <button type="button" onClick={openCreateForm} style={primaryButton}>
+              List your first vehicle
+            </button>
           }
         />
       ) : filtered.length === 0 ? (
@@ -351,6 +607,9 @@ export default function ProviderFleetPage() {
                     >
                       {expanded ? 'Hide details' : 'Details'}
                     </button>
+                    <button type="button" onClick={() => openEditForm(car)} style={ghostButton}>
+                      Edit
+                    </button>
                     <button type="button" onClick={() => openBlockForm(car)} style={ghostButton}>
                       Block dates
                     </button>
@@ -411,7 +670,8 @@ export default function ProviderFleetPage() {
       <div style={{ marginTop: 16 }}>
         <ProviderNotice tone="info">
           Private vehicle data such as registration plates, owner identifiers, and tracker details
-          is never rendered on this page. Maintenance reasons are for your workspace only.
+          is never rendered on public pages or search results. Maintenance reasons are for your
+          workspace only.
         </ProviderNotice>
       </div>
     </>
@@ -561,5 +821,398 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span style={{ color: 'var(--text-3)', fontWeight: 700 }}>{label}</span>
       <span style={{ color: 'var(--text-2)', fontWeight: 800, textAlign: 'right' }}>{value}</span>
     </div>
+  )
+}
+
+function VehicleEditor({
+  form,
+  busy,
+  error,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  form: VehicleForm
+  busy: boolean
+  error: string
+  onChange: (next: VehicleForm) => void
+  onCancel: () => void
+  onSubmit: () => void
+}) {
+  const editing = form.mode === 'edit'
+  const set = (patch: Partial<VehicleForm>) => onChange({ ...form, ...patch })
+
+  return (
+    <ProviderCard style={{ marginBottom: 16 }}>
+      <form
+        onSubmit={event => {
+          event.preventDefault()
+          if (!busy) onSubmit()
+        }}
+      >
+        <div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: '0.09em',
+              textTransform: 'uppercase',
+              color: '#C2410C',
+            }}
+          >
+            {editing ? 'Edit listing' : 'New listing'}
+          </p>
+          <h2 style={{ margin: '4px 0 0', fontSize: 19, fontWeight: 900, letterSpacing: '-0.3px' }}>
+            {editing
+              ? `Edit ${[form.make, form.model].filter(Boolean).join(' ') || 'vehicle'}`
+              : 'Add a vehicle'}
+          </h2>
+          <p style={{ margin: '5px 0 0', fontSize: 12, lineHeight: 1.55, color: 'var(--text-3)' }}>
+            {editing
+              ? 'Changes apply to your public listing as soon as they are saved. Publication and suspension stay with Vero360 operations when listing review is enabled.'
+              : 'This vehicle is linked to your account as the owner, so it appears in this workspace and can accept bookings once it is live. The registration plate stays private.'}
+          </p>
+        </div>
+
+        <VehicleSection title="Vehicle identity">
+          <VehicleGrid>
+            <VehicleField id="vf-make" label="Make">
+              <input
+                id="vf-make"
+                value={form.make}
+                onChange={event => set({ make: event.target.value })}
+                placeholder="Toyota"
+                autoComplete="off"
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField id="vf-model" label="Model">
+              <input
+                id="vf-model"
+                value={form.model}
+                onChange={event => set({ model: event.target.value })}
+                placeholder="Corolla"
+                autoComplete="off"
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField id="vf-year" label="Model year">
+              <input
+                id="vf-year"
+                type="number"
+                inputMode="numeric"
+                min={1950}
+                max={CURRENT_YEAR + 1}
+                value={form.year}
+                onChange={event => set({ year: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField id="vf-color" label="Colour">
+              <input
+                id="vf-color"
+                value={form.color}
+                onChange={event => set({ color: event.target.value })}
+                placeholder="White"
+                autoComplete="off"
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField
+              id="vf-plate"
+              label="Registration plate"
+              hint="Private. Never shown in public search."
+            >
+              <input
+                id="vf-plate"
+                value={form.licensePlate}
+                onChange={event => set({ licensePlate: event.target.value })}
+                placeholder="ABC-1234"
+                autoComplete="off"
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField id="vf-body" label="Body type">
+              <select
+                id="vf-body"
+                value={form.bodyType}
+                onChange={event => set({ bodyType: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              >
+                {BODY_TYPES.map(value => (
+                  <option key={value} value={value}>
+                    {value.charAt(0) + value.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </select>
+            </VehicleField>
+          </VehicleGrid>
+        </VehicleSection>
+
+        <VehicleSection title="Pricing and rental rules">
+          <VehicleGrid>
+            <VehicleField id="vf-rate" label="Daily rate" hint="MWK per day.">
+              <input
+                id="vf-rate"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={form.dailyRate}
+                onChange={event => set({ dailyRate: event.target.value })}
+                placeholder="45000"
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField id="vf-deposit" label="Security deposit" hint="Use 0 for no deposit.">
+              <input
+                id="vf-deposit"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={form.depositAmount}
+                onChange={event => set({ depositAmount: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField id="vf-min-days" label="Minimum rental days">
+              <input
+                id="vf-min-days"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={form.minRentalDays}
+                onChange={event => set({ minRentalDays: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField
+              id="vf-max-days"
+              label="Maximum rental days"
+              hint="Leave blank for no maximum."
+            >
+              <input
+                id="vf-max-days"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={form.maxRentalDays}
+                onChange={event => set({ maxRentalDays: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField
+              id="vf-available"
+              label="Availability"
+              hint="Unavailable vehicles stay listed but cannot be booked."
+            >
+              <select
+                id="vf-available"
+                value={form.isAvailable ? 'AVAILABLE' : 'UNAVAILABLE'}
+                onChange={event => set({ isAvailable: event.target.value === 'AVAILABLE' })}
+                disabled={busy}
+                style={inputStyle}
+              >
+                <option value="AVAILABLE">Available for bookings</option>
+                <option value="UNAVAILABLE">Unavailable right now</option>
+              </select>
+            </VehicleField>
+          </VehicleGrid>
+        </VehicleSection>
+
+        <VehicleSection title="Vehicle details">
+          <VehicleGrid>
+            <VehicleField id="vf-seats" label="Seats">
+              <input
+                id="vf-seats"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={60}
+                step={1}
+                value={form.seats}
+                onChange={event => set({ seats: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField id="vf-transmission" label="Transmission">
+              <select
+                id="vf-transmission"
+                value={form.transmission}
+                onChange={event => set({ transmission: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              >
+                {TRANSMISSIONS.map(value => (
+                  <option key={value} value={value}>
+                    {value.charAt(0) + value.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </select>
+            </VehicleField>
+            <VehicleField id="vf-fuel" label="Fuel">
+              <select
+                id="vf-fuel"
+                value={form.fuelType}
+                onChange={event => set({ fuelType: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              >
+                {FUEL_TYPES.map(value => (
+                  <option key={value} value={value}>
+                    {value.charAt(0) + value.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </select>
+            </VehicleField>
+            <VehicleField id="vf-area" label="Pickup area">
+              <input
+                id="vf-area"
+                value={form.pickupArea}
+                onChange={event => set({ pickupArea: event.target.value })}
+                placeholder="Area 43, Lilongwe"
+                autoComplete="off"
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+            <VehicleField
+              id="vf-photo"
+              label="Photo URL"
+              hint="Optional. Use a public https image link."
+            >
+              <input
+                id="vf-photo"
+                value={form.imageUrl}
+                onChange={event => set({ imageUrl: event.target.value })}
+                placeholder="https://…"
+                autoComplete="off"
+                disabled={busy}
+                style={inputStyle}
+              />
+            </VehicleField>
+          </VehicleGrid>
+        </VehicleSection>
+
+        <VehicleSection title="Description">
+          <VehicleField
+            id="vf-description"
+            label="What should a renter know?"
+            hint="Condition, extras, pickup instructions, or usage limits. Do not include personal contact details."
+          >
+            <textarea
+              id="vf-description"
+              value={form.description}
+              onChange={event => set({ description: event.target.value })}
+              rows={3}
+              maxLength={2000}
+              disabled={busy}
+              style={{ ...inputStyle, resize: 'vertical' }}
+            />
+          </VehicleField>
+        </VehicleSection>
+
+        {error ? (
+          <p
+            role="alert"
+            style={{ margin: '14px 0 0', fontSize: 12, lineHeight: 1.5, color: '#B91C1C' }}
+          >
+            {error}
+          </p>
+        ) : null}
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+          <button type="submit" style={primaryButton} disabled={busy}>
+            {busy ? 'Saving…' : editing ? 'Save changes' : 'Create listing'}
+          </button>
+          <button type="button" onClick={onCancel} style={ghostButton} disabled={busy}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </ProviderCard>
+  )
+}
+
+function VehicleSection({
+  title,
+  hint,
+  children,
+}: {
+  title: string
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <section style={{ marginTop: 18 }}>
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 900, color: 'var(--text-2)' }}>{title}</p>
+      {hint ? (
+        <p style={{ margin: '3px 0 0', fontSize: 11, lineHeight: 1.5, color: 'var(--text-3)' }}>
+          {hint}
+        </p>
+      ) : null}
+      <div style={{ marginTop: 9 }}>{children}</div>
+    </section>
+  )
+}
+
+function VehicleGrid({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: 10,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function VehicleField({
+  id,
+  label,
+  hint,
+  children,
+}: {
+  id: string
+  label: string
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <label htmlFor={id} style={{ display: 'block', minWidth: 0 }}>
+      <span style={labelStyle}>{label}</span>
+      {children}
+      {hint ? (
+        <span
+          style={{
+            display: 'block',
+            marginTop: 4,
+            fontSize: 10,
+            lineHeight: 1.45,
+            color: 'var(--text-3)',
+          }}
+        >
+          {hint}
+        </span>
+      ) : null}
+    </label>
   )
 }

@@ -17,19 +17,18 @@ import {
   parseBookingExtensions,
   parseCarHireBookingResponse,
   parseCarHireBookings,
-  parseCarListings,
   parseIncidents,
   parseInspectionList,
   parseMaintenanceBlocks,
   parseOperatorInvitation,
   parseOperators,
+  parseOwnerVehicles,
   parseProviderAnalytics,
   parseProviderSummary,
   parseSupportCases,
   type AcknowledgeInspectionInput,
   type BookingExtension,
   type CarHireBooking,
-  type CarListing,
   type CreateMaintenanceBlockInput,
   type IncidentReport,
   type InspectionList,
@@ -38,12 +37,14 @@ import {
   type OpenSupportCaseInput,
   type OperatorInvitation,
   type OperatorSummary,
+  type OwnerVehicle,
   type ProviderAnalytics,
   type ProviderSummary,
   type ReportIncidentInput,
   type ResolveIncidentInput,
   type SubmitInspectionInput,
   type SupportCase,
+  type VehicleInput,
 } from '@/lib/car-hire'
 
 export class ProviderApiError extends Error {
@@ -135,9 +136,35 @@ export async function getSummary(): Promise<ProviderSummary> {
   return summary
 }
 
-export async function getFleet(): Promise<CarListing[]> {
+export async function getFleet(): Promise<OwnerVehicle[]> {
   const body = await providerFetch('cars/owner/fleet')
-  return parseCarListings(body)
+  return parseOwnerVehicles(body)
+}
+
+/** Create a listing owned by the signed-in provider. */
+export async function createVehicle(
+  input: VehicleInput,
+): Promise<OwnerVehicle | null> {
+  const body = await providerFetch('cars', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return parseOwnerVehicles(body)[0] ?? null
+}
+
+/** Update one of the signed-in provider's own listings. */
+export async function updateVehicle(
+  carId: number | string,
+  input: Partial<VehicleInput>,
+): Promise<OwnerVehicle | null> {
+  const body = await providerFetch(
+    `cars/${encodeURIComponent(String(carId))}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    },
+  )
+  return parseOwnerVehicles(body)[0] ?? null
 }
 
 export async function getOwnerBookings(options: {
