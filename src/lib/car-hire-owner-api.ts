@@ -141,6 +141,78 @@ export async function getFleet(): Promise<OwnerVehicle[]> {
   return parseOwnerVehicles(body)
 }
 
+const MAX_VEHICLE_PHOTO_BYTES = 20 * 1024 * 1024
+const VEHICLE_PHOTO_TYPES = /^image\/(png|jpe?g|webp|heic|heif)$/i
+
+/**
+ * Upload one vehicle photo and return its public URL.
+ *
+ * Uses the same Firebase ID token as the rest of the provider workspace. The
+ * backend stores the file under /uploads and returns an absolute URL; the fleet
+ * editor saves that URL on the listing (`images[]`, with `imageUrl` as the
+ * primary image).
+ */
+export async function uploadVehiclePhoto(file: File): Promise<string> {
+  if (!VEHICLE_PHOTO_TYPES.test(file.type)) {
+    throw new ProviderApiError('Choose a PNG, JPG, WEBP, HEIC, or HEIF image.', 400, null)
+  }
+  if (file.size > MAX_VEHICLE_PHOTO_BYTES) {
+    throw new ProviderApiError('Each photo must be 20 MB or smaller.', 400, null)
+  }
+
+  const user = auth.currentUser
+  if (!user) {
+    throw new ProviderApiError('Sign in to upload vehicle photos.', 401, null)
+  }
+
+  let token: string
+  try {
+    token = await user.getIdToken()
+  } catch {
+    throw new ProviderApiError('Your session expired. Sign out and sign in again.', 401, null)
+  }
+
+  const form = new FormData()
+  form.append('file', file, file.name || 'vehicle-photo.jpg')
+
+  let res: Response
+  try {
+    res = await fetch(veroEndpoint('uploads'), {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: form,
+      cache: 'no-store',
+    })
+  } catch {
+    throw new ProviderApiError(
+      'Could not reach the Vero360 service. Check your connection and try again.',
+      0,
+      null,
+    )
+  }
+
+  const body = await readJsonSafe(res)
+  if (!res.ok) {
+    throw new ProviderApiError(
+      apiErrorMessage(body, `Photo upload failed (${res.status}).`),
+      res.status,
+      body,
+    )
+  }
+
+  const url =
+    body && typeof body === 'object' && 'url' in body
+      ? String((body as { url?: unknown }).url ?? '').trim()
+      : ''
+  if (!url) {
+    throw new ProviderApiError('The upload succeeded but returned no image URL.', 502, body)
+  }
+  return url
+}
+
 /** Create a listing owned by the signed-in provider. */
 export async function createVehicle(
   input: VehicleInput,

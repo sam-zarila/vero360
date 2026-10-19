@@ -9,6 +9,7 @@ import {
   listingStatusLabel,
   maintenanceCategoryLabel,
   resolveCarImage,
+  resolveVeroMediaUrl,
   type MaintenanceCategory,
   type OwnerVehicle,
   type VehicleInput,
@@ -19,6 +20,7 @@ import {
   getFleet,
   ProviderApiError,
   updateVehicle,
+  uploadVehiclePhoto,
 } from '@/lib/car-hire-owner-api'
 import { formatMwk } from '@/lib/vero-api'
 import { useProviderAuth } from '../components/ProviderShell'
@@ -72,9 +74,11 @@ type VehicleForm = {
   bodyType: string
   pickupArea: string
   description: string
-  imageUrl: string
+  images: string[]
   isAvailable: boolean
 }
+
+const MAX_VEHICLE_PHOTOS = 8
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -97,7 +101,7 @@ function emptyVehicleForm(): VehicleForm {
     bodyType: 'SEDAN',
     pickupArea: '',
     description: '',
-    imageUrl: '',
+    images: [],
     isAvailable: true,
   }
 }
@@ -121,7 +125,7 @@ function vehicleFormFrom(car: OwnerVehicle): VehicleForm {
     bodyType: car.bodyType ?? 'SEDAN',
     pickupArea: car.pickupArea ?? '',
     description: car.description ?? '',
-    imageUrl: car.imageUrl ?? '',
+    images: car.images.length > 0 ? car.images : car.imageUrl ? [car.imageUrl] : [],
     isAvailable: car.isAvailable !== false,
   }
 }
@@ -158,15 +162,21 @@ function validateVehicleForm(form: VehicleForm): string {
       return 'The maximum rental must be a whole number of days, at least the minimum.'
     }
   }
-  if (form.imageUrl.trim() && !/^https?:\/\//i.test(form.imageUrl.trim())) {
-    return 'The photo URL must start with http:// or https://.'
+  if (form.images.length > MAX_VEHICLE_PHOTOS) {
+    return `Keep it to ${MAX_VEHICLE_PHOTOS} photos or fewer.`
+  }
+  const invalidPhoto = form.images.find(
+    url => !/^https?:\/\//i.test(url.trim()),
+  )
+  if (invalidPhoto) {
+    return 'Every photo needs a public link that starts with http:// or https://.'
   }
   return ''
 }
 
 function vehiclePayload(form: VehicleForm): VehicleInput {
   const editing = form.mode === 'edit'
-  const imageUrl = form.imageUrl.trim()
+  const images = form.images.map(url => url.trim()).filter(Boolean)
   const pickupArea = form.pickupArea.trim()
   const description = form.description.trim()
 
@@ -197,9 +207,9 @@ function vehiclePayload(form: VehicleForm): VehicleInput {
   if (description) payload.description = description
   else if (editing) payload.description = ''
 
-  if (imageUrl) {
-    payload.imageUrl = imageUrl
-    payload.images = [imageUrl]
+  if (images.length > 0) {
+    payload.images = images
+    payload.imageUrl = images[0]
   } else if (editing) {
     payload.imageUrl = ''
     payload.images = []
@@ -841,6 +851,72 @@ function VehicleEditor({
 }) {
   const editing = form.mode === 'edit'
   const set = (patch: Partial<VehicleForm>) => onChange({ ...form, ...patch })
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
+
+  async function addFiles(fileList: FileList | null) {
+    const files = Array.from(fileList ?? [])
+    if (files.length === 0) return
+    setUploadError('')
+
+    const room = MAX_VEHICLE_PHOTOS - form.images.length
+    if (room <= 0) {
+      setUploadError(`You can add up to ${MAX_VEHICLE_PHOTOS} photos.`)
+      return
+    }
+
+    setUploading(true)
+    try {
+      const uploaded: string[] = []
+      for (const file of files.slice(0, room)) {
+        uploaded.push(await uploadVehiclePhoto(file))
+      }
+      if (uploaded.length > 0) {
+        onChange({ ...form, images: [...form.images, ...uploaded] })
+      }
+      if (files.length > room) {
+        setUploadError(
+          `Added ${room}. Remove a photo before adding more (limit ${MAX_VEHICLE_PHOTOS}).`,
+        )
+      }
+    } catch (err) {
+      setUploadError(
+        err instanceof ProviderApiError && err.status === 401
+          ? 'Your session expired. Sign out and sign in again to upload photos.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not upload that photo. Try again.',
+      )
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function addPhotoByUrl() {
+    const url = photoUrl.trim()
+    if (!url) return
+    if (!/^https?:\/\//i.test(url)) {
+      setUploadError('Paste a link that starts with http:// or https://.')
+      return
+    }
+    if (form.images.length >= MAX_VEHICLE_PHOTOS) {
+      setUploadError(`You can add up to ${MAX_VEHICLE_PHOTOS} photos.`)
+      return
+    }
+    if (form.images.some(existing => existing === url)) {
+      setUploadError('That photo is already in the gallery.')
+      return
+    }
+    setUploadError('')
+    setPhotoUrl('')
+    onChange({ ...form, images: [...form.images, url] })
+  }
+
+  function removePhoto(url: string) {
+    setUploadError('')
+    onChange({ ...form, images: form.images.filter(existing => existing !== url) })
+  }
 
   return (
     <ProviderCard style={{ marginBottom: 16 }}>
@@ -1091,22 +1167,155 @@ function VehicleEditor({
                 style={inputStyle}
               />
             </VehicleField>
-            <VehicleField
-              id="vf-photo"
-              label="Photo URL"
-              hint="Optional. Use a public https image link."
+          </VehicleGrid>
+        </VehicleSection>
+
+        <VehicleSection
+          title="Photos"
+          hint={`Upload up to ${MAX_VEHICLE_PHOTOS} images. The first photo is the cover shown in search.`}
+        >
+          {form.images.length > 0 ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              {form.images.map((url, index) => (
+                <figure
+                  key={`${url}-${index}`}
+                  style={{
+                    position: 'relative',
+                    margin: 0,
+                    borderRadius: 13,
+                    overflow: 'hidden',
+                    border: index === 0 ? '2px solid #F97316' : '1px solid var(--border)',
+                    background: 'var(--surface)',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveVeroMediaUrl(url) ?? url}
+                    alt={index === 0 ? 'Cover photo' : `Photo ${index + 1}`}
+                    loading="lazy"
+                    style={{ width: '100%', height: 96, objectFit: 'cover', display: 'block' }}
+                  />
+                  {index === 0 ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        left: 6,
+                        padding: '3px 7px',
+                        borderRadius: 999,
+                        background: '#F97316',
+                        color: '#fff',
+                        fontSize: 9,
+                        fontWeight: 900,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Cover
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(url)}
+                    disabled={busy || uploading}
+                    aria-label={`Remove photo ${index + 1}`}
+                    style={{
+                      position: 'absolute',
+                      top: 5,
+                      right: 5,
+                      width: 24,
+                      height: 24,
+                      borderRadius: 999,
+                      border: 'none',
+                      background: 'rgba(15, 23, 42, 0.78)',
+                      color: '#fff',
+                      fontSize: 13,
+                      lineHeight: 1,
+                      fontWeight: 900,
+                      cursor: busy || uploading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    ×
+                  </button>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-3)' }}>
+              No photos yet. Uploads appear here and become the listing gallery.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <label
+              style={{
+                ...ghostButton,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: uploading || busy ? 'not-allowed' : 'pointer',
+                opacity: uploading || busy ? 0.6 : 1,
+              }}
             >
               <input
-                id="vf-photo"
-                value={form.imageUrl}
-                onChange={event => set({ imageUrl: event.target.value })}
-                placeholder="https://…"
-                autoComplete="off"
-                disabled={busy}
-                style={inputStyle}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+                multiple
+                disabled={uploading || busy}
+                onChange={event => {
+                  void addFiles(event.target.files)
+                  event.target.value = ''
+                }}
+                style={{ display: 'none' }}
               />
-            </VehicleField>
-          </VehicleGrid>
+              {uploading ? 'Uploading…' : 'Upload photos'}
+            </label>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+              PNG, JPG, WEBP or HEIC · up to 20 MB each
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            <input
+              id="vf-photo-url"
+              value={photoUrl}
+              onChange={event => setPhotoUrl(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  addPhotoByUrl()
+                }
+              }}
+              placeholder="…or paste a public image link (https://…)"
+              autoComplete="off"
+              disabled={busy || uploading}
+              style={{ ...inputStyle, flex: '1 1 260px', minWidth: 0 }}
+            />
+            <button
+              type="button"
+              onClick={addPhotoByUrl}
+              disabled={busy || uploading || !photoUrl.trim()}
+              style={ghostButton}
+            >
+              Add link
+            </button>
+          </div>
+
+          {uploadError ? (
+            <p
+              role="alert"
+              style={{ margin: '9px 0 0', fontSize: 12, lineHeight: 1.5, color: '#B91C1C' }}
+            >
+              {uploadError}
+            </p>
+          ) : null}
         </VehicleSection>
 
         <VehicleSection title="Description">
