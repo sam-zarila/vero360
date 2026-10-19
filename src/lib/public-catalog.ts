@@ -358,7 +358,7 @@ export async function listPublicCarHireFiltered(
           [
             car.seats ? `${Math.round(car.seats)} seats` : null,
             car.transmission ? transmissionLabel(car.transmission) : null,
-            car.pickupArea,
+            car.operator ? `By ${car.operator.name}` : car.pickupArea,
           ]
             .filter(Boolean)
             .join(' · ') || null,

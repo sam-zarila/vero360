@@ -39,6 +39,30 @@ export type CarListing = {
   depositAmount: number
   minRentalDays: number
   maxRentalDays: number | null
+  operatorId: string | null
+  operator: PublicOperator | null
+}
+
+/** The company or individual host a listing is provided by. */
+export type PublicOperator = {
+  id: string
+  name: string
+  type: string
+  logoUrl: string | null
+}
+
+export function parsePublicOperator(value: unknown): PublicOperator | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const id = str(row.id)
+  const name = str(first(row, ['name', 'displayName']))
+  if (!id || !name) return null
+  return {
+    id,
+    name,
+    type: (str(row.type) || '').toUpperCase(),
+    logoUrl: str(row.logoUrl) || null,
+  }
 }
 
 /** Derived booking-page metadata for a listing (no private fields). */
@@ -309,6 +333,8 @@ export function parseCar(value: unknown): CarListing | null {
     depositAmount: asNumber(row.depositAmount ?? row.deposit),
     minRentalDays: Math.max(1, Math.round(asNumber(row.minRentalDays) || 1)),
     maxRentalDays: asOptionalNumber(row.maxRentalDays),
+    operatorId: str(row.operatorId) || null,
+    operator: parsePublicOperator(row.operator),
   }
 }
 
@@ -367,7 +393,6 @@ export type VehicleInput = {
  */
 export type OwnerVehicle = CarListing & {
   licensePlate: string | null
-  operatorId: number | null
 }
 
 export function parseOwnerVehicles(body: unknown): OwnerVehicle[] {
@@ -385,9 +410,6 @@ export function parseOwnerVehicles(body: unknown): OwnerVehicle[] {
       ...car,
       licensePlate: record
         ? str(first(record, ['licensePlate', 'license_plate'])) || null
-        : null,
-      operatorId: record
-        ? asOptionalNumber(first(record, ['operatorId', 'operator_id']))
         : null,
     }
   })
@@ -1166,7 +1188,24 @@ export type OperatorSummary = {
   type: string
   displayName: string
   status: string
+  contactPhone: string | null
+  serviceAreas: string[]
+  logoUrl: string | null
+  defaultDepositAmount: number | null
+  defaultMinRentalDays: number | null
+  defaultMaxRentalDays: number | null
+  reviewerNote: string | null
   membership: OperatorMembership | null
+}
+
+export type OperatorProfileInput = {
+  displayName?: string
+  contactPhone?: string
+  serviceAreas?: string[]
+  logoUrl?: string | null
+  defaultDepositAmount?: number | null
+  defaultMinRentalDays?: number | null
+  defaultMaxRentalDays?: number | null
 }
 
 export type OperatorInvitation = {
@@ -1196,6 +1235,13 @@ export function parseOperator(value: unknown): OperatorSummary | null {
     type: (str(row.type) || '').toUpperCase(),
     displayName: str(first(row, ['displayName', 'name', 'businessName'])) || `Operator ${id}`,
     status: (str(row.status) || '').toUpperCase(),
+    contactPhone: str(row.contactPhone) || null,
+    serviceAreas: stringList(row.serviceAreas),
+    logoUrl: str(row.logoUrl) || null,
+    defaultDepositAmount: asOptionalNumber(row.defaultDepositAmount),
+    defaultMinRentalDays: asOptionalNumber(row.defaultMinRentalDays),
+    defaultMaxRentalDays: asOptionalNumber(row.defaultMaxRentalDays),
+    reviewerNote: str(row.reviewerNote) || null,
     membership,
   }
 }

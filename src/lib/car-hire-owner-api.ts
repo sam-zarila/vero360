@@ -36,6 +36,7 @@ import {
   type MaintenanceBlock,
   type OpenSupportCaseInput,
   type OperatorInvitation,
+  type OperatorProfileInput,
   type OperatorSummary,
   type OwnerVehicle,
   type ProviderAnalytics,
@@ -430,6 +431,17 @@ export async function declineExtension(
 export async function getMyOperators(): Promise<OperatorSummary[]> {
   const body = await providerFetch('operators/mine')
   return parseOperators(body)
+}
+
+export async function updateOperatorProfile(
+  operatorId: string,
+  input: OperatorProfileInput,
+): Promise<OperatorSummary | null> {
+  const body = await providerFetch(`operators/${encodeURIComponent(operatorId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+  return parseOperators(body)[0] ?? null
 }
 
 export async function inviteMember(

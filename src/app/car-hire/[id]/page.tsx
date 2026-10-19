@@ -249,6 +249,11 @@ export default async function CarHireDetailPage({ params, searchParams }: Props)
                 <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-3)' }}>
                   {carSubtitle(car) || 'Vehicle details confirmed in the app'}
                 </p>
+                {car.operator ? (
+                  <p style={{ margin: '5px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
+                    Provided by {car.operator.name}
+                  </p>
+                ) : null}
               </div>
               <span
                 style={{

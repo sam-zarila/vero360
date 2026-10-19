@@ -15,6 +15,7 @@ import {
 } from '@/lib/car-hire-owner-api'
 import { formatDateTime } from '@/lib/vero-api'
 import { useProviderAuth } from '../components/ProviderShell'
+import CompanyProfileForm from './CompanyProfileForm'
 import {
   ProviderCard,
   ProviderEmpty,
@@ -319,6 +320,26 @@ export default function ProviderTeamPage() {
                     )}
                   </div>
                 </div>
+
+                {operator.reviewerNote && operator.status !== 'ACTIVE' ? (
+                  <div style={{ marginTop: 12 }}>
+                    <ProviderNotice tone="warn">
+                      Vero360 review note: {operator.reviewerNote}
+                    </ProviderNotice>
+                  </div>
+                ) : null}
+
+                {membership?.role === 'OWNER' ||
+                membership?.permissions.includes('team.manage') ? (
+                  <CompanyProfileForm
+                    key={`${operator.id}-${operator.displayName}-${operator.logoUrl ?? ''}`}
+                    operator={operator}
+                    onSaved={message => {
+                      setNotice(message)
+                      void load()
+                    }}
+                  />
+                ) : null}
 
                 {active ? (
                   <>
