@@ -1493,9 +1493,79 @@ export type ProviderAnalytics = {
   completionRate: number | null
   currency: string
   byStatus: AnalyticsStatusCount[]
+  utilizationRate: number | null
+  periodDays: number | null
+  listings: AnalyticsListingRow[]
+  units: AnalyticsUnitRow[]
   asOf: string | null
   from: string | null
   to: string | null
+}
+
+export type AnalyticsListingRow = {
+  listingId: string
+  name: string
+  unitCount: number
+  bookings: number
+  completed: number
+  revenue: number
+  bookedDays: number
+  utilizationRate: number
+}
+
+export type AnalyticsUnitRow = {
+  carId: string
+  listingId: string
+  name: string
+  unitLabel: string
+  licensePlate: string
+  bookings: number
+  completed: number
+  revenue: number
+  bookedDays: number
+  utilizationRate: number
+}
+
+function analyticsListings(value: unknown): AnalyticsListingRow[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    const row = asRecord(item)
+    if (!row) return []
+    return [
+      {
+        listingId: str(row.listingId),
+        name: str(row.name) || 'Listing',
+        unitCount: asNumber(row.unitCount),
+        bookings: asNumber(row.bookings),
+        completed: asNumber(row.completed),
+        revenue: asNumber(row.revenue),
+        bookedDays: asNumber(row.bookedDays),
+        utilizationRate: asNumber(row.utilizationRate),
+      },
+    ]
+  })
+}
+
+function analyticsUnits(value: unknown): AnalyticsUnitRow[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    const row = asRecord(item)
+    if (!row) return []
+    return [
+      {
+        carId: str(row.carId),
+        listingId: str(row.listingId),
+        name: str(row.name) || 'Car',
+        unitLabel: str(row.unitLabel),
+        licensePlate: str(row.licensePlate),
+        bookings: asNumber(row.bookings),
+        completed: asNumber(row.completed),
+        revenue: asNumber(row.revenue),
+        bookedDays: asNumber(row.bookedDays),
+        utilizationRate: asNumber(row.utilizationRate),
+      },
+    ]
+  })
 }
 
 function optionalCount(value: unknown): number | null {
@@ -1555,6 +1625,10 @@ export function parseProviderAnalytics(body: unknown): ProviderAnalytics | null 
       rawRate == null ? null : rawRate > 0 && rawRate <= 1 ? rawRate * 100 : rawRate,
     currency: str(row.currency) || (revenueRow ? str(revenueRow.currency) : '') || 'MWK',
     byStatus: analyticsByStatus(row.byStatus ?? row.by_status),
+    utilizationRate: asOptionalNumber(first(row, ['utilizationRate', 'utilization_rate'])),
+    periodDays: asOptionalNumber(row.periodDays),
+    listings: analyticsListings(row.listings),
+    units: analyticsUnits(row.units),
     asOf: asIso(first(row, ['asOf', 'as_of'])),
     from: asIso(row.from),
     to: asIso(row.to),

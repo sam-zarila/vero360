@@ -33,6 +33,85 @@ const PRESETS: { days: Preset; label: string }[] = [
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+type BreakdownRow = {
+  key: string
+  title: string
+  subtitle: string
+  bookings: number
+  bookedDays: number
+  utilizationRate: number
+  revenue: number
+}
+
+function BreakdownCard({
+  title,
+  description,
+  rows,
+}: {
+  title: string
+  description: string
+  rows: BreakdownRow[]
+}) {
+  return (
+    <ProviderCard style={{ marginTop: 16 }}>
+      <h2 style={{ margin: 0, fontSize: 17, fontWeight: 900, letterSpacing: '-0.2px' }}>{title}</h2>
+      <p style={{ margin: '5px 0 0', fontSize: 12, lineHeight: 1.55, color: 'var(--text-3)' }}>
+        {description}
+      </p>
+      <div style={{ display: 'grid', gap: 7, marginTop: 11 }}>
+        {rows.map(row => (
+          <div
+            key={row.key}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) auto',
+              gap: 10,
+              padding: '10px 11px',
+              borderRadius: 10,
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{row.title}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                {row.subtitle} · {row.bookings} {row.bookings === 1 ? 'booking' : 'bookings'} ·{' '}
+                {row.bookedDays} days on hire
+              </div>
+              <div
+                aria-hidden
+                style={{
+                  marginTop: 7,
+                  height: 5,
+                  borderRadius: 999,
+                  background: 'var(--border)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.max(0, Math.min(100, row.utilizationRate))}%`,
+                    height: '100%',
+                    background: '#F97316',
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text)' }}>
+                {formatMwk(row.revenue)}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                {row.utilizationRate}% used
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </ProviderCard>
+  )
+}
+
 export default function ProviderPerformancePage() {
   const { signOutNow } = useProviderAuth()
   const [days, setDays] = useState<Preset>(30)
@@ -249,7 +328,44 @@ export default function ProviderPerformancePage() {
           hint={`Recorded in the API response (${analytics.currency})`}
           tone="good"
         />
+        <StatCard
+          label="Utilisation"
+          value={analytics.utilizationRate == null ? '—' : `${analytics.utilizationRate}%`}
+          hint="Days on hire ÷ days available across the fleet"
+        />
       </div>
+
+      {analytics.listings.length > 0 ? (
+        <BreakdownCard
+          title="By listing"
+          description="Identical cars are grouped into one listing. Utilisation counts confirmed, active and completed rentals."
+          rows={analytics.listings.map(listing => ({
+            key: listing.listingId,
+            title: listing.name,
+            subtitle: `${listing.unitCount} ${listing.unitCount === 1 ? 'car' : 'cars'}`,
+            bookings: listing.bookings,
+            bookedDays: listing.bookedDays,
+            utilizationRate: listing.utilizationRate,
+            revenue: listing.revenue,
+          }))}
+        />
+      ) : null}
+
+      {analytics.units.length > analytics.listings.length ? (
+        <BreakdownCard
+          title="By car"
+          description="Each physical car, so you can spot units that sit idle while their twins are busy."
+          rows={analytics.units.map(unit => ({
+            key: unit.carId,
+            title: unit.unitLabel ? `${unit.name} · ${unit.unitLabel}` : unit.name,
+            subtitle: unit.licensePlate || 'No plate',
+            bookings: unit.bookings,
+            bookedDays: unit.bookedDays,
+            utilizationRate: unit.utilizationRate,
+            revenue: unit.revenue,
+          }))}
+        />
+      ) : null}
 
       {analytics.byStatus.length > 0 ? (
         <ProviderCard style={{ marginTop: 16 }}>

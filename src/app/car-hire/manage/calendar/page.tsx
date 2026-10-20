@@ -9,7 +9,12 @@ import {
   type CarHireBooking,
   type CarListing,
 } from '@/lib/car-hire'
-import { getFleet, getOwnerBookings, ProviderApiError } from '@/lib/car-hire-owner-api'
+import {
+  getFleet,
+  getMyOperators,
+  getOwnerBookings,
+  ProviderApiError,
+} from '@/lib/car-hire-owner-api'
 import { formatDateTime } from '@/lib/vero-api'
 import { useProviderAuth } from '../components/ProviderShell'
 import {
@@ -67,6 +72,9 @@ export default function ProviderCalendarPage() {
   const [state, setState] = useState<ViewState>('loading')
   const [fleet, setFleet] = useState<CarListing[]>([])
   const [bookings, setBookings] = useState<CarHireBooking[]>([])
+  const [turnaroundByOperator, setTurnaroundByOperator] = useState<Map<string, number>>(
+    () => new Map(),
+  )
   const [error, setError] = useState('')
   const [sessionExpired, setSessionExpired] = useState(false)
   const [forbidden, setForbidden] = useState(false)
@@ -78,9 +86,16 @@ export default function ProviderCalendarPage() {
     setSessionExpired(false)
     setForbidden(false)
     try {
-      const [cars, rows] = await Promise.all([getFleet(), getOwnerBookings({ limit: 100 })])
+      const [cars, rows, operators] = await Promise.all([
+        getFleet(),
+        getOwnerBookings({ limit: 100 }),
+        getMyOperators().catch(() => []),
+      ])
       setFleet(cars)
       setBookings(rows)
+      setTurnaroundByOperator(
+        new Map(operators.map(operator => [operator.id, operator.turnaroundMinutes])),
+      )
       setLastLoaded(new Date().toLocaleString())
       setState('ready')
     } catch (err) {
@@ -111,11 +126,20 @@ export default function ProviderCalendarPage() {
 
   const rows = useMemo(
     () =>
-      fleet.map(car => ({
-        car,
-        bookings: overlappingBookings(bookings, car.id, rangeStart, rangeEnd),
-      })),
-    [fleet, bookings, rangeStart, rangeEnd],
+      fleet.map(car => {
+        const bufferMs = (turnaroundByOperator.get(car.operatorId ?? '') ?? 0) * 60 * 1000
+        return {
+          car,
+          bufferMs,
+          bookings: overlappingBookings(
+            bookings,
+            car.id,
+            new Date(rangeStart.getTime() - bufferMs),
+            rangeEnd,
+          ),
+        }
+      }),
+    [fleet, bookings, rangeStart, rangeEnd, turnaroundByOperator],
   )
 
   const upcoming = useMemo(() => {
@@ -204,6 +228,7 @@ export default function ProviderCalendarPage() {
       >
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <Legend swatch="#F97316" label="Reserved / pending hold" />
+          <Legend swatch="#FED7AA" label="Turnaround after return" />
           <Legend swatch="#FDE68A" label="Today" />
           <Legend swatch="#F3F4F6" label="No blocking booking" />
         </div>
@@ -257,7 +282,7 @@ export default function ProviderCalendarPage() {
               </div>
 
               <div style={{ display: 'grid', gap: 5 }}>
-                {rows.map(({ car, bookings: carBookings }) => {
+                {rows.map(({ car, bufferMs, bookings: carBookings }) => {
                   const unavailable = car.isAvailable === false
                   return (
                     <div
@@ -298,17 +323,32 @@ export default function ProviderCalendarPage() {
                           const end = booking.endAt ? new Date(booking.endAt).getTime() : 0
                           return start < dayEnd && end > dayStart
                         })
+                        const turnaround =
+                          !hit &&
+                          bufferMs > 0 &&
+                          carBookings.some(booking => {
+                            const end = booking.endAt ? new Date(booking.endAt).getTime() : 0
+                            return end < dayEnd && end + bufferMs > dayStart
+                          })
                         return (
                           <div
                             key={`${car.id}-${day.toISOString()}`}
                             title={
                               hit
                                 ? `${carTitle(car)} has a reservation or hold on ${day.toDateString()}`
-                                : `${carTitle(car)} has no blocking booking on ${day.toDateString()}`
+                                : turnaround
+                                  ? `${carTitle(car)} is being turned around after a return on ${day.toDateString()}`
+                                  : `${carTitle(car)} has no blocking booking on ${day.toDateString()}`
                             }
                             style={{
                               borderRadius: 5,
-                              background: hit ? '#F97316' : isToday ? '#FDE68A' : 'var(--surface-2)',
+                              background: hit
+                                ? '#F97316'
+                                : turnaround
+                                  ? '#FED7AA'
+                                  : isToday
+                                    ? '#FDE68A'
+                                    : 'var(--surface-2)',
                               border: isToday && !hit ? '1px solid #F59E0B' : '1px solid transparent',
                               minHeight: 32,
                             }}
