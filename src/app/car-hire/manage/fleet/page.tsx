@@ -26,6 +26,7 @@ import {
 import { formatMwk } from '@/lib/vero-api'
 import { useProviderAuth } from '../components/ProviderShell'
 import FleetUnitsPanel from './FleetUnitsPanel'
+import FleetPricingPanel from './FleetPricingPanel'
 import {
   DateRangeFields,
   defaultBlockRange,
@@ -233,6 +234,7 @@ export default function ProviderFleetPage() {
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [unitsOpenKey, setUnitsOpenKey] = useState<string | null>(null)
+  const [pricingOpenKey, setPricingOpenKey] = useState<string | null>(null)
   const [block, setBlock] = useState<BlockForm | null>(null)
   const [blockBusy, setBlockBusy] = useState(false)
   const [blockError, setBlockError] = useState('')
@@ -543,6 +545,7 @@ export default function ProviderFleetPage() {
             const car = listing.primary
             const units = listing.units
             const unitsOpen = unitsOpenKey === listing.key
+            const pricingOpen = pricingOpenKey === listing.key
             const inService = units.filter(unit => unit.isAvailable !== false).length
             const sameModel = (other: OwnerVehicle) =>
               other.make.toLowerCase() === car.make.toLowerCase() &&
@@ -652,6 +655,13 @@ export default function ProviderFleetPage() {
                         ? 'Hide units'
                         : `Units (${units.length})`}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setPricingOpenKey(pricingOpen ? null : listing.key)}
+                      style={ghostButton}
+                    >
+                      {pricingOpen ? 'Hide pricing' : 'Pricing'}
+                    </button>
                     <button type="button" onClick={() => openEditForm(car)} style={ghostButton}>
                       Edit
                     </button>
@@ -690,6 +700,14 @@ export default function ProviderFleetPage() {
                         {car.description || 'No description on this listing.'}
                       </p>
                     </div>
+                  ) : null}
+
+                  {pricingOpen ? (
+                    <FleetPricingPanel
+                      car={car}
+                      unitCount={units.length}
+                      onSaved={message => setNotice(message)}
+                    />
                   ) : null}
 
                   {unitsOpen ? (

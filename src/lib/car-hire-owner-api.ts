@@ -227,6 +227,87 @@ export async function createVehicle(
   return parseOwnerVehicles(body)[0] ?? null
 }
 
+export type RateRuleKind = 'DURATION' | 'SEASONAL' | 'WEEKEND'
+
+export type RateRule = {
+  kind: RateRuleKind
+  label?: string | null
+  minDays?: number | null
+  startDate?: string | null
+  endDate?: string | null
+  daysOfWeek?: number[] | null
+  dailyRate?: number | null
+  adjustPercent?: number | null
+  isActive?: boolean
+}
+
+export type PricePreview = {
+  currency: string
+  days: number
+  baseDailyRate: number
+  effectiveDailyRate: number
+  subtotal: number
+  surcharges: number
+  discounts: number
+  rentalTotal: number
+  lineItems: { code: string; label: string; amount: number }[]
+}
+
+function cleanRule(rule: RateRule): RateRule {
+  const out: RateRule = { kind: rule.kind, isActive: rule.isActive !== false }
+  if (rule.label?.trim()) out.label = rule.label.trim()
+  if (rule.kind === 'DURATION') {
+    out.minDays = rule.minDays ?? undefined
+    out.adjustPercent = rule.adjustPercent ?? undefined
+  } else if (rule.kind === 'SEASONAL') {
+    out.startDate = rule.startDate ?? undefined
+    out.endDate = rule.endDate ?? undefined
+    if (rule.dailyRate) out.dailyRate = rule.dailyRate
+    else out.adjustPercent = rule.adjustPercent ?? undefined
+  } else {
+    out.daysOfWeek = rule.daysOfWeek ?? []
+    out.adjustPercent = rule.adjustPercent ?? undefined
+  }
+  return out
+}
+
+export async function getRateRules(
+  carId: number,
+): Promise<{ dailyRate: number; currency: string; rules: RateRule[] }> {
+  const body = (await providerFetch(`cars/${carId}/rate-rules`)) as {
+    dailyRate?: number
+    currency?: string
+    rules?: RateRule[]
+  } | null
+  return {
+    dailyRate: Number(body?.dailyRate ?? 0),
+    currency: body?.currency || 'MWK',
+    rules: Array.isArray(body?.rules) ? body!.rules : [],
+  }
+}
+
+export async function saveRateRules(carId: number, rules: RateRule[]): Promise<RateRule[]> {
+  const body = (await providerFetch(`cars/${carId}/rate-rules`, {
+    method: 'PUT',
+    body: JSON.stringify({ rules: rules.map(cleanRule) }),
+  })) as { rules?: RateRule[] } | null
+  return Array.isArray(body?.rules) ? body!.rules : []
+}
+
+export async function previewPrice(
+  carId: number,
+  input: { startAt: string; endAt: string; rules?: RateRule[] },
+): Promise<PricePreview> {
+  return (await providerFetch(`cars/${carId}/price-preview`, {
+    method: 'POST',
+    body: JSON.stringify({
+      startAt: input.startAt,
+      endAt: input.endAt,
+      ...(input.rules ? { rules: input.rules.map(cleanRule) } : {}),
+    }),
+  })) as PricePreview
+}
+
 /** Add identical units (new registrations) to a listing. */
 export async function addListingUnits(
   carId: number | string,
