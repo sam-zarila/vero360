@@ -41,6 +41,7 @@ const NAV = [
   { label: 'Overview', href: '/car-hire/manage' },
   { label: 'Fleet', href: '/car-hire/manage/fleet' },
   { label: 'Bookings', href: '/car-hire/manage/bookings' },
+  { label: 'Dispatch', href: '/car-hire/manage/dispatch' },
   { label: 'Calendar', href: '/car-hire/manage/calendar' },
   { label: 'Performance', href: '/car-hire/manage/performance' },
   { label: 'Team', href: '/car-hire/manage/team' },

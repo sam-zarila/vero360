@@ -299,7 +299,22 @@ export default async function CarHireDetailPage({ params, searchParams }: Props)
               }}
             >
               <Fact label="Daily rate" value={carPriceLabel(car)} />
-              <Fact label="Pickup area" value={car.pickupArea || 'Confirmed in app'} />
+              {car.location ? (
+                <Fact
+                  label="Pickup branch"
+                  value={
+                    car.location.address
+                      ? `${car.location.name}, ${car.location.address}`
+                      : car.location.name
+                  }
+                />
+              ) : (
+                <Fact label="Pickup area" value={car.pickupArea || 'Confirmed in app'} />
+              )}
+              <Fact
+                label="Booking"
+                value={car.instantBook ? 'Confirmed instantly' : 'Company confirms within 24h'}
+              />
               <Fact
                 label="Minimum rental"
                 value={`${car.minRentalDays} ${car.minRentalDays === 1 ? 'day' : 'days'}`}

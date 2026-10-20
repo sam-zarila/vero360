@@ -17,6 +17,9 @@ import {
   parseBookingExtensions,
   parseCarHireBookingResponse,
   parseBookingUnitOptions,
+  parseBranch,
+  parseBranches,
+  parseDispatchBoard,
   parseCarHireBookings,
   parseIncidents,
   parseInspectionList,
@@ -30,7 +33,9 @@ import {
   type AcknowledgeInspectionInput,
   type BookingExtension,
   type BookingUnitOption,
+  type Branch,
   type CarHireBooking,
+  type DispatchBoard,
   type CreateMaintenanceBlockInput,
   type IncidentReport,
   type InspectionList,
@@ -225,6 +230,49 @@ export async function createVehicle(
     body: JSON.stringify(input),
   })
   return parseOwnerVehicles(body)[0] ?? null
+}
+
+export type BranchInput = {
+  name: string
+  address?: string | null
+  phone?: string | null
+  openingHours?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  isActive?: boolean
+}
+
+export async function getBranches(operatorId: string): Promise<Branch[]> {
+  return parseBranches(
+    await providerFetch(`operators/${encodeURIComponent(operatorId)}/locations`),
+  )
+}
+
+export async function createBranch(operatorId: string, input: BranchInput): Promise<Branch | null> {
+  return parseBranch(
+    await providerFetch(`operators/${encodeURIComponent(operatorId)}/locations`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  )
+}
+
+export async function updateBranch(
+  operatorId: string,
+  branchId: string,
+  input: Partial<BranchInput>,
+): Promise<Branch | null> {
+  return parseBranch(
+    await providerFetch(
+      `operators/${encodeURIComponent(operatorId)}/locations/${encodeURIComponent(branchId)}`,
+      { method: 'PATCH', body: JSON.stringify(input) },
+    ),
+  )
+}
+
+export async function getDispatchBoard(date?: string): Promise<DispatchBoard> {
+  const query = date ? `?date=${encodeURIComponent(date)}` : ''
+  return parseDispatchBoard(await providerFetch(`owner/dispatch${query}`))
 }
 
 export type RateRuleKind = 'DURATION' | 'SEASONAL' | 'WEEKEND'

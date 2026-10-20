@@ -46,6 +46,10 @@ export type CarListing = {
   unitCount: number | null
   /** Units free for the searched dates (or in service when undated). */
   availableUnits: number | null
+  /** Company branch the car is picked up from. */
+  location: Branch | null
+  /** False when the company accepts requests before the renter pays. */
+  instantBook: boolean
 }
 
 /** The company or individual host a listing is provided by. */
@@ -142,6 +146,7 @@ export type CarHireBooking = {
   updatedAt: string | null
   nextAction: string | null
   car: CarListing | null
+  bookingMode: 'INSTANT' | 'REQUEST'
   listingId: string | null
   /** The physical unit (registration) currently assigned to the booking. */
   assignedUnit: {
@@ -351,6 +356,8 @@ export function parseCar(value: unknown): CarListing | null {
     listingId: str(row.listingId) || null,
     unitCount: asOptionalNumber(row.unitCount),
     availableUnits: asOptionalNumber(row.availableUnits),
+    location: parseBranch(row.location),
+    instantBook: row.instantBook !== false,
   }
 }
 
@@ -401,6 +408,8 @@ export type VehicleInput = {
   minRentalDays?: number
   maxRentalDays?: number | null
   isAvailable?: boolean
+  locationId?: string | null
+  nextServiceDueAt?: string | null
 }
 
 /**
@@ -411,6 +420,8 @@ export type OwnerVehicle = CarListing & {
   licensePlate: string | null
   listingGroupId: string | null
   unitLabel: string | null
+  locationId: string | null
+  nextServiceDueAt: string | null
 }
 
 /** One listing in the provider fleet: identical units share a listing group. */
@@ -495,6 +506,8 @@ export function parseOwnerVehicles(body: unknown): OwnerVehicle[] {
         : null,
       listingGroupId: record ? str(record.listingGroupId) || null : null,
       unitLabel: record ? str(record.unitLabel) || null : null,
+      locationId: record ? str(record.locationId) || null : null,
+      nextServiceDueAt: record ? str(record.nextServiceDueAt).slice(0, 10) || null : null,
     }
   })
 }
@@ -571,6 +584,7 @@ export function parseCarHireBooking(value: unknown): CarHireBooking | null {
     updatedAt: asIso(row.updatedAt),
     nextAction: str(row.nextAction) || null,
     car,
+    bookingMode: str(row.bookingMode).toUpperCase() === 'REQUEST' ? 'REQUEST' : 'INSTANT',
     listingId: str(row.listingId) || null,
     assignedUnit: parseAssignedUnit(row.assignedUnit),
     renterName: renter.name,
@@ -1280,6 +1294,8 @@ export type OperatorSummary = {
   defaultDepositAmount: number | null
   defaultMinRentalDays: number | null
   defaultMaxRentalDays: number | null
+  instantBook: boolean
+  turnaroundMinutes: number
   reviewerNote: string | null
   membership: OperatorMembership | null
 }
@@ -1292,6 +1308,102 @@ export type OperatorProfileInput = {
   defaultDepositAmount?: number | null
   defaultMinRentalDays?: number | null
   defaultMaxRentalDays?: number | null
+  instantBook?: boolean
+  turnaroundMinutes?: number
+}
+
+/** A company branch where renters pick up and return vehicles. */
+export type Branch = {
+  id: string
+  name: string
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  phone: string | null
+  openingHours: string | null
+  isActive: boolean
+}
+
+export function parseBranch(value: unknown): Branch | null {
+  const row = asRecord(value)
+  if (!row) return null
+  const id = str(row.id)
+  const name = str(row.name)
+  if (!id || !name) return null
+  return {
+    id,
+    name,
+    address: str(row.address) || null,
+    latitude: asOptionalNumber(row.latitude),
+    longitude: asOptionalNumber(row.longitude),
+    phone: str(row.phone) || null,
+    openingHours: str(row.openingHours) || null,
+    isActive: row.isActive !== false,
+  }
+}
+
+export function parseBranches(body: unknown): Branch[] {
+  return unwrapList(body)
+    .map(parseBranch)
+    .filter((branch): branch is Branch => branch !== null)
+}
+
+export type DispatchBooking = CarHireBooking & { branch: { id: string; name: string } | null }
+
+export type DispatchBoard = {
+  date: string
+  pickups: DispatchBooking[]
+  returns: DispatchBooking[]
+  latePickups: DispatchBooking[]
+  overdueReturns: DispatchBooking[]
+  awaitingResponse: DispatchBooking[]
+  serviceDue: {
+    carId: number
+    title: string
+    licensePlate: string | null
+    unitLabel: string | null
+    nextServiceDueAt: string
+    overdue: boolean
+  }[]
+}
+
+export function parseDispatchBoard(body: unknown): DispatchBoard {
+  const row = asRecord(body) ?? {}
+  const bookings = (value: unknown): DispatchBooking[] =>
+    unwrapList(value).flatMap(item => {
+      const booking = parseCarHireBooking(item)
+      if (!booking) return []
+      const branch = asRecord(asRecord(item)?.branch)
+      return [
+        {
+          ...booking,
+          branch: branch && str(branch.id) ? { id: str(branch.id), name: str(branch.name) } : null,
+        },
+      ]
+    })
+  return {
+    date: str(row.date),
+    pickups: bookings(row.pickups),
+    returns: bookings(row.returns),
+    latePickups: bookings(row.latePickups),
+    overdueReturns: bookings(row.overdueReturns),
+    awaitingResponse: bookings(row.awaitingResponse),
+    serviceDue: unwrapList(row.serviceDue).flatMap(item => {
+      const record = asRecord(item)
+      const carId = asNumber(record?.carId)
+      if (!record || !(carId > 0)) return []
+      return [
+        {
+          carId,
+          title: str(record.title) || `Car #${carId}`,
+          licensePlate: str(record.licensePlate) || null,
+          unitLabel: str(record.unitLabel) || null,
+          nextServiceDueAt: str(record.nextServiceDueAt),
+          overdue: record.overdue === true,
+        },
+      ]
+    }),
+  }
 }
 
 export type OperatorInvitation = {
@@ -1327,6 +1439,8 @@ export function parseOperator(value: unknown): OperatorSummary | null {
     defaultDepositAmount: asOptionalNumber(row.defaultDepositAmount),
     defaultMinRentalDays: asOptionalNumber(row.defaultMinRentalDays),
     defaultMaxRentalDays: asOptionalNumber(row.defaultMaxRentalDays),
+    instantBook: row.instantBook !== false,
+    turnaroundMinutes: Math.max(0, Math.round(asNumber(row.turnaroundMinutes))),
     reviewerNote: str(row.reviewerNote) || null,
     membership,
   }

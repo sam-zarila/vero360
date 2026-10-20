@@ -11,6 +11,7 @@ import {
   maintenanceCategoryLabel,
   resolveCarImage,
   resolveVeroMediaUrl,
+  type Branch,
   type MaintenanceCategory,
   type OwnerVehicle,
   type VehicleInput,
@@ -18,7 +19,9 @@ import {
 import {
   createMaintenanceBlock,
   createVehicle,
+  getBranches,
   getFleet,
+  getMyOperators,
   ProviderApiError,
   updateVehicle,
   uploadVehiclePhoto,
@@ -79,6 +82,9 @@ type VehicleForm = {
   description: string
   images: string[]
   isAvailable: boolean
+  operatorId: string | null
+  locationId: string
+  nextServiceDueAt: string
 }
 
 const MAX_VEHICLE_PHOTOS = 8
@@ -106,6 +112,9 @@ function emptyVehicleForm(): VehicleForm {
     description: '',
     images: [],
     isAvailable: true,
+    operatorId: null,
+    locationId: '',
+    nextServiceDueAt: '',
   }
 }
 
@@ -130,6 +139,9 @@ function vehicleFormFrom(car: OwnerVehicle): VehicleForm {
     description: car.description ?? '',
     images: car.images.length > 0 ? car.images : car.imageUrl ? [car.imageUrl] : [],
     isAvailable: car.isAvailable !== false,
+    operatorId: car.operatorId,
+    locationId: car.locationId ?? '',
+    nextServiceDueAt: car.nextServiceDueAt ?? '',
   }
 }
 
@@ -218,6 +230,12 @@ function vehiclePayload(form: VehicleForm): VehicleInput {
     payload.images = []
   }
 
+  if (form.locationId) payload.locationId = form.locationId
+  else if (editing) payload.locationId = null
+
+  if (form.nextServiceDueAt) payload.nextServiceDueAt = form.nextServiceDueAt
+  else if (editing) payload.nextServiceDueAt = null
+
   return payload
 }
 
@@ -235,6 +253,8 @@ export default function ProviderFleetPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [unitsOpenKey, setUnitsOpenKey] = useState<string | null>(null)
   const [pricingOpenKey, setPricingOpenKey] = useState<string | null>(null)
+  const [branchesByOperator, setBranchesByOperator] = useState<Record<string, Branch[]>>({})
+  const [defaultOperatorId, setDefaultOperatorId] = useState<string | null>(null)
   const [block, setBlock] = useState<BlockForm | null>(null)
   const [blockBusy, setBlockBusy] = useState(false)
   const [blockError, setBlockError] = useState('')
@@ -248,8 +268,20 @@ export default function ProviderFleetPage() {
     setError('')
     setSessionExpired(false)
     try {
-      const cars = await getFleet()
+      const [cars, operators] = await Promise.all([
+        getFleet(),
+        getMyOperators().catch(() => []),
+      ])
       setFleet(cars)
+      const lists = await Promise.all(
+        operators.map(operator =>
+          getBranches(operator.id)
+            .then(rows => [operator.id, rows.filter(row => row.isActive)] as const)
+            .catch(() => [operator.id, []] as const),
+        ),
+      )
+      setBranchesByOperator(Object.fromEntries(lists))
+      setDefaultOperatorId(operators[0]?.id ?? null)
       setState('ready')
     } catch (err) {
       if (err instanceof ProviderApiError && err.status === 401) {
@@ -477,6 +509,7 @@ export default function ProviderFleetPage() {
 
       {vehicleForm ? (
         <VehicleEditor
+          branches={branchesByOperator[vehicleForm.operatorId ?? defaultOperatorId ?? ''] ?? []}
           form={vehicleForm}
           busy={vehicleBusy}
           error={vehicleError}
@@ -905,6 +938,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 function VehicleEditor({
+  branches,
   form,
   busy,
   error,
@@ -912,6 +946,7 @@ function VehicleEditor({
   onCancel,
   onSubmit,
 }: {
+  branches: Branch[]
   form: VehicleForm
   busy: boolean
   error: string
@@ -1225,6 +1260,44 @@ function VehicleEditor({
                   </option>
                 ))}
               </select>
+            </VehicleField>
+            <VehicleField
+              id="vf-branch"
+              label="Branch"
+              hint={
+                branches.length === 0
+                  ? 'Add branches on the Team page.'
+                  : 'Applies to every unit of this listing.'
+              }
+            >
+              <select
+                id="vf-branch"
+                value={form.locationId}
+                onChange={event => set({ locationId: event.target.value })}
+                disabled={busy || branches.length === 0}
+                style={inputStyle}
+              >
+                <option value="">No branch</option>
+                {branches.map(branch => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </VehicleField>
+            <VehicleField
+              id="vf-service"
+              label="Next service due"
+              hint="This unit only. Shows on the dispatch board 14 days ahead."
+            >
+              <input
+                id="vf-service"
+                type="date"
+                value={form.nextServiceDueAt}
+                onChange={event => set({ nextServiceDueAt: event.target.value })}
+                disabled={busy}
+                style={inputStyle}
+              />
             </VehicleField>
             <VehicleField id="vf-area" label="Pickup area">
               <input

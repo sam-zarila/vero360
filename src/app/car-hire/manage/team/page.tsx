@@ -16,6 +16,7 @@ import {
 import { formatDateTime } from '@/lib/vero-api'
 import { useProviderAuth } from '../components/ProviderShell'
 import CompanyProfileForm from './CompanyProfileForm'
+import BranchesPanel from './BranchesPanel'
 import {
   ProviderCard,
   ProviderEmpty,
@@ -338,6 +339,17 @@ export default function ProviderTeamPage() {
                       setNotice(message)
                       void load()
                     }}
+                  />
+                ) : null}
+
+                {membership ? (
+                  <BranchesPanel
+                    operatorId={operator.id}
+                    canManage={
+                      membership.role === 'OWNER' ||
+                      membership.permissions.includes('fleet.manage')
+                    }
+                    onSaved={message => setNotice(message)}
                   />
                 ) : null}
 

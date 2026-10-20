@@ -13,6 +13,8 @@ type Draft = {
   defaultDepositAmount: string
   defaultMinRentalDays: string
   defaultMaxRentalDays: string
+  turnaroundMinutes: string
+  instantBook: boolean
 }
 
 function draftFrom(operator: OperatorSummary): Draft {
@@ -27,6 +29,8 @@ function draftFrom(operator: OperatorSummary): Draft {
       operator.defaultMinRentalDays != null ? String(operator.defaultMinRentalDays) : '',
     defaultMaxRentalDays:
       operator.defaultMaxRentalDays != null ? String(operator.defaultMaxRentalDays) : '',
+    turnaroundMinutes: String(operator.turnaroundMinutes || 0),
+    instantBook: operator.instantBook,
   }
 }
 
@@ -52,7 +56,7 @@ export default function CompanyProfileForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const set = (key: keyof Draft) => (value: string) =>
+  const set = (key: Exclude<keyof Draft, 'instantBook'>) => (value: string) =>
     setDraft(previous => ({ ...previous, [key]: value }))
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -65,6 +69,11 @@ export default function CompanyProfileForm({
     const max = optionalNumber(draft.defaultMaxRentalDays)
     if (min != null && max != null && max < min) {
       setError('Maximum rental days cannot be less than the minimum.')
+      return
+    }
+    const turnaround = optionalNumber(draft.turnaroundMinutes) ?? 0
+    if (!Number.isInteger(turnaround) || turnaround < 0 || turnaround > 1440) {
+      setError('Turnaround must be between 0 and 1440 minutes.')
       return
     }
     setBusy(true)
@@ -81,6 +90,8 @@ export default function CompanyProfileForm({
         defaultDepositAmount: optionalNumber(draft.defaultDepositAmount),
         defaultMinRentalDays: min,
         defaultMaxRentalDays: max,
+        turnaroundMinutes: turnaround,
+        instantBook: draft.instantBook,
       })
       onSaved(`${draft.displayName.trim()} profile saved.`)
     } catch (err) {
@@ -97,7 +108,7 @@ export default function CompanyProfileForm({
   }
 
   const field = (
-    key: keyof Draft,
+    key: Exclude<keyof Draft, 'instantBook'>,
     label: string,
     props: { placeholder?: string; inputMode?: 'numeric' | 'decimal' | 'tel' } = {},
   ) => (
@@ -133,6 +144,40 @@ export default function CompanyProfileForm({
         {field('defaultDepositAmount', 'Default deposit', { inputMode: 'decimal' })}
         {field('defaultMinRentalDays', 'Default minimum days', { inputMode: 'numeric' })}
         {field('defaultMaxRentalDays', 'Default maximum days', { inputMode: 'numeric' })}
+        {field('turnaroundMinutes', 'Turnaround between rentals (minutes)', {
+          inputMode: 'numeric',
+          placeholder: '120',
+        })}
+      </div>
+      <div>
+        <span style={labelStyle}>How renters book</span>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <label style={choice}>
+            <input
+              type="radio"
+              name={`${operator.id}-booking-mode`}
+              checked={draft.instantBook}
+              onChange={() => setDraft(previous => ({ ...previous, instantBook: true }))}
+              disabled={busy}
+            />
+            <span>
+              <strong>Instant book</strong> — the booking is confirmed as soon as the renter pays.
+            </span>
+          </label>
+          <label style={choice}>
+            <input
+              type="radio"
+              name={`${operator.id}-booking-mode`}
+              checked={!draft.instantBook}
+              onChange={() => setDraft(previous => ({ ...previous, instantBook: false }))}
+              disabled={busy}
+            />
+            <span>
+              <strong>Request to book</strong> — you accept or decline within 24 hours, then the
+              renter pays. Requests you do not answer expire.
+            </span>
+          </label>
+        </div>
       </div>
       {error ? (
         <p role="alert" style={{ ...smallMeta, color: '#B91C1C', fontWeight: 700 }}>
@@ -168,6 +213,15 @@ const formBlock = {
   marginTop: 14,
   paddingTop: 14,
   borderTop: '1px solid var(--border)',
+} as const
+
+const choice = {
+  display: 'flex',
+  gap: 8,
+  alignItems: 'flex-start',
+  fontSize: 12,
+  lineHeight: 1.5,
+  color: 'var(--text-2)',
 } as const
 
 const grid = {
