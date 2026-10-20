@@ -6,6 +6,7 @@ import {
   carHireStatusTone,
   carSubtitle,
   carTitle,
+  groupFleetListings,
   listingStatusLabel,
   maintenanceCategoryLabel,
   resolveCarImage,
@@ -24,6 +25,7 @@ import {
 } from '@/lib/car-hire-owner-api'
 import { formatMwk } from '@/lib/vero-api'
 import { useProviderAuth } from '../components/ProviderShell'
+import FleetUnitsPanel from './FleetUnitsPanel'
 import {
   DateRangeFields,
   defaultBlockRange,
@@ -230,6 +232,7 @@ export default function ProviderFleetPage() {
   const [sessionExpired, setSessionExpired] = useState(false)
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [unitsOpenKey, setUnitsOpenKey] = useState<string | null>(null)
   const [block, setBlock] = useState<BlockForm | null>(null)
   const [blockBusy, setBlockBusy] = useState(false)
   const [blockError, setBlockError] = useState('')
@@ -261,15 +264,19 @@ export default function ProviderFleetPage() {
     void load()
   }, [load])
 
+  const listings = useMemo(() => groupFleetListings(fleet), [fleet])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return fleet
-    return fleet.filter(car =>
-      `${carTitle(car)} ${car.pickupArea || ''} ${car.listingStatus}`
-        .toLowerCase()
-        .includes(q),
+    if (!q) return listings
+    return listings.filter(listing =>
+      listing.units.some(car =>
+        `${carTitle(car)} ${car.licensePlate || ''} ${car.pickupArea || ''} ${car.listingStatus}`
+          .toLowerCase()
+          .includes(q),
+      ),
     )
-  }, [fleet, query])
+  }, [listings, query])
 
   function openBlockForm(car: OwnerVehicle) {
     const range = defaultBlockRange()
@@ -504,7 +511,8 @@ export default function ProviderFleetPage() {
           />
         </label>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--text-3)' }}>
-          {filtered.length} of {fleet.length} vehicle{fleet.length === 1 ? '' : 's'}
+          {filtered.length} of {listings.length} listing{listings.length === 1 ? '' : 's'} ·{' '}
+          {fleet.length} vehicle{fleet.length === 1 ? '' : 's'}
         </p>
       </div>
 
@@ -531,7 +539,18 @@ export default function ProviderFleetPage() {
             gap: 14,
           }}
         >
-          {filtered.map(car => {
+          {filtered.map(listing => {
+            const car = listing.primary
+            const units = listing.units
+            const unitsOpen = unitsOpenKey === listing.key
+            const inService = units.filter(unit => unit.isAvailable !== false).length
+            const sameModel = (other: OwnerVehicle) =>
+              other.make.toLowerCase() === car.make.toLowerCase() &&
+              other.model.toLowerCase() === car.model.toLowerCase()
+            const mergeCandidates = listings
+              .filter(other => other.key !== listing.key && other.units.length === 1)
+              .map(other => other.primary)
+              .filter(sameModel)
             const image = resolveCarImage(car)
             const expanded = expandedId === car.id
             const listingTone = carHireStatusTone(car.listingStatus)
@@ -546,7 +565,7 @@ export default function ProviderFleetPage() {
                   : 'Availability not set'
 
             return (
-              <ProviderCard key={car.id} padding={0} style={{ overflow: 'hidden' }}>
+              <ProviderCard key={listing.key} padding={0} style={{ overflow: 'hidden' }}>
                 <div
                   style={{
                     height: 132,
@@ -581,7 +600,14 @@ export default function ProviderFleetPage() {
                 <div style={{ padding: 16 }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                     <StatusBadge tone={listingTone} label={listingStatusLabel(car.listingStatus)} />
-                    <StatusBadge tone={availabilityTone} label={available} />
+                    {units.length > 1 ? (
+                      <StatusBadge
+                        tone={availabilityTone}
+                        label={`${inService} of ${units.length} units in service`}
+                      />
+                    ) : (
+                      <StatusBadge tone={availabilityTone} label={available} />
+                    )}
                     {car.availableForDates === false ? (
                       <StatusBadge tone={carHireStatusTone('UNAVAILABLE')} label="Dates blocked" />
                     ) : null}
@@ -616,6 +642,15 @@ export default function ProviderFleetPage() {
                       style={ghostButton}
                     >
                       {expanded ? 'Hide details' : 'Details'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUnitsOpenKey(unitsOpen ? null : listing.key)}
+                      style={ghostButton}
+                    >
+                      {unitsOpen
+                        ? 'Hide units'
+                        : `Units (${units.length})`}
                     </button>
                     <button type="button" onClick={() => openEditForm(car)} style={ghostButton}>
                       Edit
@@ -657,7 +692,24 @@ export default function ProviderFleetPage() {
                     </div>
                   ) : null}
 
-                  {block && block.carId === car.id ? (
+                  {unitsOpen ? (
+                    <FleetUnitsPanel
+                      primary={car}
+                      units={units}
+                      mergeCandidates={mergeCandidates}
+                      onChanged={message => {
+                        setNotice(message)
+                        void load()
+                      }}
+                      onEditUnit={openEditForm}
+                      onBlockUnit={unit => {
+                        openBlockForm(unit)
+                        setUnitsOpenKey(listing.key)
+                      }}
+                    />
+                  ) : null}
+
+                  {block && units.some(unit => unit.id === block.carId) ? (
                     <BlockDatesForm
                       block={block}
                       busy={blockBusy}

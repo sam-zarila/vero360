@@ -41,6 +41,11 @@ export type CarListing = {
   maxRentalDays: number | null
   operatorId: string | null
   operator: PublicOperator | null
+  listingId: string | null
+  /** Identical units in service, when the backend reports them. */
+  unitCount: number | null
+  /** Units free for the searched dates (or in service when undated). */
+  availableUnits: number | null
 }
 
 /** The company or individual host a listing is provided by. */
@@ -137,6 +142,14 @@ export type CarHireBooking = {
   updatedAt: string | null
   nextAction: string | null
   car: CarListing | null
+  listingId: string | null
+  /** The physical unit (registration) currently assigned to the booking. */
+  assignedUnit: {
+    carId: number
+    licensePlate: string | null
+    color: string | null
+    unitLabel: string | null
+  } | null
   /** Renter-safe contact fields shown to the owning provider only. */
   renterName: string | null
   renterPhone: string | null
@@ -335,6 +348,9 @@ export function parseCar(value: unknown): CarListing | null {
     maxRentalDays: asOptionalNumber(row.maxRentalDays),
     operatorId: str(row.operatorId) || null,
     operator: parsePublicOperator(row.operator),
+    listingId: str(row.listingId) || null,
+    unitCount: asOptionalNumber(row.unitCount),
+    availableUnits: asOptionalNumber(row.availableUnits),
   }
 }
 
@@ -393,6 +409,72 @@ export type VehicleInput = {
  */
 export type OwnerVehicle = CarListing & {
   licensePlate: string | null
+  listingGroupId: string | null
+  unitLabel: string | null
+}
+
+/** One listing in the provider fleet: identical units share a listing group. */
+export type FleetListing = {
+  key: string
+  primary: OwnerVehicle
+  units: OwnerVehicle[]
+}
+
+export function groupFleetListings(cars: OwnerVehicle[]): FleetListing[] {
+  const byKey = new Map<string, FleetListing>()
+  for (const car of cars) {
+    const key = car.listingGroupId ?? `car:${car.id}`
+    const existing = byKey.get(key)
+    if (existing) {
+      existing.units.push(car)
+    } else {
+      byKey.set(key, { key, primary: car, units: [car] })
+    }
+  }
+  return Array.from(byKey.values())
+}
+
+function parseAssignedUnit(value: unknown): CarHireBooking['assignedUnit'] {
+  const row = asRecord(value)
+  if (!row) return null
+  const carId = asNumber(row.carId)
+  if (!(carId > 0)) return null
+  return {
+    carId,
+    licensePlate: str(row.licensePlate) || null,
+    color: str(row.color) || null,
+    unitLabel: str(row.unitLabel) || null,
+  }
+}
+
+export type BookingUnitOption = {
+  carId: number
+  licensePlate: string | null
+  color: string | null
+  unitLabel: string | null
+  inService: boolean
+  freeForBooking: boolean
+  current: boolean
+}
+
+export function parseBookingUnitOptions(body: unknown): BookingUnitOption[] {
+  const out: BookingUnitOption[] = []
+  for (const row of unwrapList(asRecord(body)?.data ?? body)) {
+    const record = asRecord(row)
+    if (!record) continue
+    const carId = asNumber(record.carId)
+    if (!(carId > 0)) continue
+    out.push({
+      carId,
+      licensePlate: str(record.licensePlate) || null,
+      color: str(record.color) || null,
+      unitLabel: str(record.unitLabel) || null,
+      inService: record.inService !== false,
+      freeForBooking: record.freeForBooking === true,
+      current: record.current === true,
+    })
+  }
+  return out
 }
 
 export function parseOwnerVehicles(body: unknown): OwnerVehicle[] {
@@ -411,6 +493,8 @@ export function parseOwnerVehicles(body: unknown): OwnerVehicle[] {
       licensePlate: record
         ? str(first(record, ['licensePlate', 'license_plate'])) || null
         : null,
+      listingGroupId: record ? str(record.listingGroupId) || null : null,
+      unitLabel: record ? str(record.unitLabel) || null : null,
     }
   })
 }
@@ -487,6 +571,8 @@ export function parseCarHireBooking(value: unknown): CarHireBooking | null {
     updatedAt: asIso(row.updatedAt),
     nextAction: str(row.nextAction) || null,
     car,
+    listingId: str(row.listingId) || null,
+    assignedUnit: parseAssignedUnit(row.assignedUnit),
     renterName: renter.name,
     renterPhone: renter.phone,
     renterEmail: renter.email,

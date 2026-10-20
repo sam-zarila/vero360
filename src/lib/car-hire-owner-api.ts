@@ -16,6 +16,7 @@ import {
 import {
   parseBookingExtensions,
   parseCarHireBookingResponse,
+  parseBookingUnitOptions,
   parseCarHireBookings,
   parseIncidents,
   parseInspectionList,
@@ -28,6 +29,7 @@ import {
   parseSupportCases,
   type AcknowledgeInspectionInput,
   type BookingExtension,
+  type BookingUnitOption,
   type CarHireBooking,
   type CreateMaintenanceBlockInput,
   type IncidentReport,
@@ -223,6 +225,51 @@ export async function createVehicle(
     body: JSON.stringify(input),
   })
   return parseOwnerVehicles(body)[0] ?? null
+}
+
+/** Add identical units (new registrations) to a listing. */
+export async function addListingUnits(
+  carId: number | string,
+  units: { licensePlate: string; color?: string; unitLabel?: string }[],
+): Promise<{ listingId: string | null; created: number[] }> {
+  const body = (await providerFetch(`cars/${encodeURIComponent(String(carId))}/units`, {
+    method: 'POST',
+    body: JSON.stringify({ units }),
+  })) as { listingId?: string; created?: number[] } | null
+  return { listingId: body?.listingId ?? null, created: body?.created ?? [] }
+}
+
+/** Merge separately listed identical cars into one listing (first car wins). */
+export async function groupListingUnits(carIds: number[]): Promise<void> {
+  await providerFetch('cars/owner/group-units', {
+    method: 'POST',
+    body: JSON.stringify({ carIds }),
+  })
+}
+
+export async function ungroupListingUnit(carId: number | string): Promise<void> {
+  await providerFetch(`cars/${encodeURIComponent(String(carId))}/ungroup`, {
+    method: 'POST',
+  })
+}
+
+/** Units of a booking's listing with whether each is free for that rental. */
+export async function getBookingUnitOptions(
+  bookingId: number | string,
+): Promise<BookingUnitOption[]> {
+  const body = await providerFetch(`bookings/${encodeURIComponent(String(bookingId))}/units`)
+  return parseBookingUnitOptions(body)
+}
+
+export async function assignBookingUnit(
+  bookingId: number | string,
+  carId: number,
+): Promise<CarHireBooking | null> {
+  const body = await providerFetch(
+    `bookings/${encodeURIComponent(String(bookingId))}/assign-unit`,
+    { method: 'POST', body: JSON.stringify({ carId }) },
+  )
+  return parseCarHireBookingResponse(body)
 }
 
 /** Update one of the signed-in provider's own listings. */

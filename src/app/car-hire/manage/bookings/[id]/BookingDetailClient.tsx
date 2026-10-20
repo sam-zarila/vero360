@@ -48,6 +48,7 @@ import {
 import { formatDateTime, formatMwk, resolveVeroMediaUrl } from '@/lib/vero-api'
 import { useProviderAuth } from '../../components/ProviderShell'
 import { localInputToIso } from '../../components/ProviderDateRange'
+import BookingUnitPicker from './BookingUnitPicker'
 import {
   ProviderCard,
   ProviderError,
@@ -825,6 +826,14 @@ export default function BookingDetailClient({ bookingId }: { bookingId: string }
                 </>
               ) : null}
             </p>
+            <BookingUnitPicker
+              booking={booking}
+              onAssigned={(next, message) => {
+                if (next) setBooking(next)
+                setNotice(message)
+                void load()
+              }}
+            />
             {booking.renterNotes ? (
               <p
                 style={{
