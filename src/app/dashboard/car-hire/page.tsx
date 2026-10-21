@@ -6,6 +6,7 @@ import { carHireStatusTone, prettyStatus } from '@/lib/car-hire'
 import {
   companyActionLabel,
   companyActionRequiresNote,
+  maskAccountNumber,
   opsCompanyActions,
   parseOpsCompanyPage,
   type CarHireCompanyReviewAction,
@@ -53,6 +54,13 @@ function doneMessage(company: OpsCompany, action: CarHireCompanyReviewAction): s
     case 'restore':
       return `${company.displayName} was restored.`
   }
+}
+
+/** Adds the gap count to the approve confirmation so it is never a blind click. */
+function missingGapsSentence(company: OpsCompany): string {
+  const count = company.verificationGaps.length
+  if (count === 0) return ''
+  return ` ${count} verification item${count === 1 ? ' is' : 's are'} still missing.`
 }
 
 function notePrompt(action: CarHireCompanyReviewAction): string {
@@ -149,7 +157,7 @@ export default function CarHireCompaniesPage() {
       action === 'approve'
         ? await confirm({
             title: 'Approve company?',
-            message: `Activate ${company.displayName}? A company must be ACTIVE before any of its vehicles can publish.`,
+            message: `Activate ${company.displayName}? A company must be ACTIVE before any of its vehicles can publish.${missingGapsSentence(company)}`,
             confirmLabel: 'Approve company',
             danger: false,
           })
@@ -181,6 +189,9 @@ export default function CarHireCompaniesPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
             <Link href="/dashboard/car-hire/listings" style={linkButtonStyle}>
               Cars to verify
+            </Link>
+            <Link href="/dashboard/car-hire/leads" style={linkButtonStyle}>
+              Callback requests
             </Link>
             <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
           </div>
@@ -292,6 +303,8 @@ export default function CarHireCompaniesPage() {
                     </div>
                   ) : null}
 
+                  <CompanyVerification company={company} />
+
                   {actions.length > 0 ? (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {actions.map(action => {
@@ -381,6 +394,113 @@ export default function CarHireCompaniesPage() {
   )
 }
 
+const DOCUMENT_LABELS: Record<string, string> = {
+  BUSINESS_REGISTRATION: 'Business registration',
+  NATIONAL_ID: 'National ID',
+  TAX_CLEARANCE: 'Tax clearance',
+  INSURANCE: 'Insurance',
+}
+
+/** Only http(s) links are rendered as clickable documents. */
+function documentHref(url: string): string | null {
+  return /^https?:\/\//i.test(url) ? url : null
+}
+
+/**
+ * What the applicant actually supplied. Ops must be able to see this before
+ * approving, because an unverified company is just a phone number.
+ */
+function CompanyVerification({ company }: { company: OpsCompany }) {
+  const isBusiness = company.type.toUpperCase() === 'BUSINESS'
+  const payoutMethod =
+    company.payoutMethod === 'BANK'
+      ? 'Bank transfer'
+      : company.payoutMethod === 'MOBILE_MONEY'
+        ? 'Mobile money'
+        : '—'
+  const rows = [
+    isBusiness
+      ? { label: 'Registration', value: company.registrationNumber || '—' }
+      : { label: 'National ID', value: company.idNumber || '—' },
+    { label: 'TPIN', value: company.taxId || '—' },
+    { label: 'Payout method', value: payoutMethod },
+    {
+      label: 'Payout account',
+      value: maskAccountNumber(company.payoutAccountNumber) || '—',
+    },
+    { label: 'Account name', value: company.payoutAccountName || '—' },
+    { label: 'Bank', value: company.payoutBankName || '—' },
+  ]
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gap: 8,
+        padding: '10px 12px',
+        borderRadius: 10,
+        border: '1px solid var(--border)',
+        background: 'var(--bg-2, var(--surface))',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+          color: 'var(--text-3)',
+        }}
+      >
+        Verification
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gap: '4px 16px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        }}
+      >
+        {rows.map(row => (
+          <div key={row.label} style={{ fontSize: 12, lineHeight: 1.5 }}>
+            <span style={{ color: 'var(--muted)' }}>{row.label}: </span>
+            <span style={{ color: 'var(--text)' }}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+        <span style={{ color: 'var(--muted)' }}>Documents: </span>
+        {company.documents.length === 0 ? (
+          <span style={{ color: 'var(--muted)' }}>None attached</span>
+        ) : (
+          company.documents.map((document, index) => {
+            const href = documentHref(document.url)
+            const label = DOCUMENT_LABELS[document.type.toUpperCase()] || prettyStatus(document.type)
+            return (
+              <span key={`${document.url}-${index}`}>
+                {index > 0 ? ' · ' : ''}
+                {href ? (
+                  <a href={href} target="_blank" rel="noopener noreferrer" style={documentLinkStyle}>
+                    {label}
+                  </a>
+                ) : (
+                  <span>{label}</span>
+                )}
+              </span>
+            )
+          })
+        )}
+      </div>
+      {company.verificationGaps.length > 0 ? (
+        <div role="alert" style={gapWarningStyle}>
+          <strong>Missing before approval:</strong>{' '}
+          {company.verificationGaps.join(' · ')}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function actionButtonStyle(action: CarHireCompanyReviewAction): CSSProperties {
   if (action === 'approve') {
     return {
@@ -428,6 +548,25 @@ function actionButtonStyle(action: CarHireCompanyReviewAction): CSSProperties {
     fontSize: 13,
     cursor: 'pointer',
   }
+}
+
+const documentLinkStyle: CSSProperties = {
+  color: 'var(--accent, #0F766E)',
+  fontWeight: 700,
+  textDecoration: 'underline',
+}
+
+/** Amber because approving an incomplete company is the costly mistake. */
+const gapWarningStyle: CSSProperties = {
+  padding: '8px 10px',
+  borderRadius: 8,
+  background: '#FFFBEB',
+  border: '1px solid #FDE68A',
+  borderLeft: '4px solid #F59E0B',
+  color: '#92400E',
+  fontSize: 12,
+  fontWeight: 600,
+  lineHeight: 1.5,
 }
 
 const linkButtonStyle: CSSProperties = {

@@ -318,6 +318,12 @@ export type CarHireCompanyReviewAction =
   | 'suspend'
   | 'restore'
 
+export type OpsDocument = {
+  type: string
+  url: string
+  uploadedAt: string | null
+}
+
 export type OpsCompany = {
   id: string
   displayName: string
@@ -327,6 +333,18 @@ export type OpsCompany = {
   serviceAreas: string[]
   reviewerNote: string | null
   logoUrl: string | null
+  registrationNumber: string | null
+  taxId: string | null
+  idNumber: string | null
+  payoutMethod: string | null
+  payoutBankName: string | null
+  /** Account holder name, shown in full. */
+  payoutAccountName: string | null
+  /** Raw account number. Render it through `maskAccountNumber`. */
+  payoutAccountNumber: string | null
+  documents: OpsDocument[]
+  /** Labels for verification detail this company has not supplied yet. */
+  verificationGaps: string[]
   ownerId: number | null
   ownerName: string | null
   ownerEmail: string | null
@@ -335,12 +353,39 @@ export type OpsCompany = {
   updatedAt: string | null
 }
 
+function parseOpsDocument(value: unknown): OpsDocument | null {
+  const row = record(value)
+  if (!row) return null
+  const url = text(row.url)
+  if (!url) return null
+  return {
+    type: text(row.type).toUpperCase() || 'DOCUMENT',
+    url,
+    uploadedAt: textOrNull(row.uploadedAt),
+  }
+}
+
+/**
+ * Payout account numbers are sensitive: the console shows the last four
+ * digits only, whatever the raw value looks like.
+ */
+export function maskAccountNumber(value: unknown): string {
+  const raw = text(value)
+  if (!raw) return ''
+  return raw.length <= 4 ? '••••' : `•••• ${raw.slice(-4)}`
+}
+
 export function parseOpsCompany(value: unknown): OpsCompany | null {
   const row = record(value)
   if (!row) return null
   const id = text(row.id ?? row.operatorId)
   if (!id) return null
   const owner = record(row.owner)
+  const documents = Array.isArray(row.documents)
+    ? row.documents
+        .map(parseOpsDocument)
+        .filter((document): document is OpsDocument => document !== null)
+    : []
   return {
     id,
     displayName: text(row.displayName) || text(row.companyName) || `Company ${id.slice(0, 8)}`,
@@ -350,6 +395,15 @@ export function parseOpsCompany(value: unknown): OpsCompany | null {
     serviceAreas: list(row.serviceAreas),
     reviewerNote: textOrNull(row.reviewerNote),
     logoUrl: textOrNull(row.logoUrl),
+    registrationNumber: textOrNull(row.registrationNumber),
+    taxId: textOrNull(row.taxId),
+    idNumber: textOrNull(row.idNumber),
+    payoutMethod: textOrNull(row.payoutMethod)?.toUpperCase() ?? null,
+    payoutBankName: textOrNull(row.payoutBankName),
+    payoutAccountName: textOrNull(row.payoutAccountName),
+    payoutAccountNumber: textOrNull(row.payoutAccountNumber),
+    documents,
+    verificationGaps: list(row.verificationGaps),
     ownerId: numeric(owner?.id ?? row.ownerUserId),
     ownerName: textOrNull(owner?.name) ?? textOrNull(row.ownerName),
     ownerEmail: textOrNull(owner?.email) ?? textOrNull(row.ownerEmail),
