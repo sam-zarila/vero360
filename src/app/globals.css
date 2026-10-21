@@ -1,5 +1,47 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Car-hire operations tokens (Tailwind v4 theme).
+   Deep navy chrome + warm neutral surfaces + orange accent, matching the
+   Fleet OS command-hub design. Generates utilities such as:
+     bg-surface-container-lowest  text-on-surface-variant  bg-primary-container
+   NOTE: the legacy `--primary` / `--surface` variables below are separate from
+   these `--color-*` tokens and continue to drive existing components.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-primary: #000613;
+  --color-primary-container: #001f3f;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #6f88ad;
+  --color-inverse-primary: #afc8f0;
+
+  --color-secondary: #964900;
+  --color-secondary-container: #ff851b;
+  --color-on-secondary: #ffffff;
+  --color-secondary-fixed: #ffdcc7;
+  --color-on-secondary-fixed: #311300;
+
+  --color-surface: #fcf9f8;
+  --color-surface-dim: #dcd9d9;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f3f2;
+  --color-surface-container: #f0eded;
+  --color-surface-container-high: #eae7e7;
+  --color-surface-container-highest: #e5e2e1;
+
+  --color-on-surface: #1c1b1b;
+  --color-on-surface-variant: #43474e;
+  --color-outline: #74777f;
+  --color-outline-variant: #c4c6cf;
+  --color-inverse-surface: #313030;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+
+  --font-heading: var(--font-display);
+}
+
 :root {
   --primary:       #F97316;
   --primary-dark:  #EA580C;
@@ -20,10 +62,12 @@
   --surface:    #F9FAFB;
   --surface-2:  #F3F4F6;
 
-  --radius-sm:  6px;
-  --radius:     12px;
-  --radius-lg:  20px;
-  --radius-xl:  32px;
+  /* Prefixed with --vr- so these legacy tokens do not shadow Tailwind's
+     --radius-* scale (which would make rounded-xl 32px instead of 12px). */
+  --vr-radius-sm:  6px;
+  --vr-radius:     12px;
+  --vr-radius-lg:  20px;
+  --vr-radius-xl:  32px;
 
   --shadow-sm:  0 1px 2px rgba(0,0,0,.06);
   --shadow:     0 4px 16px rgba(0,0,0,.08);
@@ -31,25 +75,30 @@
   --shadow-primary: 0 8px 32px rgba(249,115,22,.25);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Base resets live in Tailwind's `base` layer so utility classes (bg-*, p-*,
+   text-*, rounded-*) can override them. Unlayered rules always outrank
+   layered utilities, which would otherwise null every spacing utility. */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; }
 
-body {
-  font-family: var(--font-body);
-  color: var(--text);
-  background: var(--bg);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,h2,h3,h4,h5,h6 {
+    font-family: var(--font-display);
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  img { max-width: 100%; display: block; }
+  a { text-decoration: none; color: inherit; }
+  button { cursor: pointer; font-family: inherit; }
 }
-
-h1,h2,h3,h4,h5,h6 {
-  font-family: var(--font-display);
-  line-height: 1.2;
-  font-weight: 700;
-  color: var(--text);
-}
-
-img { max-width: 100%; display: block; }
-a { text-decoration: none; color: inherit; }
-button { cursor: pointer; font-family: inherit; }
