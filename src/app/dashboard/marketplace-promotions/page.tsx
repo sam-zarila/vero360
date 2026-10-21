@@ -197,7 +197,7 @@ export default function MarketplacePromotionsAdminPage() {
 
       <DashboardPageHeader
         sectionId="marketplace-promotions"
-        description="Set 24h / 1 week / Facebook promote prices, and manage paid boost orders."
+        description="Set 24h / 1 week / Facebook (1, 3, 7 days) promote prices, and manage paid boost orders."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button

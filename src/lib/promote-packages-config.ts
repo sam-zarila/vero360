@@ -4,7 +4,7 @@ import { getAdminDb } from '@/lib/firebase-admin'
 export const PROMOTE_PACKAGES_CONFIG_DOC = 'app_config/promote_packages'
 
 export type PromotePackageConfig = {
-  /** Stable key used by the app (top_24h, top_7d, fb_3d_local, fb_7d_wider). */
+  /** Stable key used by the app (top_24h, top_7d, fb_1d_local, fb_3d_local, fb_7d_wider). */
   key: string
   label: string
   subtitle?: string
@@ -40,6 +40,16 @@ export const DEFAULT_PROMOTE_PACKAGES_CONFIG: PromotePackagesConfig = {
       kind: 'feed_top',
       priceMwk: 5000,
       durationHours: 168,
+      active: true,
+    },
+    {
+      key: 'fb_1d_local',
+      label: 'Facebook ads · 1 day',
+      subtitle: '24 hours local reach · Vero360 runs the campaign for you',
+      kind: 'facebook_ads',
+      priceMwk: 3000,
+      durationHours: 24,
+      reachLabel: 'Local · ~500–2k people',
       active: true,
     },
     {
@@ -139,6 +149,15 @@ export function normalizePromotePackagesConfig(
   for (const def of DEFAULT_PROMOTE_PACKAGES_CONFIG.packages) {
     if (!seen.has(def.key)) out.push({ ...def })
   }
+
+  const defaultOrder = new Map(
+    DEFAULT_PROMOTE_PACKAGES_CONFIG.packages.map((p, i) => [p.key, i]),
+  )
+  out.sort(
+    (a, b) =>
+      (defaultOrder.get(a.key) ?? Number.MAX_SAFE_INTEGER) -
+      (defaultOrder.get(b.key) ?? Number.MAX_SAFE_INTEGER),
+  )
 
   return {
     packages: out,

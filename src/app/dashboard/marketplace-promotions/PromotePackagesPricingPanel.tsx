@@ -89,7 +89,7 @@ export default function PromotePackagesPricingPanel() {
       </h2>
       <p style={{ margin: '0 0 18px', color: 'var(--text-3)', fontSize: 14, lineHeight: 1.5 }}>
         These are the packages merchants pick for <strong>24h / 1 week on top</strong> and{' '}
-        <strong>Facebook ads</strong>. Prices update live in the app after save.
+        <strong>Facebook ads (1 day, 3 days, 7 days)</strong>. Prices update live in the app after save.
       </p>
 
       {(error || notice) && (

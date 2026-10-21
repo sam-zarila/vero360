@@ -88,6 +88,8 @@ export function planLabel(planId: string): string {
       return '24h stay top'
     case 'stay_7d':
       return '1 week stay top'
+    case 'fb_1d_local':
+      return 'Facebook · 1 day local'
     case 'fb_3d_local':
       return 'Facebook · 3 days local'
     case 'fb_7d_wider':
