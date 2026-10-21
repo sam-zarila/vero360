@@ -570,7 +570,7 @@ export default function AnnouncementsClient({ items }: Props) {
               margin: 0,
               padding: 0,
               border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
+              borderRadius: 'var(--vr-radius)',
               overflow: 'hidden',
               background: 'var(--surface)',
               boxShadow: 'var(--shadow-sm)',

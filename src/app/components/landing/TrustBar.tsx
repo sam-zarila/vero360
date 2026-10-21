@@ -25,7 +25,7 @@ export default function TrustBar() {
             display: 'flex', alignItems: 'center', gap: 16,
             padding: '20px 24px',
             background: 'var(--surface)',
-            borderRadius: 'var(--radius)',
+            borderRadius: 'var(--vr-radius)',
             border: '1px solid var(--border)',
           }}>
             <IconBadge name={item.icon} size={20} />
