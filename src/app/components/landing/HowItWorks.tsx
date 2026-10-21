@@ -86,7 +86,7 @@ const steps = [
             {steps.map((step, i) => (
               <div key={i} className="step-card" style={{
                 background: '#fff',
-                borderRadius: 'var(--radius-lg)',
+                borderRadius: 'var(--vr-radius-lg)',
                 border: '1px solid var(--border)',
                 padding: '32px 24px',
                 position: 'relative',

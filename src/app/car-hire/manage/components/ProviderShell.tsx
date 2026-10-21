@@ -18,6 +18,27 @@ import {
   type AuthError,
   type User,
 } from 'firebase/auth'
+import {
+  LuArrowUpRight,
+  LuCalendarCheck,
+  LuCalendarDays,
+  LuCarFront,
+  LuEye,
+  LuEyeOff,
+  LuLayoutDashboard,
+  LuLogOut,
+  LuMenu,
+  LuPanelLeftClose,
+  LuPanelLeftOpen,
+  LuPlus,
+  LuRoute,
+  LuShieldCheck,
+  LuStore,
+  LuTrendingUp,
+  LuUsers,
+  LuX,
+} from 'react-icons/lu'
+import type { IconType } from 'react-icons'
 import Logo from '@/app/components/landing/Logo'
 import { auth } from '@/lib/firebase'
 
@@ -37,15 +58,23 @@ export function useProviderAuth(): ProviderAuthValue {
   return value
 }
 
-const NAV = [
-  { label: 'Overview', href: '/car-hire/manage' },
-  { label: 'Fleet', href: '/car-hire/manage/fleet' },
-  { label: 'Bookings', href: '/car-hire/manage/bookings' },
-  { label: 'Dispatch', href: '/car-hire/manage/dispatch' },
-  { label: 'Calendar', href: '/car-hire/manage/calendar' },
-  { label: 'Performance', href: '/car-hire/manage/performance' },
-  { label: 'Team', href: '/car-hire/manage/team' },
+type NavItem = {
+  label: string
+  href: string
+  Icon: IconType
+}
+
+const NAV: NavItem[] = [
+  { label: 'Overview', href: '/car-hire/manage', Icon: LuLayoutDashboard },
+  { label: 'Fleet & units', href: '/car-hire/manage/fleet', Icon: LuCarFront },
+  { label: 'Bookings & dispatch', href: '/car-hire/manage/bookings', Icon: LuCalendarCheck },
+  { label: 'Dispatch board', href: '/car-hire/manage/dispatch', Icon: LuRoute },
+  { label: 'Calendar', href: '/car-hire/manage/calendar', Icon: LuCalendarDays },
+  { label: 'Performance', href: '/car-hire/manage/performance', Icon: LuTrendingUp },
+  { label: 'Team & branches', href: '/car-hire/manage/team', Icon: LuUsers },
 ]
+
+const COLLAPSE_KEY = 'vero360.carhire.sidebar.collapsed'
 
 function firebaseSignInMessage(err: unknown): string {
   const code =
@@ -70,6 +99,14 @@ function firebaseSignInMessage(err: unknown): string {
   }
 }
 
+function initialsOf(value: string): string {
+  const source = value.split('@')[0] || value
+  const parts = source.split(/[^a-zA-Z0-9]+/).filter(Boolean)
+  if (parts.length === 0) return 'V3'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
+
 export default function ProviderShell({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -89,10 +126,13 @@ export default function ProviderShell({ children }: { children: ReactNode }) {
   return (
     <ProviderAuthContext.Provider value={{ user, loading, signOutNow }}>
       {loading ? (
-        <div style={centerScreen}>
-          <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-3)' }}>
-            Checking your Vero360 session…
-          </p>
+        <div className="grid min-h-screen place-items-center bg-surface px-6">
+          <div className="flex items-center gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 shadow-[0_1px_8px_rgba(0,31,63,0.06)]">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-secondary-container" />
+            <p className="text-[13px] font-semibold text-on-surface-variant">
+              Checking your Vero360 session…
+            </p>
+          </div>
         </div>
       ) : user ? (
         <ProviderChrome user={user} onSignOut={signOutNow}>
@@ -116,6 +156,41 @@ function ProviderChrome({
 }) {
   const pathname = usePathname()
   const [signingOut, setSigningOut] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Restore the collapsed preference after mount so SSR markup stays stable.
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of a browser-only preference after hydration
+      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === '1')
+    } catch {
+      /* private mode — keep the default */
+    }
+  }, [])
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed(value => {
+      const next = !value
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileOpen])
+
+  const closeMobileNav = useCallback(() => setMobileOpen(false), [])
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -126,131 +201,242 @@ function ProviderChrome({
     }
   }
 
+  const accountLabel = user.email || user.displayName || 'Provider account'
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface)' }}>
-      <header
-        style={{
-          background: '#fff',
-          borderBottom: '1px solid var(--border)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 30,
-        }}
+    <div className="min-h-screen bg-surface text-on-surface">
+      {mobileOpen ? (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-primary/40 backdrop-blur-[2px] lg:hidden"
+        />
+      ) : null}
+
+      <aside
+        id="provider-sidebar"
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-outline-variant/50 bg-surface-container-low transition-[width,transform] duration-300 ease-in-out ${
+          collapsed ? 'w-72 lg:w-[84px]' : 'w-72'
+        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: '0 auto',
-            padding: '12px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 14,
-            flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-            <Link href="/" aria-label="Vero360 home" style={{ display: 'inline-flex' }}>
-              <Logo height={38} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div
+            className={`flex h-16 items-center gap-3 ${collapsed ? 'px-3 lg:justify-center lg:px-0' : 'px-5'}`}
+          >
+            <Link
+              href="/car-hire/manage"
+              onClick={closeMobileNav}
+              className="flex min-w-0 items-center gap-3"
+            >
+              <span className="shrink-0">
+                <Logo height={36} />
+              </span>
+              <span className={`min-w-0 ${collapsed ? 'lg:hidden' : ''}`}>
+                <span className="block truncate font-heading text-[17px] font-extrabold leading-tight tracking-tight text-primary">
+                  Vero360
+                </span>
+                <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">
+                  Fleet OS
+                </span>
+              </span>
             </Link>
-            <div style={{ minWidth: 0 }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 11,
-                  fontWeight: 900,
-                  letterSpacing: 0.6,
-                  textTransform: 'uppercase',
-                  color: '#C2410C',
-                }}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="ml-auto rounded-lg p-2 text-on-surface-variant hover:bg-surface-container lg:hidden"
+              aria-label="Close navigation"
+            >
+              <LuX className="text-[18px]" aria-hidden />
+            </button>
+          </div>
+
+          <div className={`pb-3 ${collapsed ? 'px-3 lg:px-2' : 'px-4'}`}>
+            <div
+              className={`flex items-center justify-between gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 shadow-[0_1px_4px_rgba(0,31,63,0.05)] ${
+                collapsed ? 'lg:justify-center lg:px-0 lg:py-2.5' : ''
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary-container opacity-70" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-secondary-container" />
+                </span>
+                <span
+                  className={`text-[11px] font-bold text-on-surface ${collapsed ? 'lg:hidden' : ''}`}
+                >
+                  Workspace live
+                </span>
+              </span>
+              <span
+                className={`text-[11px] font-medium text-on-surface-variant ${collapsed ? 'lg:hidden' : ''}`}
               >
-                Car hire provider
-              </p>
-              <p
-                style={{
-                  margin: '2px 0 0',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: 'var(--text-2)',
-                  maxWidth: 240,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-                title={user.email || undefined}
-              >
-                {user.email || 'Signed-in Vero360 account'}
-              </p>
+                Provider
+              </span>
             </div>
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              flexWrap: 'wrap',
-              justifyContent: 'flex-end',
-            }}
+          <nav
+            aria-label="Provider workspace"
+            className={`min-h-0 flex-1 space-y-1 overflow-y-auto pb-4 ${
+              collapsed ? 'px-3 lg:px-2' : 'px-4'
+            }`}
           >
-            <span style={workspacePill}>Vehicle provider workspace</span>
-            <Link href="/car-hire" style={headerLink}>
-              Public catalogue
-            </Link>
+            {NAV.map(item => {
+              const active =
+                item.href === '/car-hire/manage'
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={closeMobileNav}
+                  aria-current={active ? 'page' : undefined}
+                  title={collapsed ? item.label : undefined}
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors duration-150 ${
+                    active
+                      ? 'bg-primary-container font-bold text-on-primary shadow-[0_2px_8px_rgba(0,31,63,0.18)]'
+                      : 'font-semibold text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                  } ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}
+                >
+                  <item.Icon
+                    className={`shrink-0 text-[19px] ${active ? 'text-secondary-container' : ''}`}
+                    aria-hidden
+                  />
+                  <span className={`truncate ${collapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+
+        <div className={`border-t border-outline-variant/40 py-3 ${collapsed ? 'px-3 lg:px-2' : 'px-4'}`}>
+          <div
+            className={`rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-2.5 shadow-[0_1px_4px_rgba(0,31,63,0.05)] ${
+              collapsed ? 'lg:flex lg:justify-center lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-bold text-on-primary">
+                {initialsOf(accountLabel)}
+              </span>
+              <div className={`min-w-0 ${collapsed ? 'lg:hidden' : ''}`}>
+                <p
+                  className="truncate text-[12px] font-bold leading-tight text-on-surface"
+                  title={accountLabel}
+                >
+                  {accountLabel}
+                </p>
+                <p className="text-[11px] text-on-surface-variant">Provider account</p>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => void handleSignOut()}
               disabled={signingOut}
-              style={signOutButton}
+              className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-outline-variant/60 bg-surface px-2 py-1.5 text-[11px] font-bold text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface disabled:opacity-60 ${
+                collapsed ? 'lg:hidden' : ''
+              }`}
             >
+              <LuLogOut className="text-[14px]" aria-hidden />
               {signingOut ? 'Signing out…' : 'Sign out'}
             </button>
           </div>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="mt-2 hidden w-full items-center justify-center gap-2 rounded-lg py-2 text-[11px] font-semibold text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface lg:flex"
+            aria-expanded={!collapsed}
+            aria-controls="provider-sidebar"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? (
+              <LuPanelLeftOpen className="text-[17px]" aria-hidden />
+            ) : (
+              <>
+                <LuPanelLeftClose className="text-[17px]" aria-hidden />
+                <span>Collapse view</span>
+              </>
+            )}
+          </button>
         </div>
+      </aside>
 
-        <nav
-          aria-label="Provider workspace"
-          style={{
-            maxWidth: 1200,
-            margin: '0 auto',
-            padding: '0 20px',
-            display: 'flex',
-            gap: 6,
-            overflowX: 'auto',
-          }}
+      <div className={`transition-[padding] duration-300 ease-in-out ${collapsed ? 'lg:pl-[84px]' : 'lg:pl-72'}`}>
+        <header
+          className={`fixed right-0 top-0 z-40 h-16 border-b border-outline-variant/40 bg-surface/90 backdrop-blur-xl transition-[left] duration-300 ease-in-out ${
+            collapsed ? 'left-0 lg:left-[84px]' : 'left-0 lg:left-72'
+          }`}
         >
-          {NAV.map(item => {
-            const active =
-              item.href === '/car-hire/manage'
-                ? pathname === item.href
-                : pathname.startsWith(item.href)
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '11px 13px',
-                  borderBottom: active ? '2px solid var(--primary)' : '2px solid transparent',
-                  color: active ? '#C2410C' : 'var(--text-3)',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  textDecoration: 'none',
-                  whiteSpace: 'nowrap',
-                }}
+          <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(true)}
+                className="rounded-xl p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface lg:hidden"
+                aria-label="Open navigation"
+                aria-controls="provider-sidebar"
               >
-                {item.label}
+                <LuMenu className="text-[20px]" aria-hidden />
+              </button>
+              <Link
+                href="/car-hire"
+                className="group flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 shadow-[0_1px_4px_rgba(0,31,63,0.05)] transition-colors hover:bg-surface-container-low"
+              >
+                <LuStore className="text-[17px] text-secondary-container" aria-hidden />
+                <span className="hidden text-left sm:block">
+                  <span className="block text-[10px] leading-none text-on-surface-variant">
+                    Public storefront
+                  </span>
+                  <span className="block text-[12px] font-semibold leading-tight text-on-surface">
+                    Vero360 car hire
+                  </span>
+                </span>
+                <LuArrowUpRight
+                  className="text-[15px] text-outline transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
               </Link>
-            )
-          })}
-        </nav>
-      </header>
+            </div>
 
-      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 70px' }}>
-        {children}
-      </main>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                href="/car-hire/manage/fleet"
+                className="hidden h-10 items-center gap-1.5 rounded-full bg-secondary-container px-4 text-[12px] font-bold text-on-secondary shadow-[0_2px_8px_rgba(255,133,27,0.28)] transition-colors hover:bg-secondary sm:inline-flex"
+              >
+                <LuPlus className="text-[16px]" aria-hidden />
+                Add vehicle
+              </Link>
+              <Link
+                href="/car-hire/manage/dispatch"
+                className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary-container px-3.5 text-[12px] font-bold text-on-primary shadow-[0_2px_8px_rgba(0,31,63,0.18)] transition-colors hover:bg-primary sm:px-4"
+              >
+                <LuRoute className="text-[16px]" aria-hidden />
+                <span className="hidden sm:inline">Dispatch</span>
+              </Link>
+              <div className="flex items-center gap-1.5 pl-1 sm:pl-2">
+                <Link
+                  href="/car-hire/manage/bookings"
+                  title="Booking requests"
+                  className="rounded-xl p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+                >
+                  <LuCalendarCheck className="text-[20px]" aria-hidden />
+                </Link>
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-[11px] font-bold text-on-primary">
+                  {initialsOf(accountLabel)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="min-h-screen pt-16">
+          <div className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-6 sm:px-6 lg:px-8">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
@@ -276,58 +462,36 @@ function ProviderSignIn() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        padding: 22,
-        background: 'linear-gradient(135deg, #9A3412 0%, #F97316 42%, #FFF7ED 100%)',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          background: '#fff',
-          borderRadius: 24,
-          padding: '34px 28px',
-          border: '1px solid var(--border)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.16)',
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Link href="/" style={{ display: 'inline-flex', marginBottom: 16 }}>
-            <Logo height={62} />
+    <div className="grid min-h-screen place-items-center bg-[linear-gradient(135deg,#000613_0%,#001f3f_52%,#964900_100%)] px-4 py-10">
+      <div className="w-full max-w-[440px] rounded-2xl bg-surface-container-lowest p-7 shadow-[0_24px_64px_rgba(0,6,19,0.35)] sm:p-8">
+        <div className="mb-6 text-center">
+          <Link href="/" className="mb-3 inline-flex" aria-label="Vero360 home">
+            <Logo height={58} />
           </Link>
-          <h1 style={{ margin: 0, fontSize: 25, fontWeight: 900, letterSpacing: '-0.4px' }}>
+          <p className="font-heading text-[22px] font-extrabold leading-tight tracking-tight text-primary">
             Provider workspace sign in
-          </h1>
-          <p style={{ margin: '9px 0 0', fontSize: 13, lineHeight: 1.65, color: 'var(--text-3)' }}>
+          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-on-surface-variant">
             Use your existing Vero360 account. This workspace is for approved car-hire owners,
             businesses, and invited staff.
           </p>
         </div>
 
-        <div
-          style={{
-            padding: '11px 13px',
-            borderRadius: 12,
-            background: '#FFF7ED',
-            border: '1px solid #FED7AA',
-            marginBottom: 18,
-          }}
-        >
-          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: '#9A3412' }}>
+        <div className="mb-4 flex gap-2.5 rounded-xl border border-secondary-fixed bg-secondary-fixed/40 p-3">
+          <LuShieldCheck className="mt-0.5 shrink-0 text-[16px] text-secondary" aria-hidden />
+          <p className="text-[11.5px] leading-relaxed text-on-secondary-fixed">
             Provider applications are made in the Vero360 app. This is not the Vero360 staff admin
-            panel. Ask the operator owner to invite your Vero360 email if your account is not set
-            up yet.
+            panel. Ask the operator owner to invite your Vero360 email if your account is not set up
+            yet.
           </p>
         </div>
 
-        <form onSubmit={onSubmit} style={{ display: 'grid', gap: 14 }}>
+        <form onSubmit={onSubmit} className="grid gap-3.5">
           <div>
-            <label htmlFor="provider-email" style={labelStyle}>
+            <label
+              htmlFor="provider-email"
+              className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-on-surface-variant"
+            >
               Email
             </label>
             <input
@@ -338,14 +502,17 @@ function ProviderSignIn() {
               value={email}
               onChange={event => setEmail(event.target.value)}
               placeholder="you@example.com"
-              style={inputStyle}
+              className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-[14px] text-on-surface outline-none transition-colors focus:border-primary-container"
             />
           </div>
           <div>
-            <label htmlFor="provider-password" style={labelStyle}>
+            <label
+              htmlFor="provider-password"
+              className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-on-surface-variant"
+            >
               Password
             </label>
-            <div style={{ position: 'relative' }}>
+            <div className="relative">
               <input
                 id="provider-password"
                 type={showPassword ? 'text' : 'password'}
@@ -354,44 +521,44 @@ function ProviderSignIn() {
                 value={password}
                 onChange={event => setPassword(event.target.value)}
                 placeholder="••••••••"
-                style={{ ...inputStyle, paddingRight: 54 }}
+                className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 pr-12 text-[14px] text-on-surface outline-none transition-colors focus:border-primary-container"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(value => !value)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                style={{
-                  position: 'absolute',
-                  right: 8,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-3)',
-                  fontSize: 11,
-                  fontWeight: 800,
-                  padding: 7,
-                  cursor: 'pointer',
-                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container"
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? (
+                  <LuEyeOff className="text-[17px]" aria-hidden />
+                ) : (
+                  <LuEye className="text-[17px]" aria-hidden />
+                )}
               </button>
             </div>
           </div>
 
-          <button type="submit" disabled={loading} style={submitButton}>
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary-container px-4 py-3 text-[14px] font-bold text-on-primary transition-colors hover:bg-primary disabled:opacity-70"
+          >
             {loading ? 'Signing in…' : 'Sign in'}
+            {!loading ? <LuArrowUpRight className="text-[16px]" aria-hidden /> : null}
           </button>
 
           {error ? (
-            <p role="alert" style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: '#B91C1C', textAlign: 'center' }}>
+            <p role="alert" className="text-center text-[13px] leading-snug text-error">
               {error}
             </p>
           ) : null}
         </form>
 
-        <p style={{ margin: '20px 0 0', textAlign: 'center', fontSize: 12 }}>
-          <Link href="/car-hire" style={{ color: 'var(--text-3)', fontWeight: 700 }}>
+        <p className="mt-5 text-center text-[12px]">
+          <Link
+            href="/car-hire"
+            className="inline-flex items-center gap-1 font-semibold text-on-surface-variant hover:text-on-surface"
+          >
             ← Back to car hire
           </Link>
         </p>
@@ -399,84 +566,3 @@ function ProviderSignIn() {
     </div>
   )
 }
-
-const centerScreen = {
-  minHeight: '100vh',
-  display: 'grid',
-  placeItems: 'center',
-  background: 'var(--surface)',
-  padding: 24,
-} as const
-
-const workspacePill = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  padding: '6px 10px',
-  borderRadius: 999,
-  background: '#FFF7ED',
-  border: '1px solid #FED7AA',
-  color: '#9A3412',
-  fontSize: 11,
-  fontWeight: 800,
-  whiteSpace: 'nowrap',
-} as const
-
-const headerLink = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  padding: '8px 11px',
-  borderRadius: 9,
-  border: '1px solid var(--border)',
-  color: 'var(--text-2)',
-  background: '#fff',
-  fontSize: 12,
-  fontWeight: 800,
-  textDecoration: 'none',
-  whiteSpace: 'nowrap',
-} as const
-
-const signOutButton = {
-  padding: '8px 11px',
-  borderRadius: 9,
-  border: '1px solid var(--border)',
-  background: 'var(--surface)',
-  color: 'var(--text-2)',
-  fontSize: 12,
-  fontWeight: 800,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  whiteSpace: 'nowrap',
-} as const
-
-const labelStyle = {
-  display: 'block',
-  fontSize: 12,
-  fontWeight: 800,
-  color: 'var(--text-2)',
-  marginBottom: 6,
-} as const
-
-const inputStyle = {
-  width: '100%',
-  padding: '12px 13px',
-  borderRadius: 11,
-  border: '1px solid var(--border)',
-  background: '#fff',
-  fontSize: 14,
-  fontFamily: 'inherit',
-  color: 'var(--text)',
-  outline: 'none',
-} as const
-
-const submitButton = {
-  marginTop: 4,
-  padding: '13px 18px',
-  borderRadius: 12,
-  border: 'none',
-  background: 'var(--primary)',
-  color: '#fff',
-  fontSize: 15,
-  fontWeight: 800,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-} as const
