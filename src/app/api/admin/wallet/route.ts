@@ -11,6 +11,8 @@ import {
   parseEscrow,
   parseWallet,
   parseWalletTx,
+  escrowPawapayShare,
+  escrowVeroShare,
   platformServiceLabel,
   platformServiceOf,
   type WalletRow,
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
       console.warn('Platform fee backfill skipped:', err)
     }
 
-    const [platformWalletSnap, feeSnap, payoutSnap, escrowSnap] = await Promise.all([
+    const [platformWalletSnap, feeSnap, payoutSnap, processingSnap, escrowSnap] = await Promise.all([
       db.collection(WALLETS_COLLECTION).doc('super_admin').get(),
       db
         .collection(WALLET_TX_COLLECTION)
@@ -70,6 +72,20 @@ export async function GET(request: Request) {
           db
             .collection(WALLET_TX_COLLECTION)
             .where('type', '==', 'payout')
+            .limit(200)
+            .get()
+            .catch(() => null),
+        ),
+      db
+        .collection(WALLET_TX_COLLECTION)
+        .where('type', '==', 'processing_fee')
+        .orderBy('createdAt', 'desc')
+        .limit(200)
+        .get()
+        .catch(() =>
+          db
+            .collection(WALLET_TX_COLLECTION)
+            .where('type', '==', 'processing_fee')
             .limit(200)
             .get()
             .catch(() => null),
@@ -103,6 +119,7 @@ export async function GET(request: Request) {
       if (row.type.toLowerCase() === 'service_fee' && !row.walletId && !row.userId) {
         return true
       }
+      if (row.type.toLowerCase() === 'processing_fee') return true
       return false
     }
 
@@ -113,13 +130,14 @@ export async function GET(request: Request) {
       for (const d of docs) {
         const row = parseWalletTx(d.id, d.data() as Record<string, unknown>, walletById)
         const type = row.type.toLowerCase()
-        if (type !== 'service_fee' && !isPayoutTx(row)) continue
+        if (type !== 'service_fee' && type !== 'processing_fee' && !isPayoutTx(row)) continue
         if (!belongsToPlatform(row)) continue
         mergeTx(transactions, row)
       }
     }
     ingestDocs(feeSnap.docs)
     if (payoutSnap) ingestDocs(payoutSnap.docs)
+    if (processingSnap) ingestDocs(processingSnap.docs)
 
     if (wallet) {
       const data = walletsSnapDocs[0].data() as Record<string, unknown>
@@ -131,6 +149,7 @@ export async function GET(request: Request) {
           const type = String(obj.type || '').toLowerCase()
           if (
             type !== 'service_fee' &&
+            type !== 'processing_fee' &&
             type !== 'payout' &&
             type !== 'cashout' &&
             type !== 'withdrawal'
@@ -163,17 +182,22 @@ export async function GET(request: Request) {
       e => e.status === 'released' || e.status === 'auto_released',
     )
 
-    const feesHeld = held.reduce((s, e) => s + e.serviceFeeAmount, 0)
-    const feesCollected = collected.reduce((s, e) => s + e.serviceFeeAmount, 0)
+    const feesHeld = held.reduce((s, e) => s + escrowVeroShare(e), 0)
+    const feesCollected = collected.reduce((s, e) => s + escrowVeroShare(e), 0)
     const feeTxs = transactions.filter(t => t.type.toLowerCase() === 'service_fee')
+    const processingTxs = transactions.filter(t => t.type.toLowerCase() === 'processing_fee')
     const byService = PLATFORM_SERVICES.filter(id => id !== 'other').map(id => {
-      const credited = feeTxs
+      const source = id === 'pawapay' ? processingTxs : feeTxs
+      const credited = source
         .filter(t => t.service === id)
         .reduce((s, t) => s + t.amount, 0)
-      const waiting = held
-        .filter(e => platformServiceOf({ serviceType: e.serviceType }) === id)
-        .reduce((s, e) => s + e.serviceFeeAmount, 0)
-      const count = feeTxs.filter(t => t.service === id).length
+      const waiting =
+        id === 'pawapay'
+          ? held.reduce((s, e) => s + escrowPawapayShare(e), 0)
+          : held
+              .filter(e => platformServiceOf({ serviceType: e.serviceType }) === id)
+              .reduce((s, e) => s + escrowVeroShare(e), 0)
+      const count = source.filter(t => t.service === id).length
       return {
         id,
         label: platformServiceLabel(id),

@@ -7,6 +7,7 @@ import {
   formatDateTime,
   formatMwk,
   isPayoutTx,
+  payoutPaidToLabel,
   txStatusTone,
   type WalletRow,
   type WalletTxRow,
@@ -147,8 +148,9 @@ export default function SuperAdminWalletPage() {
           <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Platform wallet</h1>
           <p style={{ color: '#6B7280', marginTop: 6, marginBottom: 0, maxWidth: 640 }}>
             Vero360 commission from marketplace, food, stay, rides, digital services,
-            promoted ads, and homepage ads is collected here. Pay out the available
-            balance to a bank or mobile money.
+            promoted ads, and homepage ads is collected here. PawaPay’s processing
+            fee is deducted from that commission; the rest stays in this wallet.
+            Pay out the available balance to a bank or mobile money.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -298,11 +300,17 @@ export default function SuperAdminWalletPage() {
             label={service.label}
             value={formatMwk(service.credited)}
             sub={
-              service.waiting > 0
-                ? `${formatMwk(service.waiting)} still in escrow`
-                : service.count > 0
-                  ? `${service.count} credits`
-                  : 'No credits yet'
+              service.id === 'pawapay'
+                ? service.waiting > 0
+                  ? `${formatMwk(service.waiting)} still to deduct`
+                  : service.count > 0
+                    ? `${service.count} processing fees`
+                    : 'No processing fees yet'
+                : service.waiting > 0
+                  ? `${formatMwk(service.waiting)} still in escrow`
+                  : service.count > 0
+                    ? `${service.count} credits`
+                    : 'No credits yet'
             }
           />
         ))}
@@ -330,8 +338,9 @@ export default function SuperAdminWalletPage() {
         <div style={card}>
           <p style={{ margin: 0, color: '#6B7280' }}>
             No commission or payouts yet. Marketplace, food, and stay fees land here
-            when an order is released. Ride, digital, advert, and promotion payments
-            credit this wallet as soon as they are paid.
+            when an order is released, after PawaPay processing is deducted. Ride,
+            digital, advert, and promotion payments credit this wallet as soon as
+            they are paid.
           </p>
         </div>
       ) : (
@@ -339,6 +348,8 @@ export default function SuperAdminWalletPage() {
           {filtered.map(t => {
             const tone = txStatusTone(t.status)
             const payout = isPayoutTx(t)
+            const processing = t.type.toLowerCase() === 'processing_fee'
+            const outgoing = payout || processing
             return (
               <div key={t.transactionId} style={card}>
                 <div
@@ -369,6 +380,10 @@ export default function SuperAdminWalletPage() {
                     <div style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>
                       {formatDateTime(t.createdAt)} · {t.reference}
                       {payout && t.payoutMethod ? ` · ${t.payoutMethod}` : ''}
+                      {payout && payoutPaidToLabel(t)
+                        ? ` · paid to ${payoutPaidToLabel(t)}`
+                        : ''}
+                      {processing ? ' · deducted from commission' : ''}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -376,10 +391,10 @@ export default function SuperAdminWalletPage() {
                       style={{
                         fontWeight: 800,
                         fontSize: 18,
-                        color: payout ? '#C2410C' : '#0F766E',
+                        color: outgoing ? '#C2410C' : '#0F766E',
                       }}
                     >
-                      {payout ? '−' : '+'}
+                      {outgoing ? '−' : '+'}
                       {formatMwk(t.amount)}
                     </div>
                     <span
@@ -395,7 +410,7 @@ export default function SuperAdminWalletPage() {
                         color: tone.color,
                       }}
                     >
-                      {payout ? 'payout' : t.status}
+                      {payout ? 'payout' : processing ? 'processing' : t.status}
                     </span>
                   </div>
                 </div>

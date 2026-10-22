@@ -95,6 +95,9 @@ export type EscrowRow = {
   merchantName: string
   merchantAmount: number
   serviceFeeAmount: number
+  veroShareAmount: number
+  pawapayShareAmount: number
+  processingFeeAmount: number
   feeRate: number | null
   txRef: string | null
   deliveredAt: string | null
@@ -188,7 +191,7 @@ export function parseWalletTx(
     bankName: str(data.bankName) || null,
     accountNumber: str(data.accountNumber) || null,
     recipientName: str(data.recipientName) || null,
-    recipientPhone: str(data.recipientPhone) || null,
+    recipientPhone: str(data.recipientPhone) || str(data.phone) || null,
     fee: data.fee == null || data.fee === '' ? null : num(data.fee),
     service: platformServiceOf({
       service: str(data.service),
@@ -202,6 +205,7 @@ export const PLATFORM_SERVICES = [
   'marketplace',
   'food',
   'stay',
+  'pawapay',
   'ride',
   'digital',
   'promotions',
@@ -220,6 +224,8 @@ export function platformServiceLabel(service: string): string {
       return 'Food'
     case 'stay':
       return 'Stay'
+    case 'pawapay':
+      return 'PawaPay processing'
     case 'ride':
       return 'Vero Ride'
     case 'digital':
@@ -250,6 +256,7 @@ export function platformServiceOf(input: {
     return explicit as PlatformService
   }
   const text = `${input.description || ''} ${input.reference || ''}`.toLowerCase()
+  if (text.includes('pawapay')) return 'pawapay'
   if (text.includes('food')) return 'food'
   if (text.includes('stay') || text.includes('accommodation')) return 'stay'
   if (text.includes('ride')) return 'ride'
@@ -273,6 +280,10 @@ export function parseEscrow(id: string, data: Record<string, unknown>): EscrowRo
     merchantName: str(data.merchantName) || 'Merchant',
     merchantAmount: num(data.merchantAmount),
     serviceFeeAmount: num(data.serviceFeeAmount),
+    veroShareAmount: num(data.veroShareAmount),
+    pawapayShareAmount:
+      num(data.pawapayShareAmount) || num(data.paychanguShareAmount),
+    processingFeeAmount: num(data.processingFeeAmount),
     feeRate:
       data.feeRate == null || data.feeRate === '' ? null : num(data.feeRate),
     txRef: str(data.txRef || data.tx_ref) || null,
@@ -417,6 +428,8 @@ export function txTypeLabel(type: string) {
     case 'fee':
     case 'service_fee':
       return 'Service fee'
+    case 'processing_fee':
+      return 'PawaPay processing'
     default:
       return type || 'Transaction'
   }
@@ -464,6 +477,29 @@ export function withWalletPayoutTotals(
   })
 }
 
+export function escrowProcessingFee(
+  e: Pick<EscrowRow, 'processingFeeAmount'>,
+): number {
+  return e.processingFeeAmount > 0 ? e.processingFeeAmount : 0
+}
+
+export function escrowVeroShare(
+  e: Pick<EscrowRow, 'veroShareAmount' | 'serviceFeeAmount' | 'processingFeeAmount'>,
+): number {
+  const processing = escrowProcessingFee(e)
+  if (processing > 0) {
+    if (e.veroShareAmount > 0) return e.veroShareAmount
+    return Math.max(0, e.serviceFeeAmount - processing)
+  }
+  return e.serviceFeeAmount > 0 ? e.serviceFeeAmount : e.veroShareAmount
+}
+
+export function escrowPawapayShare(
+  e: Pick<EscrowRow, 'processingFeeAmount'>,
+): number {
+  return escrowProcessingFee(e)
+}
+
 /** Secondary merchant line for payouts: phone and/or email — never UID. */
 export function merchantPayoutContactLabel(
   t: Pick<WalletTxRow, 'merchantPhone' | 'merchantEmail'>,
@@ -472,6 +508,18 @@ export function merchantPayoutContactLabel(
   const email = str(t.merchantEmail)
   if (phone && email) return `${phone} · ${email}`
   return phone || email || '—'
+}
+
+/** Destination number a cash-out was sent to (MoMo phone or bank account). */
+export function payoutPaidToLabel(
+  t: Pick<WalletTxRow, 'recipientPhone' | 'accountNumber' | 'bankName'>,
+): string {
+  const phone = str(t.recipientPhone)
+  if (phone) return phone
+  const account = str(t.accountNumber)
+  if (!account) return ''
+  const bank = str(t.bankName)
+  return bank ? `${bank} · ${account}` : account
 }
 
 export function buildFinanceSummary(

@@ -6,6 +6,7 @@ import {
   WALLETS_COLLECTION,
   WALLET_TX_COLLECTION,
 } from '@/lib/finance'
+import { pawapayProcessingFee } from '@/lib/buyer-commission'
 
 const PLATFORM_WALLET_NAME = 'Vero 360 Platform'
 const PLATFORM_WALLET_DOC_ID = 'super_admin'
@@ -156,18 +157,26 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
       continue
     }
 
-    const veroShare = num(data.veroShareAmount)
-    let fee = veroShare > 0 ? veroShare : num(data.serviceFeeAmount)
-    if (!(fee > 0)) {
+    let commission = num(data.serviceFeeAmount)
+    if (!(commission > 0)) {
       const gross = num(data.grossAmount)
       const merchantAmount = num(data.merchantAmount)
       const rate =
         num(data.feeRate) > 0 ? num(data.feeRate) : MARKETPLACE_SERVICE_FEE_RATE
-      if (gross > 0) fee = Math.round(gross * rate * 100) / 100
+      if (gross > 0) commission = Math.round(gross * rate * 100) / 100
       else if (merchantAmount > 0 && rate > 0 && rate < 1) {
-        fee = Math.round(((merchantAmount * rate) / (1 - rate)) * 100) / 100
+        commission = Math.round(((merchantAmount * rate) / (1 - rate)) * 100) / 100
       }
     }
+    const buyerTotal =
+      num(data.buyerPaysAmount) || num(data.merchantAmount) + commission
+    const processing =
+      num(data.processingFeeAmount) || pawapayProcessingFee(buyerTotal, commission)
+    const veroShare = num(data.veroShareAmount)
+    let fee =
+      veroShare > 0 && num(data.processingFeeAmount) > 0
+        ? veroShare
+        : Math.max(0, commission - processing)
 
     const txRef = String(data.txRef || doc.id).trim()
     if (!(fee > 0)) {
@@ -204,10 +213,10 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
     const now = Timestamp.now()
     const description =
       service === 'stay'
-        ? `Stay buyer commission — Vero share (${txRef})`
+        ? `Stay buyer commission (${txRef})`
         : service === 'food'
-          ? `Food buyer commission — Vero share (${txRef})`
-          : `Marketplace buyer commission — Vero share (${txRef})`
+          ? `Food buyer commission (${txRef})`
+          : `Marketplace buyer commission (${txRef})`
     const txPayload: Record<string, unknown> = {
       transactionId,
       walletId: PLATFORM_WALLET_DOC_ID,
@@ -240,19 +249,44 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
     })
 
     await db.collection(WALLET_TX_COLLECTION).doc(transactionId).set(txPayload)
-    await doc.ref.set(
-      {
-        platformFeeCredited: true,
-        platformFeeCreditedAt: FieldValue.serverTimestamp(),
-        platformFeeBackfilled: true,
-        serviceFeeAmount: fee,
-      },
-      { merge: true },
-    )
-
     creditedRefs.add(txRef)
     credited += 1
     amount += fee
+
+    const pawapayRef = `${txRef}-pawapay`
+    if (processing > 0 && !creditedRefs.has(pawapayRef) && data.pawapayFeeCredited !== true) {
+      const pawapayTxId = `TXN${Date.now()}${credited}p`
+      await db.collection(WALLET_TX_COLLECTION).doc(pawapayTxId).set({
+        transactionId: pawapayTxId,
+        walletId: PLATFORM_WALLET_DOC_ID,
+        userId: PLATFORM_WALLET_USER_ID,
+        type: 'processing_fee',
+        amount: processing,
+        status: 'completed',
+        description:
+          service === 'stay'
+            ? `Stay PawaPay processing (${txRef})`
+            : service === 'food'
+              ? `Food PawaPay processing (${txRef})`
+              : `Marketplace PawaPay processing (${txRef})`,
+        reference: pawapayRef,
+        service: 'pawapay',
+        createdAt: now,
+        updatedAt: now,
+        backfilled: true,
+      })
+      creditedRefs.add(pawapayRef)
+    }
+
+    await doc.ref.set(
+      {
+        platformFeeCredited: true,
+        pawapayFeeCredited: processing > 0,
+        platformFeeCreditedAt: FieldValue.serverTimestamp(),
+        platformFeeBackfilled: true,
+      },
+      { merge: true },
+    )
   }
 
   return { credited, amount, skipped, mergedDuplicates }

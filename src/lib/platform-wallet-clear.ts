@@ -188,6 +188,8 @@ export async function clearPlatformWallet(db: Firestore): Promise<{
         platformFeeCreditedAt: FieldValue.serverTimestamp(),
         serviceFeeAmount: 0,
         veroShareAmount: 0,
+        processingFeeAmount: 0,
+        pawapayShareAmount: 0,
       },
       { merge: true },
     )

@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         walletId: walletDoc.id,
         amount,
         payoutId,
-        description: `${momo.name} payout via PawaPay`,
+        description: `${momo.name} payout to ${phone}`,
         phone,
         provider,
       })

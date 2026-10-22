@@ -18,6 +18,7 @@ import {
   isPayoutTx,
   serviceFeePercentLabel,
   merchantPayoutContactLabel,
+  payoutPaidToLabel,
   txStatusTone,
   txTypeLabel,
   type EscrowRow,
@@ -166,7 +167,8 @@ function FinanceAdminInner() {
         t.status.toLowerCase().includes(q) ||
         (t.payoutMethod || '').toLowerCase().includes(q) ||
         (t.recipientName || '').toLowerCase().includes(q) ||
-        (t.recipientPhone || '').toLowerCase().includes(q)
+        (t.recipientPhone || '').toLowerCase().includes(q) ||
+        (t.accountNumber || '').toLowerCase().includes(q)
       )
     })
   }, [transactions, tab, q, payoutMerchant])
@@ -631,6 +633,7 @@ function PayoutTable({ rows }: { rows: WalletTxRow[] }) {
         <tbody>
           {rows.map(t => {
             const st = txStatusTone(t.status)
+            const paidTo = payoutPaidToLabel(t)
             return (
               <tr key={t.transactionId} style={{ borderTop: '1px solid #F3F4F6' }}>
                 <td style={td}>{formatDateTime(t.createdAt)}</td>
@@ -661,16 +664,18 @@ function PayoutTable({ rows }: { rows: WalletTxRow[] }) {
                   </span>
                 </td>
                 <td style={td}>
-                  <div>{t.description}</div>
-                  {[t.payoutMethod, t.bankName, t.recipientName, t.recipientPhone, t.accountNumber]
-                    .filter(Boolean)
-                    .length > 0 ? (
-                    <div style={{ color: '#6B7280', marginTop: 4, fontSize: 12 }}>
-                      {[t.payoutMethod, t.bankName, t.recipientName, t.recipientPhone, t.accountNumber]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </div>
-                  ) : null}
+                  {paidTo ? (
+                    <>
+                      <div style={{ fontWeight: 700 }}>Paid to {paidTo}</div>
+                      <div style={{ color: '#6B7280', marginTop: 4, fontSize: 12 }}>
+                        {[t.payoutMethod, t.bankName, t.recipientName, t.description]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
+                    </>
+                  ) : (
+                    <div>{t.description}</div>
+                  )}
                 </td>
                 <td style={{ ...td, fontFamily: 'monospace', fontSize: 11 }}>
                   {t.reference}
