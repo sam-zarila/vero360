@@ -1,22 +1,10 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import VeroChat from "@/app/components/VeroChat";
+import { inter, plusJakartaSans } from "@/app/fonts";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-G9KMEJ6XQZ";
-
-const inter = Inter({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "Vero360 · One app. Everything.",
