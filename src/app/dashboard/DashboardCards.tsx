@@ -4,9 +4,13 @@ import Link from 'next/link'
 import { VeroIcon } from '@/app/components/landing/icons'
 import { DASHBOARD_SECTIONS } from '@/lib/dashboard-sections'
 import {
+  useCarHireCompaniesBadge,
+  useCarHireLeadsBadge,
+  useCarHireListingsBadge,
   useCourierPendingBadge,
   useDigitalPaymentsNewBadge,
   useDriverPendingBadge,
+  useFoodPendingBadge,
   useRideIssuesBadge,
   useHelpCenterUnreadBadge,
   useHomepageAdPaymentsNewBadge,
@@ -30,6 +34,10 @@ export default function DashboardCards() {
   const homepageAdNew = useHomepageAdPaymentsNewBadge()
   const stayPending = useStayPendingBadge()
   const promoNew = usePromoPaymentsNewBadge()
+  const foodPending = useFoodPendingBadge()
+  const carHireCompanies = useCarHireCompaniesBadge()
+  const carHireListings = useCarHireListingsBadge()
+  const carHireLeads = useCarHireLeadsBadge()
   const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
 
   return (
@@ -56,6 +64,8 @@ export default function DashboardCards() {
         const isHomepageAds = card.id === 'homepage-ads'
         const isStay = card.id === 'stay'
         const isPromos = card.id === 'marketplace-promotions'
+        const isFood = card.id === 'food'
+        const isCarHire = card.id === 'car-hire'
         const badgeCount = isHelp
           ? unread
           : isCourier
@@ -76,6 +86,10 @@ export default function DashboardCards() {
                           ? stayPending
                           : isPromos
                             ? promoNew
+                            : isFood
+                              ? foodPending
+                              : isCarHire
+                                ? carHireCompanies + carHireListings + carHireLeads
                         : 0
         const showBadge = badgeCount > 0
         const alertLabel = isHelp
@@ -98,6 +112,10 @@ export default function DashboardCards() {
                           ? `${badgeCount} new stay booking${badgeCount === 1 ? '' : 's'}`
                           : isPromos
                             ? `${badgeCount} new promote payment${badgeCount === 1 ? '' : 's'}`
+                            : isFood
+                              ? `${badgeCount} pending food order${badgeCount === 1 ? '' : 's'}`
+                              : isCarHire
+                                ? `${badgeCount} car-hire item${badgeCount === 1 ? '' : 's'} need review`
                         : ''
         const alertDesc = isHelp
           ? `${badgeCount} new message${badgeCount === 1 ? '' : 's'} waiting`
@@ -119,6 +137,10 @@ export default function DashboardCards() {
                           ? `${badgeCount} booking${badgeCount === 1 ? '' : 's'} just placed`
                           : isPromos
                             ? `${badgeCount} promote payment${badgeCount === 1 ? '' : 's'} just completed`
+                            : isFood
+                              ? `${badgeCount} order${badgeCount === 1 ? '' : 's'} waiting in the kitchen`
+                              : isCarHire
+                                ? `${badgeCount} operator, listing, or lead${badgeCount === 1 ? '' : 's'} to review`
                         : ''
         const alertCta = isHelp
           ? 'Reply now →'
@@ -140,6 +162,10 @@ export default function DashboardCards() {
                           ? 'Open stay bookings →'
                           : isPromos
                             ? 'Open promoted ads →'
+                            : isFood
+                              ? 'Open food orders →'
+                              : isCarHire
+                                ? 'Open car hire →'
                         : ''
 
         return (

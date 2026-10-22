@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
-import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
 import { DashboardBackLink } from '@/app/dashboard/DashboardChrome'
+import { panelPasswordError, reauthPanelPassword } from '@/lib/panel-reauth'
 
 type Props = {
   title: string
@@ -27,30 +26,11 @@ export function AdminPasswordGate({ title, description, children }: Props) {
     setBusy(true)
     setError('')
     try {
-      const user = auth.currentUser
-      if (!user?.email) {
-        throw new Error('Sign in again at /panel, then return here.')
-      }
-      const cred = EmailAuthProvider.credential(user.email, password)
-      await reauthenticateWithCredential(user, cred)
+      await reauthPanelPassword(password)
       setUnlocked(true)
       setPassword('')
     } catch (err) {
-      const code =
-        err && typeof err === 'object' && 'code' in err
-          ? String((err as { code?: string }).code || '')
-          : ''
-      if (
-        code === 'auth/wrong-password' ||
-        code === 'auth/invalid-credential' ||
-        code === 'auth/invalid-login-credentials'
-      ) {
-        setError('Incorrect password. Use the same password you sign in with.')
-      } else {
-        setError(
-          err instanceof Error ? err.message : 'Could not verify password.',
-        )
-      }
+      setError(panelPasswordError(err))
     } finally {
       setBusy(false)
     }

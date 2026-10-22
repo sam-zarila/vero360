@@ -16,6 +16,7 @@ import {
   PAYOUT_BANKS,
   PAYOUT_MOMO,
 } from '@/lib/payout-destinations'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 type ServiceBucket = {
   id: string
@@ -50,6 +51,7 @@ const EMPTY: Summary = {
 }
 
 export default function SuperAdminWalletPage() {
+  const confirmDelete = useConfirmDelete()
   const [wallet, setWallet] = useState<WalletRow | null>(null)
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])
   const [summary, setSummary] = useState<Summary>(EMPTY)
@@ -110,10 +112,14 @@ export default function SuperAdminWalletPage() {
   const canCashOut = (summary.balance || 0) >= MIN_PAYOUT_MWK && !!wallet
 
   async function clearWallet() {
-    const ok = window.confirm(
-      'Clear the platform wallet? Available balance, pending balance, and wallet history will be set to zero. Money still held in escrow is not touched.',
-    )
-    if (!ok) return
+    if (
+      !(await confirmDelete(
+        'platform wallet',
+        'Available balance, pending balance, and wallet history will be set to zero. Money still held in escrow is not touched.',
+      ))
+    ) {
+      return
+    }
     setClearing(true)
     setError('')
     setNotice('')

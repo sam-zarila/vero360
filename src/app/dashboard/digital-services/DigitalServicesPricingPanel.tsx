@@ -2,6 +2,7 @@
 
 import { adminFetch } from '@/lib/panel-client-auth'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 type DigitalProductPriceConfig = {
   key: string
@@ -105,6 +106,7 @@ function slugKey(name: string): string {
 }
 
 export function DigitalServicesPricingPanel() {
+  const confirmDelete = useConfirmDelete()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -318,7 +320,7 @@ export function DigitalServicesPricingPanel() {
 
   const removeProduct = async (key: string) => {
     const name = products.find((p) => p.key === key)?.name || key
-    if (!window.confirm(`Remove ${name}? It will disappear from the app.`)) return
+    if (!(await confirmDelete(name, 'It will disappear from the app.'))) return
     const next = products.filter((p) => p.key !== key)
     await save(next)
   }

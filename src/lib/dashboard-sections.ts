@@ -319,12 +319,16 @@ export type DashboardNavBadgeKey =
   | 'drivers'
   | 'rides'
   | 'orders'
+  | 'food'
   | 'users'
   | 'reports'
   | 'digital'
   | 'homepageAds'
   | 'stay'
   | 'promotions'
+  | 'carHire'
+  | 'carHireListings'
+  | 'carHireLeads'
 
 export type DashboardNavItem = {
   href: string
@@ -358,13 +362,13 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: 'car', badgeKey: 'drivers' },
       { href: '/dashboard/vero-ride/trips', label: 'Vero Ride Trips', icon: 'car', badgeKey: 'rides' },
       { href: '/dashboard/vero-courier', label: 'Vero Courier', icon: 'truck', badgeKey: 'courier' },
-      { href: '/dashboard/food', label: 'Food', icon: 'food' },
+      { href: '/dashboard/food', label: 'Food', icon: 'food', badgeKey: 'food' },
       { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
       { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },
       { href: '/dashboard/stay', label: 'Stay', icon: 'bed', badgeKey: 'stay' },
-      { href: '/dashboard/car-hire', label: 'Car Hire', icon: 'car' },
-      { href: '/dashboard/car-hire/listings', label: 'Car Hire listings', icon: 'car' },
-      { href: '/dashboard/car-hire/leads', label: 'Car Hire leads', icon: 'briefcase' },
+      { href: '/dashboard/car-hire', label: 'Car Hire', icon: 'car', badgeKey: 'carHire' },
+      { href: '/dashboard/car-hire/listings', label: 'Car Hire listings', icon: 'car', badgeKey: 'carHireListings' },
+      { href: '/dashboard/car-hire/leads', label: 'Car Hire leads', icon: 'briefcase', badgeKey: 'carHireLeads' },
       { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'cart' },
       { href: '/dashboard/orders', label: 'Orders', icon: 'package', badgeKey: 'orders' },
       { href: '/dashboard/refunds', label: 'Refunds', icon: 'refund' },

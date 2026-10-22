@@ -158,6 +158,42 @@ export default function StayAdminPage() {
     }
   }
 
+  const removeBooking = async (item: StayBooking) => {
+    if (
+      !(await confirmDelete(
+        item.bookingNumber || `#${item.id}`,
+        'Permanently delete this stay booking? This cannot be undone.',
+      ))
+    ) {
+      return
+    }
+    setBusyId(item.id)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(`/api/admin/stay/bookings/${item.id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setNotice(`Deleted booking ${item.bookingNumber || `#${item.id}`}`)
+      setBookings(prev => prev.filter(x => x.id !== item.id))
+      setBookingCounts(prev => {
+        const next = { ...prev }
+        next.all = Math.max(0, next.all - 1)
+        const pay = String(item.paymentStatus || '').toUpperCase()
+        if (pay === 'PAID') next.paid = Math.max(0, next.paid - 1)
+        else if (pay === 'FAILED') next.failed = Math.max(0, next.failed - 1)
+        else next.unpaid = Math.max(0, next.unpaid - 1)
+        return next
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   useEffect(() => {
     void load()
   }, [load])
@@ -569,18 +605,20 @@ export default function StayAdminPage() {
             {filteredBookings.map(item => {
               const img = resolveStayImage(item.accommodationImage)
               const pay = paymentTone(item.paymentStatus)
+              const busy = busyId === item.id
               return (
                 <article
                   key={item.id}
                   className="stay-row"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '88px 1fr',
+                    gridTemplateColumns: '88px 1fr auto',
                     gap: 14,
                     padding: 14,
                     borderRadius: 14,
                     border: '1px solid var(--border)',
                     background: 'var(--surface)',
+                    alignItems: 'start',
                   }}
                 >
                   <div
@@ -680,6 +718,31 @@ export default function StayAdminPage() {
                       />
                     </div>
                   </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 110 }}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void removeBooking(item)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          padding: '9px 12px',
+                          borderRadius: 10,
+                          border: '1px solid #FECACA',
+                          background: busy ? '#FEE2E2' : '#FEF2F2',
+                          color: '#B91C1C',
+                          fontSize: 13,
+                          fontWeight: 800,
+                          cursor: busy ? 'wait' : 'pointer',
+                          opacity: busy ? 0.7 : 1,
+                        }}
+                      >
+                        <VeroIcon name="trash" size={14} strokeWidth={2.35} color="currentColor" />
+                        {busy ? 'Removing…' : 'Delete'}
+                      </button>
+                    </div>
                 </article>
               )
             })}

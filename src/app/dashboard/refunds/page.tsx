@@ -20,7 +20,7 @@ import {
   DashboardRefreshButton,
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
-import { useConfirm } from '../ConfirmDialog'
+import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 
 const SECTION = DASHBOARD_SECTION_MAP.refunds
 
@@ -44,6 +44,7 @@ const EMPTY_COUNTS: Counts = {
 
 export default function RefundsAdminPage() {
   const confirm = useConfirm()
+  const confirmDelete = useConfirmDelete()
   const [items, setItems] = useState<RefundRequest[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [tab, setTab] = useState<Tab>('pending')
@@ -130,6 +131,44 @@ export default function RefundsAdminPage() {
       else if (status === 'failed' || status === 'rejected') setTab('failed')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const removeRefund = async (item: RefundRequest) => {
+    if (
+      !(await confirmDelete(
+        item.orderNumber || item.itemName,
+        'Permanently delete this refund request? This cannot be undone.',
+      ))
+    ) {
+      return
+    }
+    setBusyId(item.id)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(`/api/admin/refunds/${encodeURIComponent(item.id)}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setNotice(`Deleted refund for ${item.orderNumber}`)
+      setItems(prev => prev.filter(x => x.id !== item.id))
+      setCounts(prev => {
+        const next = { ...prev }
+        next.all = Math.max(0, next.all - 1)
+        if (item.status === 'pending') next.pending = Math.max(0, next.pending - 1)
+        else if (item.status === 'processing') next.processing = Math.max(0, next.processing - 1)
+        else if (item.status === 'completed') next.completed = Math.max(0, next.completed - 1)
+        else if (item.status === 'failed' || item.status === 'rejected') {
+          next.failed = Math.max(0, next.failed - 1)
+        }
+        return next
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setBusyId(null)
     }
@@ -406,6 +445,14 @@ export default function RefundsAdminPage() {
                           Mark failed
                         </button>
                       )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void removeRefund(item)}
+                      style={actionBtn('#FEF2F2', '#B91C1C', '#FECACA', busy)}
+                    >
+                      {busy ? 'Removing…' : 'Delete'}
+                    </button>
                   </div>
                 </article>
               )

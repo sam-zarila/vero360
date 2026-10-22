@@ -23,6 +23,7 @@ import {
   type AdminRide,
   type AdminRideCounts,
 } from '@/lib/rides'
+import { useMarkRidesSeen } from '../AdminAlertsProvider'
 
 const SECTION = DASHBOARD_SECTION_MAP['vero-ride']
 
@@ -73,6 +74,11 @@ export default function VeroRideTripsPage() {
   useEffect(() => {
     load()
   }, [load])
+
+  const markRidesSeen = useMarkRidesSeen()
+  useEffect(() => {
+    markRidesSeen?.()
+  }, [markRidesSeen])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

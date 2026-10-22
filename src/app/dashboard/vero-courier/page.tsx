@@ -19,7 +19,7 @@ import {
   DashboardRefreshButton,
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
-import { useConfirm } from '../ConfirmDialog'
+import { useConfirm, useConfirmDelete } from '../ConfirmDialog'
 
 const SECTION = DASHBOARD_SECTION_MAP['vero-courier']
 
@@ -55,6 +55,7 @@ const ACTION_STYLES: Record<
 
 export default function VeroCourierAdminPage() {
   const confirm = useConfirm()
+  const confirmDelete = useConfirmDelete()
   const [items, setItems] = useState<CourierDelivery[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [tab, setTab] = useState<Tab>('PENDING')
@@ -176,6 +177,41 @@ export default function VeroCourierAdminPage() {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Status update failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const removeDelivery = async (item: CourierDelivery) => {
+    if (
+      !(await confirmDelete(
+        item.trackingNumber || `#${item.id}`,
+        'Permanently delete this courier delivery? This cannot be undone.',
+      ))
+    ) {
+      return
+    }
+    setError('')
+    setNotice('')
+    setBusyId(item.id)
+    try {
+      const res = await adminFetch(`/api/admin/courier/${item.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setNotice(`Deleted delivery ${item.trackingNumber || `#${item.id}`}`)
+      setItems(prev => prev.filter(x => x.id !== item.id))
+      setCounts(prev => {
+        const next = { ...prev }
+        next.all = Math.max(0, next.all - 1)
+        if (item.status === 'PENDING') next.pending = Math.max(0, next.pending - 1)
+        else if (item.status === 'ACCEPTED') next.accepted = Math.max(0, next.accepted - 1)
+        else if (item.status === 'ON_THE_WAY') next.onTheWay = Math.max(0, next.onTheWay - 1)
+        else if (item.status === 'DELIVERED') next.delivered = Math.max(0, next.delivered - 1)
+        else if (item.status === 'CANCELLED') next.cancelled = Math.max(0, next.cancelled - 1)
+        return next
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setBusyId(null)
     }
@@ -466,6 +502,23 @@ export default function VeroCourierAdminPage() {
                           : 'Rejected. User was notified.'}
                       </p>
                     )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void removeDelivery(item)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        border: '1px solid #FECACA',
+                        background: '#FEF2F2',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: '#B91C1C',
+                        opacity: busy ? 0.6 : 1,
+                      }}
+                    >
+                      {busy ? 'Removing…' : 'Delete'}
+                    </button>
                   </div>
                 </article>
               )
