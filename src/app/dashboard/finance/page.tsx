@@ -536,13 +536,13 @@ function Overview({
             label: 'Super admin wallet',
             value: formatMwk(summary.platformBalance),
             sub: 'Platform commission — open Admin wallet',
-            href: '/dashboard/wallet',
+            href: '/dashboard/wallet?view=available',
           },
           {
             label: 'PawaPay took',
             value: formatMwk(summary.pawapayTotalFees),
             sub: `Cash-outs ${formatMwk(summary.pawapayPayoutFees)} · collections ${formatMwk(summary.pawapayCollectionFees)} (Malawi MMO + 1%)`,
-            href: '/dashboard/wallet',
+            href: '/dashboard/wallet?view=pawapay',
           },
         ]
       : []),
