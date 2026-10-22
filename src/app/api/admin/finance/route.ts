@@ -136,6 +136,7 @@ export async function GET(request: Request) {
     const allTx = enriched.transactions
 
     const escrow: EscrowRow[] = escrowSnap.docs
+      .filter(d => d.data()?.platformFeeCleared !== true)
       .map(d => parseEscrow(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => {
         const at = a.updatedAt

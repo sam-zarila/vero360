@@ -155,9 +155,9 @@ export async function GET(request: Request) {
       return bt - at
     })
 
-    const escrow = escrowSnap.docs.map(d =>
-      parseEscrow(d.id, d.data() as Record<string, unknown>),
-    )
+    const escrow = escrowSnap.docs
+      .filter(d => d.data()?.platformFeeCleared !== true)
+      .map(d => parseEscrow(d.id, d.data() as Record<string, unknown>))
     const held = escrow.filter(e => e.status === 'held')
     const collected = escrow.filter(
       e => e.status === 'released' || e.status === 'auto_released',
