@@ -3,6 +3,7 @@ import 'server-only'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { PLATFORM_WALLET_USER_ID, WALLETS_COLLECTION, WALLET_TX_COLLECTION } from '@/lib/finance'
+import { pawapayPayoutFeeMwk } from '@/lib/pawapay-fees'
 
 export async function reservePawaPayPayout(input: {
   walletId: string
@@ -25,6 +26,7 @@ export async function reservePawaPayPayout(input: {
     const current = Number(data.balance) || 0
     if (current < input.amount) throw new Error('Insufficient balance')
     balance = current - input.amount
+    const fee = pawapayPayoutFeeMwk(input.amount, input.provider)
     const txPayload = {
       transactionId,
       walletId: input.walletId,
@@ -38,6 +40,7 @@ export async function reservePawaPayPayout(input: {
       payoutProvider: 'pawapay',
       recipientPhone: input.phone,
       provider: input.provider,
+      fee,
       createdAt: now,
       updatedAt: now,
     }
@@ -59,6 +62,7 @@ export async function reservePawaPayPayout(input: {
       walletId: input.walletId,
       userId: PLATFORM_WALLET_USER_ID,
       amount: input.amount,
+      fee,
       phone: input.phone,
       provider: input.provider,
       status: 'pending',

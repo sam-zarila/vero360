@@ -16,6 +16,15 @@ import {
   PAYOUT_BANKS,
   PAYOUT_MOMO,
 } from '@/lib/payout-destinations'
+import {
+  isPawaPayCollectionTx,
+  isPawaPayPayoutTx,
+  pawapayCollectionFeeMwk,
+  pawapayCollectionFeePercentLabel,
+  pawapayPayoutFeeMwk,
+  pawapayPayoutFeePercentLabel,
+  resolvedPawaPayPayoutFee,
+} from '@/lib/pawapay-fees'
 import { useConfirmDelete } from '../ConfirmDialog'
 
 type ServiceBucket = {
@@ -36,6 +45,11 @@ type Summary = {
   feeCount: number
   payoutTotal: number
   payoutCount: number
+  pawapayPayoutFees: number
+  pawapayCollectionFees: number
+  pawapayTotalFees: number
+  pawapayPayoutCount: number
+  pawapayCollectionCount: number
 }
 
 const EMPTY: Summary = {
@@ -48,6 +62,11 @@ const EMPTY: Summary = {
   feeCount: 0,
   payoutTotal: 0,
   payoutCount: 0,
+  pawapayPayoutFees: 0,
+  pawapayCollectionFees: 0,
+  pawapayTotalFees: 0,
+  pawapayPayoutCount: 0,
+  pawapayCollectionCount: 0,
 }
 
 export default function SuperAdminWalletPage() {
@@ -242,6 +261,23 @@ export default function SuperAdminWalletPage() {
         <div style={{ fontSize: 13, opacity: 0.85 }}>
           Available to pay out · {wallet?.userId || 'super_admin'}
         </div>
+        {summary.pawapayTotalFees > 0 ? (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.12)',
+              fontSize: 13,
+              lineHeight: 1.45,
+            }}
+          >
+            PawaPay has taken <strong>{formatMwk(summary.pawapayTotalFees)}</strong> so
+            far — {formatMwk(summary.pawapayPayoutFees)} on cash-outs and{' '}
+            {formatMwk(summary.pawapayCollectionFees)} on digital/ad collections. That
+            cut comes from the PawaPay wallet, not this ledger balance.
+          </div>
+        ) : null}
         {summary.feesHeld > 0 ? (
           <div
             style={{
@@ -284,6 +320,21 @@ export default function SuperAdminWalletPage() {
           label="Paid out"
           value={formatMwk(summary.payoutTotal)}
           sub={`${summary.payoutCount} payouts`}
+        />
+        <Stat
+          label="PawaPay took"
+          value={formatMwk(summary.pawapayTotalFees)}
+          sub={`Cash-outs ${formatMwk(summary.pawapayPayoutFees)} · collections ${formatMwk(summary.pawapayCollectionFees)}`}
+        />
+        <Stat
+          label="PawaPay cash-out fees"
+          value={formatMwk(summary.pawapayPayoutFees)}
+          sub={`${summary.pawapayPayoutCount} mobile-money payouts · ~${pawapayPayoutFeePercentLabel()}`}
+        />
+        <Stat
+          label="PawaPay collection fees"
+          value={formatMwk(summary.pawapayCollectionFees)}
+          sub={`${summary.pawapayCollectionCount} digital/ad payments · ${pawapayCollectionFeePercentLabel()}`}
         />
       </div>
 
@@ -375,6 +426,11 @@ export default function SuperAdminWalletPage() {
                     <div style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>
                       {formatDateTime(t.createdAt)} · {t.reference}
                       {payout && t.payoutMethod ? ` · ${t.payoutMethod}` : ''}
+                      {payout && isPawaPayPayoutTx(t)
+                        ? ` · PawaPay fee ${formatMwk(resolvedPawaPayPayoutFee(t))}`
+                        : !payout && isPawaPayCollectionTx(t)
+                          ? ` · PawaPay took ${formatMwk(pawapayCollectionFeeMwk(t.amount))}`
+                          : ''}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -444,6 +500,12 @@ function CashOutDialog({
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const payoutAmount = Math.round(Number(amount)) || 0
+  const momoName = PAYOUT_MOMO.find(m => m.id === operatorId)?.name
+  const pawapayFee =
+    method === 'mobile_money' && payoutAmount > 0
+      ? pawapayPayoutFeeMwk(payoutAmount, momoName)
+      : 0
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -521,6 +583,8 @@ function CashOutDialog({
         <p style={{ margin: '0 0 16px', color: '#6B7280', fontSize: 13 }}>
           Available {formatMwk(available)}. Minimum MWK {MIN_PAYOUT_MWK.toLocaleString()}.
           Mobile money is sent instantly through PawaPay. Bank transfers stay on PayChangu.
+          PawaPay plus the mobile-money operator take about {pawapayPayoutFeePercentLabel(momoName)}{' '}
+          on cash-outs.
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -550,6 +614,12 @@ function CashOutDialog({
             required
           />
         </label>
+        {method === 'mobile_money' && pawapayFee > 0 ? (
+          <p style={{ margin: '-4px 0 14px', fontSize: 13, color: '#9A3412', fontWeight: 600 }}>
+            PawaPay takes about {formatMwk(pawapayFee)} ({pawapayPayoutFeePercentLabel(momoName)})
+            on this cash-out. Recipient still gets {formatMwk(payoutAmount)}.
+          </p>
+        ) : null}
 
         {method === 'bank' ? (
           <>

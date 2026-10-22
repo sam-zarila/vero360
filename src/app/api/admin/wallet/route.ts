@@ -17,6 +17,7 @@ import {
   type WalletTxRow,
 } from '@/lib/finance'
 import { backfillMissingPlatformFees } from '@/lib/platform-fee-backfill'
+import { summarizePawaPayFees } from '@/lib/pawapay-fees'
 
 function mergeTx(into: WalletTxRow[], row: WalletTxRow) {
   if (!into.some(t => t.transactionId === row.transactionId)) {
@@ -184,6 +185,7 @@ export async function GET(request: Request) {
     })
     const payoutTxs = transactions.filter(isPayoutTx)
     const lifetimeFees = feeTxs.reduce((s, t) => s + t.amount, 0)
+    const pawapay = summarizePawaPayFees(transactions)
 
     // Re-read balance after possible backfill.
     if (wallet && backfill.credited > 0 && walletsSnapDocs[0]) {
@@ -217,6 +219,11 @@ export async function GET(request: Request) {
         feeCount: feeTxs.length,
         payoutTotal: payoutTxs.reduce((s, t) => s + t.amount, 0),
         payoutCount: payoutTxs.length,
+        pawapayPayoutFees: pawapay.payoutFees,
+        pawapayCollectionFees: pawapay.collectionFees,
+        pawapayTotalFees: pawapay.totalFees,
+        pawapayPayoutCount: pawapay.payoutCount,
+        pawapayCollectionCount: pawapay.collectionCount,
       },
     })
   } catch (err) {
