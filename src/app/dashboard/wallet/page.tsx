@@ -16,12 +16,9 @@ import {
   formatDateTime,
   formatMwk,
   isPayoutTx,
-<<<<<<< HEAD
   payoutPaidToLabel,
-=======
   platformServiceOf,
   serviceFeePercentLabel,
->>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
   txStatusTone,
   type EscrowRow,
   type WalletRow,
@@ -655,16 +652,9 @@ export default function SuperAdminWalletPage() {
       ) : filtered.length === 0 && viewEscrow.length === 0 ? (
         <div style={card}>
           <p style={{ margin: 0, color: '#6B7280' }}>
-<<<<<<< HEAD
-            No commission or payouts yet. Marketplace, food, and stay fees land here
-            when an order is released, after PawaPay processing is deducted. Ride,
-            digital, advert, and promotion payments credit this wallet as soon as
-            they are paid.
-=======
             {view
               ? 'No matching transactions for this card yet.'
-              : 'No commission or payouts yet. Marketplace, food, and stay fees land here when an order is released. Ride, digital, advert, and promotion payments credit this wallet as soon as they are paid.'}
->>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
+              : 'No commission or payouts yet. Marketplace, food, and stay fees land here when an order is released, after PawaPay processing is deducted. Ride, digital, advert, and promotion payments credit this wallet as soon as they are paid.'}
           </p>
         </div>
       ) : filtered.length === 0 ? null : (
@@ -672,10 +662,8 @@ export default function SuperAdminWalletPage() {
           {filtered.map(t => {
             const tone = txStatusTone(t.status)
             const payout = isPayoutTx(t)
-<<<<<<< HEAD
             const processing = t.type.toLowerCase() === 'processing_fee'
             const outgoing = payout || processing
-=======
             const pawaFee = payout
               ? isPawaPayPayoutTx(t)
                 ? resolvedPawaPayPayoutFee(t)
@@ -684,7 +672,6 @@ export default function SuperAdminWalletPage() {
                 ? pawapayCollectionFeeMwk(t.amount)
                 : 0
             const focusPawaFee = Boolean(view?.startsWith('pawapay') && pawaFee > 0)
->>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
             return (
               <div key={t.transactionId} style={card}>
                 <div
@@ -715,16 +702,13 @@ export default function SuperAdminWalletPage() {
                     <div style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>
                       {formatDateTime(t.createdAt)} · {t.reference}
                       {payout && t.payoutMethod ? ` · ${t.payoutMethod}` : ''}
-<<<<<<< HEAD
                       {payout && payoutPaidToLabel(t)
                         ? ` · paid to ${payoutPaidToLabel(t)}`
                         : ''}
                       {processing ? ' · deducted from commission' : ''}
-=======
                       {pawaFee > 0 && !focusPawaFee
                         ? ` · PawaPay ${formatMwk(pawaFee)}`
                         : ''}
->>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -732,20 +716,12 @@ export default function SuperAdminWalletPage() {
                       style={{
                         fontWeight: 800,
                         fontSize: 18,
-<<<<<<< HEAD
-                        color: outgoing ? '#C2410C' : '#0F766E',
-                      }}
-                    >
-                      {outgoing ? '−' : '+'}
-                      {formatMwk(t.amount)}
-=======
-                        color: payout || focusPawaFee ? '#C2410C' : '#0F766E',
+                        color: outgoing || focusPawaFee ? '#C2410C' : '#0F766E',
                       }}
                     >
                       {focusPawaFee
                         ? formatMwk(pawaFee)
-                        : `${payout ? '−' : '+'}${formatMwk(t.amount)}`}
->>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
+                        : `${outgoing ? '−' : '+'}${formatMwk(t.amount)}`}
                     </div>
                     {focusPawaFee ? (
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
