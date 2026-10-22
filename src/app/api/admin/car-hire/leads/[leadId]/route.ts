@@ -28,11 +28,15 @@ export async function PATCH(request: Request, ctx: Ctx) {
       typeof payload.actorLabel === 'string' ? payload.actorLabel.trim().slice(0, 160) : ''
     const actorLabel = requestedLabel || actor.email || 'operations'
 
-    const { res, error } = await nestOpsFetch(['car-hire', 'leads', id], {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, ...(note ? { note } : {}), actorLabel }),
-    })
+    const { res, error } = await nestOpsFetch(
+      ['car-hire', 'leads', id],
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, ...(note ? { note } : {}), actorLabel }),
+      },
+      request,
+    )
 
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })

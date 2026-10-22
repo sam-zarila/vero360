@@ -54,6 +54,7 @@ export async function POST(request: Request, ctx: Ctx) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...(note ? { note } : {}), actorLabel }),
       },
+      request,
     )
 
     if (!res.ok) {

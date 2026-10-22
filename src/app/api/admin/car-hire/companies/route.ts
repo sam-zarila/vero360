@@ -12,10 +12,11 @@ export async function GET(request: Request) {
       'QUEUE'
 
     const qs = new URLSearchParams({ status })
-    const { res, body, error } = await nestOpsFetch([
-      'car-rental',
-      `operator-reviews?${qs.toString()}`,
-    ])
+    const { res, body, error } = await nestOpsFetch(
+      ['car-rental', `operator-reviews?${qs.toString()}`],
+      undefined,
+      request,
+    )
 
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })

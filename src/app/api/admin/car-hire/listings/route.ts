@@ -30,11 +30,11 @@ export async function GET(request: Request) {
     }
 
     const qs = new URLSearchParams({ status })
-    const { res, body, error } = await nestOpsFetch([
-      'car-rental',
-      'moderation',
-      `listings?${qs.toString()}`,
-    ])
+    const { res, body, error } = await nestOpsFetch(
+      ['car-rental', 'moderation', `listings?${qs.toString()}`],
+      undefined,
+      request,
+    )
 
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })

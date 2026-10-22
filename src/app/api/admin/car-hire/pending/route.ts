@@ -12,11 +12,11 @@ export async function GET(request: Request) {
   try {
     await requirePanelAdmin(request)
 
-    const { res, body, error } = await nestOpsFetch([
-      'car-rental',
-      'moderation',
-      'pending-count',
-    ])
+    const { res, body, error } = await nestOpsFetch(
+      ['car-rental', 'moderation', 'pending-count'],
+      undefined,
+      request,
+    )
 
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })
