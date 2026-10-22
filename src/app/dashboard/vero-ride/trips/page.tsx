@@ -23,7 +23,7 @@ import {
   type AdminRide,
   type AdminRideCounts,
 } from '@/lib/rides'
-import { useMarkRidesSeen } from '../AdminAlertsProvider'
+import { useMarkRidesSeen } from '@/app/dashboard/AdminAlertsProvider'
 
 const SECTION = DASHBOARD_SECTION_MAP['vero-ride']
 
