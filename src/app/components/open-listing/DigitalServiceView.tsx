@@ -23,6 +23,8 @@ export type DigitalServicePublicDetail = {
   /** Back link — Netflix plans return to Choose your plan. */
   backHref?: string
   backLabel?: string
+  category?: string | null
+  payoutKind?: 'cny' | 'usdt' | null
 }
 
 const page: CSSProperties = {
@@ -97,6 +99,10 @@ export default function DigitalServiceView({
   const [paid, setPaid] = useState(false)
   const [depositId, setDepositId] = useState('')
   const [error, setError] = useState('')
+  const [binanceId, setBinanceId] = useState('')
+  const [binanceAddress, setBinanceAddress] = useState('')
+  const [kycUrls, setKycUrls] = useState<Record<string, string>>({})
+  const [kycBusy, setKycBusy] = useState('')
 
   const unit = (product.unitLabel || '').trim() || 'USD'
   const formatUnit = (n: number) =>
@@ -167,6 +173,29 @@ export default function DigitalServiceView({
     }
   }, [waiting, depositId, paid])
 
+  async function uploadKyc(slot: string, file: File | undefined) {
+    if (!file) return
+    setKycBusy(slot)
+    setError('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/public/digital-services/kyc-upload', {
+        method: 'POST',
+        body: form,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      const url = String(data.imageUrl || '').trim()
+      if (!url) throw new Error('Upload failed')
+      setKycUrls(prev => ({ ...prev, [slot]: url }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setKycBusy('')
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (waiting || paid) return
@@ -180,6 +209,19 @@ export default function DigitalServiceView({
           ? custom
           : selectedUsd
 
+      const payoutKind = product.payoutKind || null
+      const payoutKyc = payoutKind
+        ? {
+            kind: payoutKind,
+            alipayWechatCodeUrl: kycUrls.alipayWechatCodeUrl || '',
+            idInHandUrl: kycUrls.idInHandUrl || '',
+            faceUrl: kycUrls.faceUrl || '',
+            binanceId: binanceId.trim(),
+            binanceAddress: binanceAddress.trim(),
+            binanceCodeUrl: kycUrls.binanceCodeUrl || '',
+          }
+        : null
+
       const res = await fetch('/api/public/digital-services/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,6 +232,7 @@ export default function DigitalServiceView({
           buyerPhone: phone.trim(),
           selectedUsd: usdPayload,
           network,
+          payoutKyc,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -480,7 +523,65 @@ export default function DigitalServiceView({
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.4 }}>
+                Not signed in? We email card details and joining links here after payment.
+              </p>
             </div>
+
+            {product.payoutKind === 'cny' ? (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ ...label, marginBottom: 8 }}>Payout photos</div>
+                <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
+                  For Chinese Yuan / USD TT upload your Alipay or WeChat code, your ID held in
+                  your hands, and a photo of your face.
+                </p>
+                <KycFile
+                  label="Alipay / WeChat code"
+                  ready={Boolean(kycUrls.alipayWechatCodeUrl)}
+                  busy={kycBusy === 'alipayWechatCodeUrl'}
+                  onFile={file => void uploadKyc('alipayWechatCodeUrl', file)}
+                />
+                <KycFile
+                  label="ID held in your hands"
+                  ready={Boolean(kycUrls.idInHandUrl)}
+                  busy={kycBusy === 'idInHandUrl'}
+                  onFile={file => void uploadKyc('idInHandUrl', file)}
+                />
+                <KycFile
+                  label="Your face"
+                  ready={Boolean(kycUrls.faceUrl)}
+                  busy={kycBusy === 'faceUrl'}
+                  onFile={file => void uploadKyc('faceUrl', file)}
+                />
+              </div>
+            ) : null}
+
+            {product.payoutKind === 'usdt' ? (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ ...label, marginBottom: 8 }}>USDT destination</div>
+                <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
+                  Enter your Binance ID or USDT address. You can also upload your Binance code.
+                </p>
+                <input
+                  style={{ ...input, marginBottom: 8 }}
+                  placeholder="Binance ID"
+                  value={binanceId}
+                  onChange={e => setBinanceId(e.target.value)}
+                />
+                <input
+                  style={{ ...input, marginBottom: 8 }}
+                  placeholder="USDT address (TRC20 / BEP20)"
+                  value={binanceAddress}
+                  onChange={e => setBinanceAddress(e.target.value)}
+                />
+                <KycFile
+                  label="Binance code (optional)"
+                  ready={Boolean(kycUrls.binanceCodeUrl)}
+                  busy={kycBusy === 'binanceCodeUrl'}
+                  onFile={file => void uploadKyc('binanceCodeUrl', file)}
+                />
+              </div>
+            ) : null}
 
             {paid ? (
               <div
@@ -534,12 +635,12 @@ export default function DigitalServiceView({
 
             <button
               type="submit"
-              disabled={submitting || waiting || paid}
+              disabled={submitting || waiting || paid || Boolean(kycBusy)}
               style={{
                 ...btn,
                 background: 'linear-gradient(135deg, #EA580C, #F97316)',
                 color: '#fff',
-                opacity: submitting || waiting || paid ? 0.7 : 1,
+                opacity: submitting || waiting || paid || kycBusy ? 0.7 : 1,
               }}
             >
               {paid
@@ -566,5 +667,43 @@ export default function DigitalServiceView({
         </div>
       </div>
     </main>
+  )
+}
+
+function KycFile({
+  label,
+  ready,
+  busy,
+  onFile,
+}: {
+  label: string
+  ready: boolean
+  busy: boolean
+  onFile: (file: File | undefined) => void
+}) {
+  return (
+    <label
+      style={{
+        display: 'block',
+        marginBottom: 8,
+        padding: '10px 12px',
+        borderRadius: 12,
+        border: `1px solid ${ready ? '#F97316' : 'var(--border)'}`,
+        background: ready ? '#FFF7ED' : '#fff',
+        cursor: 'pointer',
+        fontSize: 13,
+        fontWeight: 700,
+      }}
+    >
+      {busy ? `${label} · uploading…` : ready ? `${label} · attached` : label}
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        disabled={busy}
+        onChange={e => onFile(e.target.files?.[0])}
+      />
+    </label>
   )
 }

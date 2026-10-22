@@ -4,6 +4,7 @@ import { adminFetch } from '@/lib/panel-client-auth'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   getSubscriptionTiming,
+  isDigitalCrypto,
   isDigitalGiftCard,
   isDigitalOrderPaid,
   isDigitalOrderPending,
@@ -28,6 +29,7 @@ type Tab =
   | 'active_subs'
   | 'expired_subs'
   | 'gift_cards'
+  | 'crypto'
   | 'pending'
   | 'all'
 
@@ -49,6 +51,7 @@ const emptyCounts: DigitalServiceOrderCounts = {
   feePending: 0,
   revenuePaid: 0,
   revenueCredited: 0,
+  crypto: 0,
 }
 
 function statusTone(o: DigitalServiceOrder): { label: string; bg: string; color: string } {
@@ -84,6 +87,10 @@ export default function DigitalServicesAdminPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [sendId, setSendId] = useState('')
+  const [cardDetails, setCardDetails] = useState('')
+  const [joiningLink, setJoiningLink] = useState('')
+  const [sendNotes, setSendNotes] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -126,6 +133,8 @@ export default function DigitalServicesAdminPage() {
     } else if (tab === 'gift_cards') {
       // Paid / fulfilled gift cards only — pending ones live under Pending.
       list = items.filter(o => isDigitalGiftCard(o) && isDigitalOrderPaid(o))
+    } else if (tab === 'crypto') {
+      list = items.filter(o => isDigitalCrypto(o))
     } else if (tab === 'pending') {
       list = items.filter(o => isDigitalOrderPending(o))
     }
@@ -148,6 +157,8 @@ export default function DigitalServicesAdminPage() {
         timing?.startDate || '',
         timing?.endDate || '',
         timing?.label || '',
+        o.payoutKyc?.binanceId || '',
+        o.payoutKyc?.binanceAddress || '',
       ]
         .join(' ')
         .toLowerCase()
@@ -279,11 +290,46 @@ export default function DigitalServicesAdminPage() {
     }
   }
 
+  const openSend = (o: DigitalServiceOrder) => {
+    setSendId(o.id)
+    setCardDetails(o.fulfillment?.cardDetails || '')
+    setJoiningLink(o.fulfillment?.joiningLink || '')
+    setSendNotes(o.fulfillment?.notes || '')
+  }
+
+  const sendDetails = async (id: string) => {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(`/api/admin/digital-services/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_fulfillment',
+          cardDetails,
+          joiningLink,
+          notes: sendNotes,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Send failed')
+      setNotice(data.message || 'Details sent')
+      setSendId('')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Send failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'subscriptions', label: `Subscriptions (${counts.subscriptions})` },
     { id: 'active_subs', label: `Active (${counts.activeSubscriptions})` },
     { id: 'expired_subs', label: `Expired (${counts.expiredSubscriptions})` },
     { id: 'gift_cards', label: `Gift cards paid (${counts.giftCardsPaid})` },
+    { id: 'crypto', label: `Crypto / FX (${counts.crypto})` },
     { id: 'pending', label: `Pending (${counts.pending})` },
     { id: 'all', label: `All (${counts.all})` },
   ]
@@ -371,6 +417,7 @@ export default function DigitalServicesAdminPage() {
         <Metric label="Active subs" value={String(counts.activeSubscriptions)} />
         <Metric label="Expired subs" value={String(counts.expiredSubscriptions)} />
         <Metric label="Gift cards paid" value={String(counts.giftCardsPaid)} />
+        <Metric label="Crypto / FX" value={String(counts.crypto ?? 0)} />
         <Metric label="Gift cards pending" value={String(counts.giftCardsPending)} />
         <Metric label="Paid orders" value={String(counts.paid)} />
         <Metric label="Revenue paid" value={formatMwk(counts.revenuePaid)} />
@@ -427,9 +474,11 @@ export default function DigitalServicesAdminPage() {
             {filtered.map(o => {
               const tone = statusTone(o)
               const isSub = isDigitalSubscription(o)
+              const isCrypto = isDigitalCrypto(o)
               const isPending = isDigitalOrderPending(o)
               const isPaid = isDigitalOrderPaid(o)
               const timing = isSub ? getSubscriptionTiming(o) : null
+              const kyc = o.payoutKyc
 
               return (
                 <article
@@ -451,7 +500,7 @@ export default function DigitalServicesAdminPage() {
                         color: isSub ? '#6D28D9' : '#C2410C',
                       }}
                     >
-                      {isSub ? 'Subscription' : 'Gift card'}
+                      {isSub ? 'Subscription' : isCrypto ? 'Crypto / FX' : 'Gift card'}
                     </span>
                     {isSub && timing && !isPending && o.status !== 'cancelled' ? (
                       <span
@@ -474,6 +523,20 @@ export default function DigitalServicesAdminPage() {
                           : timing.isExpiringSoon
                             ? `Expiring soon · ${timing.label}`
                             : `Active · ${timing.label}`}
+                      </span>
+                    ) : null}
+                    {o.isGuest ? (
+                      <span style={{ ...badge, background: '#FFF7ED', color: '#C2410C' }}>
+                        Guest · email
+                      </span>
+                    ) : (
+                      <span style={{ ...badge, background: '#EFF6FF', color: '#1D4ED8' }}>
+                        In-app account
+                      </span>
+                    )}
+                    {o.fulfillment ? (
+                      <span style={{ ...badge, background: '#ECFDF5', color: '#166534' }}>
+                        Details sent
                       </span>
                     ) : null}
                     {o.platformFeeCredited ? (
@@ -618,6 +681,125 @@ export default function DigitalServicesAdminPage() {
                     <Field label="Brand" value={o.brandTag || o.productKey || '—'} />
                   </div>
 
+                  {kyc ? (
+                    <div
+                      style={{
+                        marginTop: 14,
+                        padding: 12,
+                        borderRadius: 12,
+                        background: '#FFF7ED',
+                        border: '1px solid #FED7AA',
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 8 }}>
+                        Payout / identity uploads
+                      </div>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                          gap: 8,
+                        }}
+                      >
+                        {kyc.binanceId ? <Field label="Binance ID" value={kyc.binanceId} mono /> : null}
+                        {kyc.binanceAddress ? (
+                          <Field label="USDT address" value={kyc.binanceAddress} mono />
+                        ) : null}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+                        <KycThumb label="Alipay / WeChat" url={kyc.alipayWechatCodeUrl} />
+                        <KycThumb label="ID in hands" url={kyc.idInHandUrl} />
+                        <KycThumb label="Face" url={kyc.faceUrl} />
+                        <KycThumb label="Binance code" url={kyc.binanceCodeUrl} />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {o.fulfillment ? (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        borderRadius: 12,
+                        background: '#ECFDF5',
+                        border: '1px solid #BBF7D0',
+                        fontSize: 13,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, marginBottom: 6 }}>Sent to buyer</div>
+                      {o.fulfillment.cardDetails ? (
+                        <div>
+                          <strong>Card details:</strong> {o.fulfillment.cardDetails}
+                        </div>
+                      ) : null}
+                      {o.fulfillment.joiningLink ? (
+                        <div>
+                          <strong>Link:</strong> {o.fulfillment.joiningLink}
+                        </div>
+                      ) : null}
+                      {o.fulfillment.notes ? <div>{o.fulfillment.notes}</div> : null}
+                      <div style={{ color: '#166534', marginTop: 4, fontWeight: 700 }}>
+                        Via {(o.fulfillment.sentVia || []).join(' + ') || 'saved'}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {sendId === o.id ? (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        borderRadius: 12,
+                        border: '1px solid var(--border)',
+                        background: '#F8FAFC',
+                        display: 'grid',
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: 13 }}>
+                        Send card details / joining link
+                        {o.isGuest ? ' · guest email' : ' · in-app + email'}
+                      </div>
+                      <textarea
+                        value={cardDetails}
+                        onChange={e => setCardDetails(e.target.value)}
+                        placeholder="Card number, PIN, login, or account details"
+                        rows={3}
+                        style={{ ...search, minHeight: 72, resize: 'vertical' }}
+                      />
+                      <input
+                        value={joiningLink}
+                        onChange={e => setJoiningLink(e.target.value)}
+                        placeholder="Joining / invite link"
+                        style={search}
+                      />
+                      <input
+                        value={sendNotes}
+                        onChange={e => setSendNotes(e.target.value)}
+                        placeholder="Optional note for the buyer"
+                        style={search}
+                      />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void sendDetails(o.id)}
+                          style={primaryBtn}
+                        >
+                          Send to {o.isGuest ? o.buyerEmail || 'email' : 'buyer'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setSendId('')}
+                          style={outlineBtn}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
                     {!o.platformFeeCredited && o.amountMwk > 0 && isPaid ? (
                       <button
@@ -627,6 +809,16 @@ export default function DigitalServicesAdminPage() {
                         style={primaryBtn}
                       >
                         Credit full amount
+                      </button>
+                    ) : null}
+                    {!isPending && o.status !== 'cancelled' ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => openSend(o)}
+                        style={primaryBtn}
+                      >
+                        Send card / link
                       </button>
                     ) : null}
                     {o.status !== 'fulfilled' && !isPending ? (
@@ -696,6 +888,37 @@ function Metric({ label, value }: { label: string; value: string }) {
         {value}
       </div>
     </div>
+  )
+}
+
+function KycThumb({ label, url }: { label: string; url: string }) {
+  if (!url) return null
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      style={{ textDecoration: 'none', color: 'inherit' }}
+    >
+      <div style={{ width: 108 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={label}
+          style={{
+            width: 108,
+            height: 108,
+            objectFit: 'cover',
+            borderRadius: 10,
+            border: '1px solid #FED7AA',
+            background: '#fff',
+          }}
+        />
+        <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4, color: '#9A3412' }}>
+          {label}
+        </div>
+      </div>
+    </a>
   )
 }
 

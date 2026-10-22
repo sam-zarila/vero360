@@ -5,6 +5,7 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import {
   DIGITAL_SERVICE_ORDERS_COLLECTION,
   computeSubscriptionEndDate,
+  isDigitalCrypto,
   isDigitalOrderPaid,
   isDigitalOrderPending,
   isDigitalSubscription,
@@ -13,6 +14,10 @@ import {
   type DigitalServiceOrder,
   type DigitalServiceOrderCounts,
 } from '@/lib/digital-services'
+import {
+  isAppBuyerUid,
+  parsePayoutKyc,
+} from '@/lib/digital-payout-kyc'
 
 export const PLATFORM_WALLET_USER_ID = 'super_admin'
 export const PLATFORM_WALLET_DOC_ID = 'super_admin'
@@ -127,6 +132,27 @@ export function parseDigitalServiceOrder(
     endDate,
     platformFeeCredited: data.platformFeeCredited === true,
     platformFeeTxId: str(data.platformFeeTxId) || null,
+    isGuest: data.isGuest === true || !isAppBuyerUid(str(data.buyerUid || data.userId), data.isGuest === true),
+    payoutKyc: parsePayoutKyc(data.payoutKyc),
+    fulfillment: (() => {
+      const raw = data.fulfillment
+      const map =
+        raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+      const cardDetails = str(map.cardDetails || data.cardDetails)
+      const joiningLink = str(map.joiningLink || data.joiningLink)
+      const notes = str(map.notes || data.fulfillmentNotes)
+      const sentVia = Array.isArray(map.sentVia)
+        ? map.sentVia.map(v => String(v))
+        : []
+      if (!cardDetails && !joiningLink && !notes) return null
+      return {
+        cardDetails,
+        joiningLink,
+        notes,
+        sentAt: tsToIso(map.sentAt || data.fulfilledAt),
+        sentVia,
+      }
+    })(),
   }
 }
 
@@ -145,11 +171,13 @@ export function buildDigitalOrderCounts(
   let feePending = 0
   let revenuePaid = 0
   let revenueCredited = 0
+  let crypto = 0
 
   const now = Date.now()
 
   for (const o of items) {
     const isSub = isDigitalSubscription(o)
+    const isCrypto = isDigitalCrypto(o)
     const isPending = isDigitalOrderPending(o)
     const isPaid = isDigitalOrderPaid(o)
 
@@ -163,6 +191,8 @@ export function buildDigitalOrderCounts(
           activeSubscriptions += 1
         }
       }
+    } else if (isCrypto) {
+      crypto += 1
     } else {
       giftCards += 1
       if (isPending) giftCardsPending += 1
@@ -198,6 +228,7 @@ export function buildDigitalOrderCounts(
     feePending,
     revenuePaid,
     revenueCredited,
+    crypto,
   }
 }
 
@@ -475,4 +506,173 @@ export async function creditPendingDigitalOrderPlatformFees(): Promise<{
   }
 
   return { scanned: candidates.length, credited, skipped, totalAmount, results }
+}
+
+function isEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+}
+
+async function emailDigitalFulfillment(opts: {
+  to: string
+  buyerName: string
+  productName: string
+  cardDetails: string
+  joiningLink: string
+  notes: string
+}): Promise<boolean> {
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) return false
+  const from = process.env.RESEND_FROM_EMAIL || 'Vero360 <onboarding@resend.dev>'
+  const lines = [
+    `Hi ${opts.buyerName || 'there'},`,
+    '',
+    `Your ${opts.productName} order is ready.`,
+    '',
+  ]
+  if (opts.cardDetails) {
+    lines.push('Card / account details:', opts.cardDetails, '')
+  }
+  if (opts.joiningLink) {
+    lines.push('Joining link:', opts.joiningLink, '')
+  }
+  if (opts.notes) {
+    lines.push(opts.notes, '')
+  }
+  lines.push('Keep these details private.', '', '— Vero360')
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [opts.to],
+      subject: `Your ${opts.productName} details · Vero360`,
+      text: lines.join('\n'),
+    }),
+  })
+  if (!res.ok) {
+    console.error('Digital fulfillment email error:', await res.text())
+    return false
+  }
+  return true
+}
+
+export async function sendDigitalOrderFulfillment(
+  orderId: string,
+  input: {
+    cardDetails?: string
+    joiningLink?: string
+    notes?: string
+  },
+): Promise<{
+  order: DigitalServiceOrder
+  sentVia: string[]
+  emailed: boolean
+  inApp: boolean
+  message: string
+}> {
+  const cardDetails = str(input.cardDetails)
+  const joiningLink = str(input.joiningLink)
+  const notes = str(input.notes)
+  if (!cardDetails && !joiningLink && !notes) {
+    throw new Error('Enter card details, a joining link, or a note to send.')
+  }
+
+  const db = getAdminDb()
+  const ref = db.collection(DIGITAL_SERVICE_ORDERS_COLLECTION).doc(orderId.trim())
+  const snap = await ref.get()
+  if (!snap.exists) throw new Error('Order not found')
+  const order = parseDigitalServiceOrder(snap.id, snap.data() || {})
+  if (isDigitalOrderPending(order)) {
+    throw new Error('Mark the order paid before sending details.')
+  }
+  if (order.status === 'cancelled') {
+    throw new Error('This order is cancelled.')
+  }
+
+  const sentVia: string[] = []
+  const appBuyer = isAppBuyerUid(order.buyerUid, order.isGuest)
+
+  if (appBuyer) {
+    await db.collection('order_party_alerts').add({
+      toUid: order.buyerUid,
+      title: `${order.productName} is ready`,
+      body: [
+        `Your ${order.productName} details are ready.`,
+        cardDetails ? `Details: ${cardDetails}` : '',
+        joiningLink ? `Link: ${joiningLink}` : '',
+        notes,
+        'Open My Digital Orders to copy them.',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      payload: {
+        type: 'digital_fulfillment',
+        orderId: order.id,
+        productName: order.productName,
+        badgeRoute: 'quick_digital_orders',
+      },
+      createdAt: FieldValue.serverTimestamp(),
+      consumed: false,
+      read: false,
+    })
+    sentVia.push('in_app')
+  }
+
+  const shouldEmail = !appBuyer || Boolean(order.buyerEmail)
+  let emailed = false
+  if (shouldEmail) {
+    if (!isEmail(order.buyerEmail)) {
+      if (!appBuyer) {
+        throw new Error('This guest order has no valid email to send to.')
+      }
+    } else {
+      emailed = await emailDigitalFulfillment({
+        to: order.buyerEmail,
+        buyerName: order.buyerName,
+        productName: order.productName,
+        cardDetails,
+        joiningLink,
+        notes,
+      })
+      if (emailed) sentVia.push('email')
+      if (!appBuyer && !emailed) {
+        throw new Error(
+          'Could not email the guest. Check RESEND_API_KEY, then try again.',
+        )
+      }
+    }
+  }
+
+  if (!sentVia.length) {
+    throw new Error('Could not deliver details in-app or by email.')
+  }
+
+  await ref.set(
+    {
+      status: 'fulfilled',
+      fulfillment: {
+        cardDetails,
+        joiningLink,
+        notes,
+        sentAt: FieldValue.serverTimestamp(),
+        sentVia,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  )
+
+  const updated = await getDigitalServiceOrder(order.id)
+  const viaLabel = sentVia.join(' + ')
+  return {
+    order: updated || order,
+    sentVia,
+    emailed,
+    inApp: sentVia.includes('in_app'),
+    message: `Sent via ${viaLabel}`,
+  }
 }

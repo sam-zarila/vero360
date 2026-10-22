@@ -71,7 +71,15 @@ export async function createPendingDigitalOrder(input: {
   buyerEmail: string
   buyerPhone: string
   source?: string
+  isGuest?: boolean
+  payoutKyc?: Record<string, unknown> | null
 }): Promise<string> {
+  const isCrypto = String(input.product.category || '').toLowerCase() === 'crypto'
+  const kind = isCrypto
+    ? 'crypto'
+    : input.isSubscription
+      ? 'subscription'
+      : 'gift_card'
   const ref = getAdminDb().collection(DIGITAL_SERVICE_ORDERS_COLLECTION).doc()
   await ref.set({
     productKey: input.product.key,
@@ -79,7 +87,7 @@ export async function createPendingDigitalOrder(input: {
     productSubtitle: input.product.subtitle || '',
     brandTag: input.product.brandTag || '',
     category: input.product.category,
-    kind: input.isSubscription ? 'subscription' : 'gift_card',
+    kind,
     period: input.isSubscription ? 'monthly' : null,
     periodLabel: input.isSubscription ? '1 month' : null,
     selectedUsd: input.selectedUsd,
@@ -90,11 +98,20 @@ export async function createPendingDigitalOrder(input: {
     depositId: null,
     paymentProvider: 'pawapay',
     buyerUid: input.buyerUid,
+    isGuest: input.isGuest !== false,
     buyerName: input.buyerName,
     buyerEmail: input.buyerEmail,
     buyerPhone: input.buyerPhone,
     platformFeeCredited: false,
     source: input.source || 'web',
+    ...(input.payoutKyc
+      ? {
+          payoutKyc: {
+            ...input.payoutKyc,
+            uploadedAt: FieldValue.serverTimestamp(),
+          },
+        }
+      : {}),
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   })

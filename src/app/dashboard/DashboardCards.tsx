@@ -13,6 +13,8 @@ import {
   useMerchantReportsOpenBadge,
   useNewUsersBadge,
   useOrdersPendingBadge,
+  usePromoPaymentsNewBadge,
+  useStayPendingBadge,
 } from './AdminAlertsProvider'
 import { usePanelSession } from './PanelSessionProvider'
 
@@ -26,6 +28,8 @@ export default function DashboardCards() {
   const reportsOpen = useMerchantReportsOpenBadge()
   const digitalNew = useDigitalPaymentsNewBadge()
   const homepageAdNew = useHomepageAdPaymentsNewBadge()
+  const stayPending = useStayPendingBadge()
+  const promoNew = usePromoPaymentsNewBadge()
   const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
 
   return (
@@ -50,6 +54,8 @@ export default function DashboardCards() {
         const isReports = card.id === 'merchant-reports'
         const isDigital = card.id === 'digital-services'
         const isHomepageAds = card.id === 'homepage-ads'
+        const isStay = card.id === 'stay'
+        const isPromos = card.id === 'marketplace-promotions'
         const badgeCount = isHelp
           ? unread
           : isCourier
@@ -66,6 +72,10 @@ export default function DashboardCards() {
                       ? digitalNew
                       : isHomepageAds
                         ? homepageAdNew
+                        : isStay
+                          ? stayPending
+                          : isPromos
+                            ? promoNew
                         : 0
         const showBadge = badgeCount > 0
         const alertLabel = isHelp
@@ -84,6 +94,10 @@ export default function DashboardCards() {
                       ? `${badgeCount} new digital service payment${badgeCount === 1 ? '' : 's'}`
                       : isHomepageAds
                         ? `${badgeCount} new homepage ad payment${badgeCount === 1 ? '' : 's'}`
+                        : isStay
+                          ? `${badgeCount} new stay booking${badgeCount === 1 ? '' : 's'}`
+                          : isPromos
+                            ? `${badgeCount} new promote payment${badgeCount === 1 ? '' : 's'}`
                         : ''
         const alertDesc = isHelp
           ? `${badgeCount} new message${badgeCount === 1 ? '' : 's'} waiting`
@@ -101,6 +115,10 @@ export default function DashboardCards() {
                       ? `${badgeCount} payment${badgeCount === 1 ? '' : 's'} just completed`
                       : isHomepageAds
                         ? `${badgeCount} advert payment${badgeCount === 1 ? '' : 's'} just completed`
+                        : isStay
+                          ? `${badgeCount} booking${badgeCount === 1 ? '' : 's'} just placed`
+                          : isPromos
+                            ? `${badgeCount} promote payment${badgeCount === 1 ? '' : 's'} just completed`
                         : ''
         const alertCta = isHelp
           ? 'Reply now →'
@@ -118,6 +136,10 @@ export default function DashboardCards() {
                       ? 'Open digital services →'
                       : isHomepageAds
                         ? 'Open homepage ads →'
+                        : isStay
+                          ? 'Open stay bookings →'
+                          : isPromos
+                            ? 'Open promoted ads →'
                         : ''
 
         return (

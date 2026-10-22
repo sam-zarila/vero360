@@ -25,24 +25,29 @@ export async function GET(request: Request) {
       )
     }
 
-    const pending = parseMarketplaceOrders(body)
-      .filter(item => item.status === 'pending')
+    const recent = parseMarketplaceOrders(body)
       .sort((a, b) => {
         const at = a.orderDate ? new Date(a.orderDate).getTime() : 0
         const bt = b.orderDate ? new Date(b.orderDate).getTime() : 0
         return bt - at
       })
+      .slice(0, 80)
+    const pending = recent.filter(item => item.status === 'pending')
+    const latest = recent[0] || pending[0] || null
 
     return NextResponse.json({
       success: true,
       pending: pending.length,
       pendingIds: pending.map(item => item.id),
-      latest: pending[0]
+      recentIds: recent.map(item => item.id),
+      latest: latest
         ? {
-            id: pending[0].id,
-            orderNumber: pending[0].orderNumber,
-            itemName: pending[0].itemName,
-            orderDate: pending[0].orderDate,
+            id: latest.id,
+            orderNumber: latest.orderNumber,
+            itemName: latest.itemName,
+            category: latest.category,
+            status: latest.status,
+            orderDate: latest.orderDate,
           }
         : null,
     })

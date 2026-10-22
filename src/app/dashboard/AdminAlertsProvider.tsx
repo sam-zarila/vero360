@@ -8,6 +8,7 @@ import { useHelpCenterUnread } from '@/lib/help-center-alerts'
 import { useMerchantReportAlerts, type MerchantReportAlertState } from '@/lib/merchant-report-alerts'
 import { useOrderAlerts, type OrderAlertState } from '@/lib/order-alerts'
 import { usePaymentAlerts, type PaymentAlertState } from '@/lib/payment-alerts'
+import { useStayAlerts, type StayAlertState } from '@/lib/stay-alerts'
 import { useUserAlerts, type UserAlertState } from '@/lib/user-alerts'
 
 type AdminAlertsContextValue = {
@@ -15,6 +16,7 @@ type AdminAlertsContextValue = {
   drivers: DriverAlertState
   rides: RideAlertState
   orders: OrderAlertState
+  stay: StayAlertState
   users: UserAlertState
   merchantReports: MerchantReportAlertState
   payments: PaymentAlertState
@@ -28,13 +30,14 @@ export function AdminAlertsProvider({ children }: { children: React.ReactNode })
   const drivers = useDriverAlerts()
   const rides = useRideAlerts()
   const orders = useOrderAlerts()
+  const stay = useStayAlerts()
   const users = useUserAlerts()
   const merchantReports = useMerchantReportAlerts()
   const payments = usePaymentAlerts()
   const helpUnread = useHelpCenterUnread()
   return (
     <AdminAlertsContext.Provider
-      value={{ courier, drivers, rides, orders, users, merchantReports, payments, helpUnread }}
+      value={{ courier, drivers, rides, orders, stay, users, merchantReports, payments, helpUnread }}
     >
       {children}
     </AdminAlertsContext.Provider>
@@ -70,6 +73,11 @@ export function useOrdersPendingBadge() {
   return ctx?.orders.pending ?? 0
 }
 
+export function useStayPendingBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.stay.pending ?? 0
+}
+
 export function useMarkOrdersSeen() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.orders.markOrdersSeen
@@ -98,4 +106,9 @@ export function useDigitalPaymentsNewBadge() {
 export function useHomepageAdPaymentsNewBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.payments.homepageAdNew ?? 0
+}
+
+export function usePromoPaymentsNewBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.payments.promoNew ?? 0
 }

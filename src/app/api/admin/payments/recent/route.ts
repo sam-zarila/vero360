@@ -3,6 +3,8 @@ import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import { isDigitalOrderPaid } from '@/lib/digital-services'
 import { listDigitalServiceOrders } from '@/lib/digital-services-admin'
 import { listHomepageAdverts } from '@/lib/homepage-adverts-admin'
+import { isPromotionPaid } from '@/lib/marketplace-promotions'
+import { listMarketplacePromotions } from '@/lib/marketplace-promotions-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,9 +17,10 @@ export async function GET(request: Request) {
   if (denied) return denied
 
   try {
-    const [digitalAll, adsAll] = await Promise.all([
+    const [digitalAll, adsAll, promoAll] = await Promise.all([
       listDigitalServiceOrders({ limit: 200 }),
       listHomepageAdverts({ limit: 200 }),
+      listMarketplacePromotions(80),
     ])
 
     const digital = digitalAll
@@ -60,16 +63,33 @@ export async function GET(request: Request) {
         paidAt: a.paidAt || a.createdAt,
       }))
 
+    const promotions = promoAll
+      .filter(p => p.amountMwk > 0 && isPromotionPaid(p))
+      .slice(0, 40)
+      .map(p => ({
+        id: p.id,
+        kind: 'promotion' as const,
+        title: p.itemName,
+        amountMwk: p.amountMwk,
+        buyerName: p.merchantName,
+        buyerEmail: '',
+        paidAt: p.paidAt || p.createdAt,
+      }))
+
     return NextResponse.json({
       success: true,
       digital,
       homepageAds,
+      promotions,
       digitalIds: digital.map(d => d.id),
       homepageAdIds: homepageAds.map(a => a.id),
+      promotionIds: promotions.map(p => p.id),
       digitalCount: digital.length,
       homepageAdCount: homepageAds.length,
+      promotionCount: promotions.length,
       latestDigital: digital[0] || null,
       latestHomepageAd: homepageAds[0] || null,
+      latestPromotion: promotions[0] || null,
     })
   } catch (err) {
     console.error('Admin payments recent GET:', err)

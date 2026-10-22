@@ -11,6 +11,7 @@ import {
   digitalBrandImage,
   formatDigitalPriceLabel,
 } from '@/lib/digital-brand-images'
+import { detectDigitalPayoutKycKind } from '@/lib/digital-payout-kyc'
 import {
   buildPublicChatGptPlans,
   isChatGptHubKey,
@@ -140,6 +141,8 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
             : config.usdToMwkRate || 4700,
         unitLabel: product.unitLabel || null,
         isFixedPrice,
+        category: product.category,
+        payoutKind: detectDigitalPayoutKycKind(product),
         backHref: isNetflixPlanKey(product.key)
           ? '/digital-services/netflix'
           : isChatGptPlanKey(product.key)

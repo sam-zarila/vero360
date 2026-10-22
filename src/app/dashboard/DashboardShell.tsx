@@ -9,6 +9,7 @@ import { VeroIcon } from '@/app/components/landing/icons'
 import { auth } from '@/lib/firebase'
 import { DASHBOARD_NAV_GROUPS } from '@/lib/dashboard-sections'
 import { AdminAlertsProvider, useAdminAlerts, useHelpCenterUnreadBadge } from './AdminAlertsProvider'
+import AdminNotifications from './AdminNotifications'
 import { ConfirmDialogProvider } from './ConfirmDialog'
 import {
   isAgentAllowedPath,
@@ -132,6 +133,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     drivers: { pending: driversPending, toast: driversToast, clearToast: clearDriversToast },
     rides: { issues: rideIssues, toast: ridesToast, clearToast: clearRidesToast },
     orders: { pending: ordersPending, toast: ordersToast, clearToast: clearOrdersToast },
+    stay: { pending: stayPending, toast: stayToast, clearToast: clearStayToast },
     users: { newCount: newUsers, toast: usersToast, clearToast: clearUsersToast },
     merchantReports: {
       open: reportsOpen,
@@ -141,6 +143,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     payments: {
       digitalNew,
       homepageAdNew,
+      promoNew,
       toast: paymentsToast,
       toastHref: paymentsToastHref,
       clearToast: clearPaymentsToast,
@@ -183,6 +186,12 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => clearOrdersToast(), 8000)
     return () => window.clearTimeout(timer)
   }, [ordersToast, clearOrdersToast])
+
+  useEffect(() => {
+    if (!stayToast) return
+    const timer = window.setTimeout(() => clearStayToast(), 8000)
+    return () => window.clearTimeout(timer)
+  }, [stayToast, clearStayToast])
 
   useEffect(() => {
     if (!usersToast) return
@@ -292,6 +301,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <AdminNotifications />
             <Link href="/" style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-3)' }}>
               Website
             </Link>
@@ -433,6 +443,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                                     ? digitalNew
                                     : item.badgeKey === 'homepageAds'
                                       ? homepageAdNew
+                                      : item.badgeKey === 'stay'
+                                        ? stayPending
+                                        : item.badgeKey === 'promotions'
+                                          ? promoNew
                                       : 0
                     const badge =
                       badgeCount > 0 ? (badgeCount > 99 ? '99+' : String(badgeCount)) : null
@@ -660,6 +674,61 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                       fontSize: 12,
                       fontWeight: 600,
                       color: '#9A3412',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </div>
+            )}
+            {stayToast && (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#F5F3FF',
+                  border: '1px solid #DDD6FE',
+                  color: '#5B21B6',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  boxShadow: '0 8px 24px rgba(109,40,217,0.12)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="bed" size={20} strokeWidth={2.35} />
+                  {stayToast}
+                </span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
+                  <Link
+                    href="/dashboard/stay"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: '#6D28D9',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Open
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={clearStayToast}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #DDD6FE',
+                      background: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#5B21B6',
                     }}
                   >
                     Dismiss

@@ -314,6 +314,8 @@ export type DashboardNavBadgeKey =
   | 'reports'
   | 'digital'
   | 'homepageAds'
+  | 'stay'
+  | 'promotions'
 
 export type DashboardNavItem = {
   href: string
@@ -350,14 +352,14 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/food', label: 'Food', icon: 'food' },
       { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
       { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },
-      { href: '/dashboard/stay', label: 'Stay', icon: 'bed' },
+      { href: '/dashboard/stay', label: 'Stay', icon: 'bed', badgeKey: 'stay' },
       { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'cart' },
       { href: '/dashboard/orders', label: 'Orders', icon: 'package', badgeKey: 'orders' },
       { href: '/dashboard/refunds', label: 'Refunds', icon: 'refund' },
       { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: 'flag', badgeKey: 'reports' },
       { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
       { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
-      { href: '/dashboard/marketplace-promotions', label: 'Promoted ads', icon: 'megaphone' },
+      { href: '/dashboard/marketplace-promotions', label: 'Promoted ads', icon: 'megaphone', badgeKey: 'promotions' },
       { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
       { href: '/dashboard/marketing/tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
       {

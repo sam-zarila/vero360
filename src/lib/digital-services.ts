@@ -2,7 +2,7 @@
 
 export const DIGITAL_SERVICE_ORDERS_COLLECTION = 'digital_service_orders'
 
-export type DigitalOrderKind = 'subscription' | 'gift_card' | string
+export type DigitalOrderKind = 'subscription' | 'gift_card' | 'crypto' | string
 export type DigitalOrderStatus = 'pending_payment' | 'paid' | 'fulfilled' | 'cancelled' | string
 
 export type DigitalServiceOrder = {
@@ -31,6 +31,24 @@ export type DigitalServiceOrder = {
   endDate: string | null
   platformFeeCredited: boolean
   platformFeeTxId: string | null
+  isGuest: boolean
+  payoutKyc: {
+    kind: string
+    alipayWechatCodeUrl: string
+    idInHandUrl: string
+    faceUrl: string
+    binanceId: string
+    binanceAddress: string
+    binanceCodeUrl: string
+    uploadedAt: string | null
+  } | null
+  fulfillment: {
+    cardDetails: string
+    joiningLink: string
+    notes: string
+    sentAt: string | null
+    sentVia: string[]
+  } | null
 }
 
 export type DigitalServiceOrderCounts = {
@@ -47,6 +65,7 @@ export type DigitalServiceOrderCounts = {
   feePending: number
   revenuePaid: number
   revenueCredited: number
+  crypto: number
 }
 
 function slugStatus(raw: unknown): string {
@@ -89,6 +108,7 @@ export function normalizeDigitalOrderKind(
 ): DigitalOrderKind {
   const v = slugStatus(rawKind)
   if (v === 'subscription' || v === 'sub' || v === 'streaming') return 'subscription'
+  if (v === 'crypto' || v === 'fx') return 'crypto'
   if (
     v === 'gift_card' ||
     v === 'giftcard' ||
@@ -101,6 +121,7 @@ export function normalizeDigitalOrderKind(
 
   const category = slugStatus(opts?.category)
   if (category === 'streaming' || category === 'subscription') return 'subscription'
+  if (category === 'crypto' || category === 'fx') return 'crypto'
   if (category === 'gift_card' || category === 'giftcard' || category === 'gift') {
     return 'gift_card'
   }
@@ -124,12 +145,22 @@ export function isDigitalOrderPaid(
   return status === 'paid' || status === 'fulfilled'
 }
 
-export function isDigitalGiftCard(order: Pick<DigitalServiceOrder, 'kind'>): boolean {
-  return normalizeDigitalOrderKind(order.kind) === 'gift_card'
+export function isDigitalGiftCard(
+  order: Pick<DigitalServiceOrder, 'kind' | 'category'>,
+): boolean {
+  if (isDigitalCrypto(order)) return false
+  return normalizeDigitalOrderKind(order.kind, { category: order.category }) === 'gift_card'
 }
 
 export function isDigitalSubscription(order: Pick<DigitalServiceOrder, 'kind'>): boolean {
   return normalizeDigitalOrderKind(order.kind) === 'subscription'
+}
+
+export function isDigitalCrypto(order: Pick<DigitalServiceOrder, 'kind' | 'category'>): boolean {
+  return (
+    normalizeDigitalOrderKind(order.kind, { category: order.category }) === 'crypto' ||
+    String(order.category || '').trim().toLowerCase() === 'crypto'
+  )
 }
 
 /**

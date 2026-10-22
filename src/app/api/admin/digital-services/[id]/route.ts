@@ -4,6 +4,7 @@ import {
   creditDigitalOrderPlatformFee,
   deleteDigitalServiceOrder,
   getDigitalServiceOrder,
+  sendDigitalOrderFulfillment,
   updateDigitalServiceOrderStatus,
 } from '@/lib/digital-services-admin'
 
@@ -37,10 +38,22 @@ export async function PATCH(request: Request, ctx: Ctx) {
       status?: string
       startDate?: string | null
       endDate?: string | null
+      cardDetails?: string
+      joiningLink?: string
+      notes?: string
     }
 
     if (body.action === 'credit_platform_fee') {
       const result = await creditDigitalOrderPlatformFee(id)
+      return NextResponse.json({ success: true, ...result })
+    }
+
+    if (body.action === 'send_fulfillment') {
+      const result = await sendDigitalOrderFulfillment(id, {
+        cardDetails: body.cardDetails,
+        joiningLink: body.joiningLink,
+        notes: body.notes,
+      })
       return NextResponse.json({ success: true, ...result })
     }
 
@@ -54,7 +67,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       return NextResponse.json(
         {
           error:
-            'Provide status: paid | fulfilled | cancelled | pending_payment, or action: credit_platform_fee',
+            'Provide status: paid | fulfilled | cancelled | pending_payment, or action: credit_platform_fee | send_fulfillment',
         },
         { status: 400 },
       )

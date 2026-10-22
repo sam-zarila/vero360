@@ -9,6 +9,10 @@ import {
   createPendingDigitalOrder,
   normalizeMalawiPhone,
 } from '@/lib/digital-services-checkout'
+import {
+  assertPayoutKycComplete,
+  detectDigitalPayoutKycKind,
+} from '@/lib/digital-payout-kyc'
 import { savePawaPayDeposit } from '@/lib/pawapay-deposits'
 import {
   createPawaPayDeposit,
@@ -133,6 +137,33 @@ export async function POST(request: Request) {
       )
     }
 
+    const payoutKind = detectDigitalPayoutKycKind(product)
+    const rawKyc =
+      body.payoutKyc && typeof body.payoutKyc === 'object'
+        ? (body.payoutKyc as Record<string, unknown>)
+        : {}
+    const payoutKyc = payoutKind
+      ? {
+          kind: payoutKind,
+          alipayWechatCodeUrl: String(rawKyc.alipayWechatCodeUrl || '').trim(),
+          idInHandUrl: String(rawKyc.idInHandUrl || '').trim(),
+          faceUrl: String(rawKyc.faceUrl || '').trim(),
+          binanceId: String(rawKyc.binanceId || '').trim(),
+          binanceAddress: String(rawKyc.binanceAddress || '').trim(),
+          binanceCodeUrl: String(rawKyc.binanceCodeUrl || '').trim(),
+        }
+      : null
+    if (payoutKind) {
+      try {
+        assertPayoutKycComplete(payoutKind, payoutKyc)
+      } catch (err) {
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : 'Payout details required' },
+          { status: 400 },
+        )
+      }
+    }
+
     const txRef = `vero-digital-${Date.now()}`
     const buyerUid = `web:${randomUUID()}`
     const orderId = await createPendingDigitalOrder({
@@ -146,6 +177,8 @@ export async function POST(request: Request) {
       buyerEmail,
       buyerPhone,
       source: 'web',
+      isGuest: true,
+      payoutKyc,
     })
 
     const depositId = randomUUID()

@@ -1,10 +1,11 @@
 'use client'
+import { notifyBrowser } from '@/lib/admin-browser-notify'
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const POLL_MS = 12_000
-const STORAGE_KEY = 'vero_orders_last_pending_ids'
+const STORAGE_KEY = 'vero_orders_last_seen_ids'
 const SEEN_KEY = 'vero_orders_seen_pending_ids'
 
 export type OrderAlertState = {
@@ -36,31 +37,9 @@ function writeIds(storage: Storage, key: string, ids: number[]) {
   }
 }
 
-function notifyBrowser(title: string, body: string) {
-  if (typeof window === 'undefined' || !('Notification' in window)) return
-  if (Notification.permission === 'granted') {
-    try {
-      new Notification(title, { body, tag: 'vero-orders-pending' })
-    } catch {
-      // ignore
-    }
-    return
-  }
-  if (Notification.permission === 'default') {
-    void Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        try {
-          new Notification(title, { body, tag: 'vero-orders-pending' })
-        } catch {
-          // ignore
-        }
-      }
-    })
-  }
-}
-
 /**
- * Polls pending marketplace orders for admin badges / toasts.
+ * Polls marketplace / food orders for admin badges / toasts.
+ * Toasts fire for any new order, not only pending ones.
  */
 export function useOrderAlerts(enabled = true): OrderAlertState {
   const [pendingIds, setPendingIds] = useState<number[]>([])
@@ -99,33 +78,48 @@ export function useOrderAlerts(enabled = true): OrderAlertState {
         const data = (await res.json()) as {
           pending?: number
           pendingIds?: number[]
+          recentIds?: number[]
+          latest?: {
+            id?: number
+            orderNumber?: string
+            itemName?: string
+            category?: string
+          } | null
         }
         if (cancelled) return
 
-        const ids = Array.isArray(data.pendingIds)
+        const pending = Array.isArray(data.pendingIds)
           ? data.pendingIds.map(Number).filter(n => Number.isFinite(n) && n > 0)
           : []
-        setPendingIds(ids)
+        const recent = Array.isArray(data.recentIds)
+          ? data.recentIds.map(Number).filter(n => Number.isFinite(n) && n > 0)
+          : pending
+        setPendingIds(pending)
 
         const known = readIds(sessionStorage, STORAGE_KEY)
         if (!primed.current) {
-          writeIds(sessionStorage, STORAGE_KEY, ids.length ? ids : known)
+          writeIds(sessionStorage, STORAGE_KEY, recent.length ? recent : known)
           primed.current = true
           return
         }
 
         const knownSet = new Set(known)
-        const fresh = ids.filter(id => !knownSet.has(id))
+        const fresh = recent.filter(id => !knownSet.has(id))
         if (fresh.length > 0) {
+          const latest = data.latest
+          const food =
+            String(latest?.category || '').toLowerCase() === 'food'
+          const label = food ? 'food order' : 'order'
+          const name = latest?.itemName ? ` · ${latest.itemName}` : ''
           const message =
             fresh.length === 1
-              ? `New marketplace order #${fresh[0]}. Review in Orders`
-              : `${fresh.length} new marketplace orders. Review in Orders`
+              ? `New ${label} #${latest?.orderNumber || fresh[0]}${name}`
+              : `${fresh.length} new ${food ? 'food' : 'marketplace'} orders`
           setToast(message)
-          notifyBrowser('New marketplace order', message)
-          writeIds(sessionStorage, STORAGE_KEY, [...new Set([...known, ...ids])])
+          notifyBrowser(food ? 'New food order' : 'New order', message, 'vero-orders')
+          writeIds(sessionStorage, STORAGE_KEY, [...new Set([...known, ...recent])])
         } else {
-          writeIds(sessionStorage, STORAGE_KEY, ids)
+          writeIds(sessionStorage, STORAGE_KEY, recent)
         }
       } catch {
         // keep last known pending
