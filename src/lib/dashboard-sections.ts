@@ -4,7 +4,6 @@ import { isMarketingKpiDemoAvailable } from '@/lib/marketing-tasks'
 export type DashboardSectionId =
   | 'vero-ride'
   | 'vero-courier'
-  | 'car-hire'
   | 'food'
   | 'jobs'
   | 'tenders'
@@ -62,14 +61,6 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'truck',
     color: '#EA580C',
     bg: '#FFEDD5',
-  },
-  {
-    id: 'car-hire',
-    title: 'Car hire',
-    desc: 'Verify companies and vehicle listings before they go live',
-    icon: 'car',
-    color: '#EA580C',
-    bg: '#FFF7ED',
   },
   {
     id: 'food',
@@ -356,8 +347,6 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: 'car', badgeKey: 'drivers' },
       { href: '/dashboard/vero-ride/trips', label: 'Vero Ride Trips', icon: 'car', badgeKey: 'rides' },
       { href: '/dashboard/vero-courier', label: 'Vero Courier', icon: 'truck', badgeKey: 'courier' },
-      { href: '/dashboard/car-hire', label: 'Car hire verification', icon: 'car' },
-      { href: '/dashboard/car-hire/listings', label: 'Cars to verify', icon: 'car' },
       { href: '/dashboard/food', label: 'Food', icon: 'food' },
       { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
       { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },

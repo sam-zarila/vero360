@@ -10,6 +10,11 @@ import {
   resolveFoodImage,
   sourceLabel,
 } from '@/lib/food-utils'
+import {
+  foodOrderStatusLabel,
+  type FoodAdminOrder,
+  type FoodOrderStatus,
+} from '@/lib/food-orders-admin'
 import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
 import {
   DashboardBackLink,
@@ -24,11 +29,26 @@ import { useConfirmDelete } from '../ConfirmDialog'
 const SECTION = DASHBOARD_SECTION_MAP.food
 
 type SourceTab = 'all' | FoodSource
+type ViewMode = 'menus' | 'orders'
+type OrderTab = 'all' | FoodOrderStatus
+
+const EMPTY_ORDER_COUNTS = {
+  all: 0,
+  pending: 0,
+  preparing: 0,
+  sent: 0,
+  delivered: 0,
+  cancelled: 0,
+}
 
 export default function FoodAdminPage() {
   const confirmDelete = useConfirmDelete()
+  const [view, setView] = useState<ViewMode>('orders')
   const [items, setItems] = useState<FoodItem[]>([])
   const [counts, setCounts] = useState({ all: 0, api: 0, marketplace: 0, menu: 0 })
+  const [orders, setOrders] = useState<FoodAdminOrder[]>([])
+  const [orderCounts, setOrderCounts] = useState(EMPTY_ORDER_COUNTS)
+  const [orderTab, setOrderTab] = useState<OrderTab>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -36,7 +56,7 @@ export default function FoodAdminPage() {
   const [sourceTab, setSourceTab] = useState<SourceTab>('all')
   const [busyKey, setBusyKey] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const loadMenus = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -52,8 +72,26 @@ export default function FoodAdminPage() {
     }
   }, [])
 
+  const loadOrders = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await adminFetch('/api/admin/food-orders', { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to load food orders')
+      setOrders(data.items || [])
+      setOrderCounts(data.counts || EMPTY_ORDER_COUNTS)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load food orders')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const load = view === 'orders' ? loadOrders : loadMenus
+
   useEffect(() => {
-    load()
+    void load()
   }, [load])
 
   const filtered = useMemo(() => {
@@ -68,6 +106,25 @@ export default function FoodAdminPage() {
       )
     })
   }, [items, query, sourceTab])
+
+  const filteredOrders = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return orders.filter(item => {
+      if (orderTab === 'sent') {
+        if (item.status !== 'sent' && item.status !== 'ready') return false
+      } else if (orderTab !== 'all' && item.status !== orderTab) {
+        return false
+      }
+      if (!q) return true
+      return (
+        item.orderNumber.toLowerCase().includes(q) ||
+        item.kitchen.toLowerCase().includes(q) ||
+        item.customerName.toLowerCase().includes(q) ||
+        item.customerPhone.toLowerCase().includes(q) ||
+        item.itemsSummary.toLowerCase().includes(q)
+      )
+    })
+  }, [orders, query, orderTab])
 
   const remove = async (item: FoodItem) => {
     if (
@@ -89,7 +146,7 @@ export default function FoodAdminPage() {
       if (!res.ok) throw new Error(data.error || 'Delete failed')
       setNotice(`Deleted “${item.name}”`)
       setItems(prev => prev.filter(x => x.key !== item.key))
-      await load()
+      await loadMenus()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
@@ -104,6 +161,15 @@ export default function FoodAdminPage() {
     { id: 'api', label: 'API', count: counts.api },
   ]
 
+  const orderTabs: Array<{ id: OrderTab; label: string; count: number }> = [
+    { id: 'all', label: 'All', count: orderCounts.all },
+    { id: 'pending', label: 'Pending', count: orderCounts.pending },
+    { id: 'preparing', label: 'Preparing', count: orderCounts.preparing },
+    { id: 'sent', label: 'Sent', count: orderCounts.sent },
+    { id: 'delivered', label: 'Delivered', count: orderCounts.delivered },
+    { id: 'cancelled', label: 'Cancelled', count: orderCounts.cancelled },
+  ]
+
   return (
     <div>
       <DashboardBackLink label="Back to dashboard" />
@@ -112,6 +178,36 @@ export default function FoodAdminPage() {
         sectionId="food"
         actions={<DashboardRefreshButton onClick={() => void load()} disabled={loading} />}
       />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '0 0 16px' }}>
+        {([
+          { id: 'orders' as const, label: 'Orders' },
+          { id: 'menus' as const, label: 'Menus' },
+        ]).map(tab => {
+          const active = view === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setQuery('')
+                setView(tab.id)
+              }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 100,
+                border: active ? 'none' : '1px solid var(--border)',
+                background: active ? SECTION.color : '#fff',
+                color: active ? '#fff' : '#334155',
+                fontSize: 13,
+                fontWeight: 800,
+              }}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
 
       {(error || notice) && (
         <div
@@ -132,19 +228,26 @@ export default function FoodAdminPage() {
       <DashboardSearchField
         value={query}
         onChange={setQuery}
-        placeholder="Search dish or restaurant…"
-        label="Search food"
+        placeholder={
+          view === 'orders'
+            ? 'Search order, kitchen, or customer…'
+            : 'Search dish or restaurant…'
+        }
+        label={view === 'orders' ? 'Search food orders' : 'Search food'}
         onClear={() => setQuery('')}
       />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {tabs.map(t => {
-          const active = sourceTab === t.id
+        {(view === 'orders' ? orderTabs : tabs).map(t => {
+          const active = view === 'orders' ? orderTab === t.id : sourceTab === t.id
           return (
             <button
               key={t.id}
               type="button"
-              onClick={() => setSourceTab(t.id)}
+              onClick={() => {
+                if (view === 'orders') setOrderTab(t.id as OrderTab)
+                else setSourceTab(t.id as SourceTab)
+              }}
               style={{
                 padding: '8px 12px',
                 borderRadius: 100,
@@ -172,7 +275,80 @@ export default function FoodAdminPage() {
         }}
       >
         {loading ? (
-          <p style={{ color: 'var(--text-3)' }}>Loading food items…</p>
+          <p style={{ color: 'var(--text-3)' }}>
+            {view === 'orders' ? 'Loading food orders…' : 'Loading food items…'}
+          </p>
+        ) : view === 'orders' ? (
+          filteredOrders.length === 0 ? (
+            <DashboardEmptyState
+              icon={SECTION.icon}
+              color={SECTION.color}
+              title={
+                query.trim()
+                  ? `No food orders found for “${query.trim()}”`
+                  : 'No food orders yet'
+              }
+              hint={
+                query.trim()
+                  ? 'Try a different search term.'
+                  : 'Paid kitchen orders from the app appear here.'
+              }
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {filteredOrders.map(item => (
+                <article
+                  key={item.id}
+                  style={{
+                    display: 'grid',
+                    gap: 8,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+                      {item.orderNumber}
+                    </h3>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 800,
+                        padding: '3px 8px',
+                        borderRadius: 100,
+                        background: '#FEF2F2',
+                        color: '#991B1B',
+                      }}
+                    >
+                      {foodOrderStatusLabel(item.status)}
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontWeight: 800 }}>
+                      {formatMwk(item.totalMwk)}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-2)' }}>
+                    {item.itemsSummary}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-4)' }}>
+                    {item.kitchen}
+                    {item.customerName ? ` · ${item.customerName}` : ''}
+                    {item.customerPhone ? ` · ${item.customerPhone}` : ''}
+                    {item.createdAt ? ` · ${formatDateTime(item.createdAt)}` : ''}
+                  </div>
+                  {item.deliveryAddress ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{item.deliveryAddress}</div>
+                  ) : null}
+                  {item.courierTracking ? (
+                    <div style={{ fontSize: 12, fontWeight: 700, color: SECTION.color }}>
+                      Vero Courier · {item.courierTracking}
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          )
         ) : filtered.length === 0 ? (
           <DashboardEmptyState
             icon={SECTION.icon}

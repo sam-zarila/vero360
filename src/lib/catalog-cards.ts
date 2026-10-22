@@ -15,7 +15,6 @@ export type BrowseCatalogId =
   | 'marketplace'
   | 'food'
   | 'stays'
-  | 'car-hire'
   | 'digital-services'
   | 'jobs'
   | 'tenders'
@@ -49,12 +48,6 @@ export const BROWSE_CATALOGS: Record<
     subtitle: 'Hotels, lodges, and short stays',
     endpoint: '/api/public/stays?limit=120',
     itemLabel: 'stays',
-  },
-  'car-hire': {
-    title: 'Car Hire',
-    subtitle: 'Rent a car for the road, with pickup areas across Malawi',
-    endpoint: '/api/public/car-hire?limit=120',
-    itemLabel: 'cars',
   },
   'digital-services': {
     title: 'Digital Services',

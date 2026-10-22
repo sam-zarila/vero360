@@ -1,19 +1,8 @@
 import type { VeroIconName } from './icons'
 import { isAppStoreLaunched } from '@/lib/app-launch'
 
-export const exploreServices: {
-  icon: VeroIconName
-  name: string
-  desc: string
-  browsePath?: string
-}[] = [
+export const exploreServices: { icon: VeroIconName; name: string; desc: string }[] = [
   { icon: 'car', name: 'Vero Ride', desc: 'Cars, SUVs & bikes on demand' },
-  {
-    icon: 'steering',
-    name: 'Car Hire',
-    desc: 'Rent a car for the road',
-    browsePath: '/car-hire',
-  },
   { icon: 'plane', name: 'Airport Pickup', desc: 'Scheduled airport transfers' },
   { icon: 'truck', name: 'Vero Courier', desc: 'Same-day parcel delivery' },
   { icon: 'bike', name: 'Vero Bike', desc: 'Quick rides on two wheels' },
