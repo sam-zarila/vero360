@@ -7,19 +7,24 @@ import { useRideAlerts, type RideAlertState } from '@/lib/ride-alerts'
 import { useHelpCenterUnread } from '@/lib/help-center-alerts'
 import { useMerchantReportAlerts, type MerchantReportAlertState } from '@/lib/merchant-report-alerts'
 import { useOrderAlerts, type OrderAlertState } from '@/lib/order-alerts'
+import { useFoodAlerts, type FoodAlertState } from '@/lib/food-alerts'
 import { usePaymentAlerts, type PaymentAlertState } from '@/lib/payment-alerts'
 import { useStayAlerts, type StayAlertState } from '@/lib/stay-alerts'
 import { useUserAlerts, type UserAlertState } from '@/lib/user-alerts'
+import { useCarHireAlerts, type CarHireAlertState } from '@/lib/car-hire-alerts'
+import type { DashboardNavBadgeKey } from '@/lib/dashboard-sections'
 
 type AdminAlertsContextValue = {
   courier: CourierAlertState
   drivers: DriverAlertState
   rides: RideAlertState
   orders: OrderAlertState
+  food: FoodAlertState
   stay: StayAlertState
   users: UserAlertState
   merchantReports: MerchantReportAlertState
   payments: PaymentAlertState
+  carHire: CarHireAlertState
   helpUnread: number
 }
 
@@ -30,14 +35,28 @@ export function AdminAlertsProvider({ children }: { children: React.ReactNode })
   const drivers = useDriverAlerts()
   const rides = useRideAlerts()
   const orders = useOrderAlerts()
+  const food = useFoodAlerts()
   const stay = useStayAlerts()
   const users = useUserAlerts()
   const merchantReports = useMerchantReportAlerts()
   const payments = usePaymentAlerts()
+  const carHire = useCarHireAlerts()
   const helpUnread = useHelpCenterUnread()
   return (
     <AdminAlertsContext.Provider
-      value={{ courier, drivers, rides, orders, stay, users, merchantReports, payments, helpUnread }}
+      value={{
+        courier,
+        drivers,
+        rides,
+        orders,
+        food,
+        stay,
+        users,
+        merchantReports,
+        payments,
+        carHire,
+        helpUnread,
+      }}
     >
       {children}
     </AdminAlertsContext.Provider>
@@ -50,6 +69,27 @@ export function useAdminAlerts() {
     throw new Error('useAdminAlerts must be used within AdminAlertsProvider')
   }
   return ctx
+}
+
+export function useNavBadgeCounts(): Record<DashboardNavBadgeKey, number> {
+  const ctx = useContext(AdminAlertsContext)
+  return {
+    help: ctx?.helpUnread ?? 0,
+    courier: ctx?.courier.pending ?? 0,
+    drivers: ctx?.drivers.pending ?? 0,
+    rides: (ctx?.rides.issues ?? 0) + (ctx?.rides.unseen ?? 0),
+    orders: ctx?.orders.pending ?? 0,
+    food: ctx?.food.pending ?? 0,
+    users: ctx?.users.newCount ?? 0,
+    reports: ctx?.merchantReports.open ?? 0,
+    digital: ctx?.payments.digitalNew ?? 0,
+    homepageAds: ctx?.payments.homepageAdNew ?? 0,
+    stay: ctx?.stay.pending ?? 0,
+    promotions: ctx?.payments.promoNew ?? 0,
+    carHire: ctx?.carHire.companies ?? 0,
+    carHireListings: ctx?.carHire.listings ?? 0,
+    carHireLeads: ctx?.carHire.leads ?? 0,
+  }
 }
 
 /** Safe for optional use outside provider (returns zeros). */
@@ -65,12 +105,17 @@ export function useDriverPendingBadge() {
 
 export function useRideIssuesBadge() {
   const ctx = useContext(AdminAlertsContext)
-  return ctx?.rides.issues ?? 0
+  return (ctx?.rides.issues ?? 0) + (ctx?.rides.unseen ?? 0)
 }
 
 export function useOrdersPendingBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.orders.pending ?? 0
+}
+
+export function useFoodPendingBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.food.pending ?? 0
 }
 
 export function useStayPendingBadge() {
@@ -81,6 +126,16 @@ export function useStayPendingBadge() {
 export function useMarkOrdersSeen() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.orders.markOrdersSeen
+}
+
+export function useMarkFoodSeen() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.food.markFoodSeen
+}
+
+export function useMarkRidesSeen() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.rides.markRidesSeen
 }
 
 export function useNewUsersBadge() {
@@ -111,4 +166,19 @@ export function useHomepageAdPaymentsNewBadge() {
 export function usePromoPaymentsNewBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.payments.promoNew ?? 0
+}
+
+export function useCarHireCompaniesBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.carHire.companies ?? 0
+}
+
+export function useCarHireListingsBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.carHire.listings ?? 0
+}
+
+export function useCarHireLeadsBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.carHire.leads ?? 0
 }

@@ -1,14 +1,29 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from 'react'
 import Link from 'next/link'
 import { panelAuthHeaders } from '@/lib/panel-client-auth'
 import {
+  escrowStatusTone,
   formatDateTime,
   formatMwk,
   isPayoutTx,
+<<<<<<< HEAD
   payoutPaidToLabel,
+=======
+  platformServiceOf,
+  serviceFeePercentLabel,
+>>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
   txStatusTone,
+  type EscrowRow,
   type WalletRow,
   type WalletTxRow,
 } from '@/lib/finance'
@@ -17,6 +32,16 @@ import {
   PAYOUT_BANKS,
   PAYOUT_MOMO,
 } from '@/lib/payout-destinations'
+import {
+  isPawaPayCollectionTx,
+  isPawaPayPayoutTx,
+  pawapayCollectionFeeMwk,
+  pawapayCollectionFeePercentLabel,
+  pawapayPayoutFeeMwk,
+  pawapayPayoutFeePercentLabel,
+  resolvedPawaPayPayoutFee,
+} from '@/lib/pawapay-fees'
+import { useConfirmDelete } from '../ConfirmDialog'
 
 type ServiceBucket = {
   id: string
@@ -36,6 +61,138 @@ type Summary = {
   feeCount: number
   payoutTotal: number
   payoutCount: number
+  pawapayPayoutFees: number
+  pawapayCollectionFees: number
+  pawapayTotalFees: number
+  pawapayPayoutCount: number
+  pawapayCollectionCount: number
+}
+
+type WalletView =
+  | 'available'
+  | 'collected'
+  | 'escrow'
+  | 'released'
+  | 'paid_out'
+  | 'pawapay'
+  | 'pawapay_payout'
+  | 'pawapay_collection'
+  | `service:${string}`
+
+const ORDER_FEE_SERVICES = new Set(['marketplace', 'food', 'stay', 'courier'])
+
+function isFeeTx(t: WalletTxRow): boolean {
+  const type = t.type.toLowerCase()
+  return type === 'service_fee' || type === 'fee'
+}
+
+function matchesWalletView(t: WalletTxRow, view: WalletView): boolean {
+  switch (view) {
+    case 'available':
+      return true
+    case 'collected':
+      return isFeeTx(t)
+    case 'escrow':
+      return false
+    case 'released':
+      return isFeeTx(t) && ORDER_FEE_SERVICES.has(t.service)
+    case 'paid_out':
+      return isPayoutTx(t)
+    case 'pawapay':
+      return isPawaPayPayoutTx(t) || isPawaPayCollectionTx(t)
+    case 'pawapay_payout':
+      return isPawaPayPayoutTx(t)
+    case 'pawapay_collection':
+      return isPawaPayCollectionTx(t)
+    default:
+      return isFeeTx(t) && t.service === view.slice('service:'.length)
+  }
+}
+
+type WalletEscrowRow = Pick<
+  EscrowRow,
+  | 'id'
+  | 'status'
+  | 'serviceType'
+  | 'orderNumber'
+  | 'itemName'
+  | 'merchantName'
+  | 'merchantAmount'
+  | 'serviceFeeAmount'
+  | 'feeRate'
+  | 'txRef'
+  | 'createdAt'
+  | 'releasedAt'
+  | 'releaseKind'
+>
+
+function escrowForView(rows: WalletEscrowRow[], view: WalletView): WalletEscrowRow[] {
+  if (view === 'escrow') return rows.filter(e => e.status === 'held')
+  if (view === 'released') {
+    return rows.filter(e => e.status === 'released' || e.status === 'auto_released')
+  }
+  if (view.startsWith('service:')) {
+    const id = view.slice('service:'.length)
+    return rows.filter(
+      e =>
+        e.status === 'held' &&
+        platformServiceOf({ serviceType: e.serviceType }) === id,
+    )
+  }
+  return []
+}
+
+function viewExplain(
+  view: WalletView,
+  serviceLabel?: string,
+): { title: string; body: string } {
+  switch (view) {
+    case 'available':
+      return {
+        title: 'Available to pay out',
+        body: 'Current platform-wallet balance in Firestore. It rises when commission is credited and falls when you cash out. PawaPay’s cut is taken from the PawaPay wallet, not this number.',
+      }
+    case 'collected':
+      return {
+        title: 'Collected commission',
+        body: 'Every service-fee credit into this wallet. Marketplace, food, stay, and courier fees arrive after escrow release. Ride, digital, promote, and homepage-ad payments credit as soon as they are paid.',
+      }
+    case 'escrow':
+      return {
+        title: 'Still in escrow',
+        body: 'Platform fee sitting on held orders. It is not in this wallet yet. When the buyer confirms receipt or the 7-day window passes, the fee is credited here.',
+      }
+    case 'released':
+      return {
+        title: 'Released order fees',
+        body: 'Platform fees on marketplace, food, stay, and courier orders that already left escrow. Matching wallet credits are listed with the orders they came from.',
+      }
+    case 'paid_out':
+      return {
+        title: 'Paid out',
+        body: 'Cash-outs from this wallet to a bank (PayChangu) or mobile money (PawaPay). The amount is what the recipient received.',
+      }
+    case 'pawapay':
+      return {
+        title: 'PawaPay took',
+        body: 'Estimated Malawi fees PawaPay plus the mobile-money operator take: about 2.75% on cash-outs and 3.33% on digital, promote, and homepage-ad collections. That cut is not deducted from this ledger balance.',
+      }
+    case 'pawapay_payout':
+      return {
+        title: 'PawaPay cash-out fees',
+        body: 'Mobile-money payouts from this wallet go through PawaPay. The fee is about 2.75% (TNM) or 2.76% (Airtel). The recipient still gets the full cash-out amount.',
+      }
+    case 'pawapay_collection':
+      return {
+        title: 'PawaPay collection fees',
+        body: 'When a customer pays for digital services, promoted ads, or homepage ads via PawaPay, about 3.33% of that collection is taken by PawaPay and the mobile-money operator.',
+      }
+    default:
+      return {
+        title: serviceLabel || 'Service',
+        body: `Commission credits for ${serviceLabel || 'this service'}. Amounts still in escrow for this service stay off the wallet until the order is released.`,
+      }
+  }
 }
 
 const EMPTY: Summary = {
@@ -48,19 +205,28 @@ const EMPTY: Summary = {
   feeCount: 0,
   payoutTotal: 0,
   payoutCount: 0,
+  pawapayPayoutFees: 0,
+  pawapayCollectionFees: 0,
+  pawapayTotalFees: 0,
+  pawapayPayoutCount: 0,
+  pawapayCollectionCount: 0,
 }
 
 export default function SuperAdminWalletPage() {
+  const confirmDelete = useConfirmDelete()
   const [wallet, setWallet] = useState<WalletRow | null>(null)
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])
+  const [escrow, setEscrow] = useState<WalletEscrowRow[]>([])
   const [summary, setSummary] = useState<Summary>(EMPTY)
   const [services, setServices] = useState<ServiceBucket[]>([])
   const [query, setQuery] = useState('')
+  const [view, setView] = useState<WalletView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [cashOutOpen, setCashOutOpen] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const ledgerRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -73,6 +239,7 @@ export default function SuperAdminWalletPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to load admin wallet')
       setWallet(data.wallet || null)
       setTransactions(data.transactions || [])
+      setEscrow(Array.isArray(data.escrow) ? data.escrow : [])
       setSummary({ ...EMPTY, ...(data.summary || {}) })
       setServices(Array.isArray(data.byService) ? data.byService : [])
       const bf = data.backfill
@@ -96,25 +263,66 @@ export default function SuperAdminWalletPage() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get('view')
+    if (!raw) return
+    const allowed: WalletView[] = [
+      'available',
+      'collected',
+      'escrow',
+      'released',
+      'paid_out',
+      'pawapay',
+      'pawapay_payout',
+      'pawapay_collection',
+    ]
+    if (allowed.includes(raw as WalletView) || raw.startsWith('service:')) {
+      setView(raw as WalletView)
+    }
+  }, [])
+
   const q = query.trim().toLowerCase()
+  const viewEscrow = useMemo(
+    () => (view ? escrowForView(escrow, view) : []),
+    [escrow, view],
+  )
   const filtered = useMemo(() => {
-    if (!q) return transactions
-    return transactions.filter(
+    const scoped = view ? transactions.filter(t => matchesWalletView(t, view)) : transactions
+    if (!q) return scoped
+    return scoped.filter(
       t =>
         t.description.toLowerCase().includes(q) ||
         t.reference.toLowerCase().includes(q) ||
         t.transactionId.toLowerCase().includes(q) ||
-        t.type.toLowerCase().includes(q),
+        t.type.toLowerCase().includes(q) ||
+        t.service.toLowerCase().includes(q),
     )
-  }, [transactions, q])
+  }, [transactions, q, view])
+
+  const activeService = view?.startsWith('service:')
+    ? services.find(s => s.id === view.slice('service:'.length))
+    : undefined
+  const explain = view ? viewExplain(view, activeService?.label) : null
+
+  function selectView(next: WalletView) {
+    setView(cur => (cur === next ? null : next))
+    setQuery('')
+    window.requestAnimationFrame(() => {
+      ledgerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   const canCashOut = (summary.balance || 0) >= MIN_PAYOUT_MWK && !!wallet
 
   async function clearWallet() {
-    const ok = window.confirm(
-      'Clear the platform wallet? Available balance, pending balance, and wallet history will be set to zero. Money still held in escrow is not touched.',
-    )
-    if (!ok) return
+    if (
+      !(await confirmDelete(
+        'platform wallet',
+        'Available balance, pending balance, and wallet history will be set to zero. Money still held in escrow is not touched.',
+      ))
+    ) {
+      return
+    }
     setClearing(true)
     setError('')
     setNotice('')
@@ -221,12 +429,18 @@ export default function SuperAdminWalletPage() {
         </div>
       ) : null}
 
-      <div
+      <button
+        type="button"
+        onClick={() => selectView('available')}
         style={{
           ...card,
           background: 'linear-gradient(135deg, #0F766E 0%, #115E59 100%)',
           color: '#fff',
           marginBottom: 16,
+          width: '100%',
+          textAlign: 'left',
+          cursor: 'pointer',
+          outline: view === 'available' ? '3px solid #99F6E4' : 'none',
         }}
       >
         <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 600 }}>
@@ -236,8 +450,25 @@ export default function SuperAdminWalletPage() {
           {formatMwk(summary.balance)}
         </div>
         <div style={{ fontSize: 13, opacity: 0.85 }}>
-          Available to pay out · {wallet?.userId || 'super_admin'}
+          Available to pay out · click to see every ledger row
         </div>
+        {summary.pawapayTotalFees > 0 ? (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.12)',
+              fontSize: 13,
+              lineHeight: 1.45,
+            }}
+          >
+            PawaPay has taken <strong>{formatMwk(summary.pawapayTotalFees)}</strong> so
+            far — {formatMwk(summary.pawapayPayoutFees)} on cash-outs and{' '}
+            {formatMwk(summary.pawapayCollectionFees)} on digital/ad collections. That
+            cut comes from the PawaPay wallet, not this ledger balance.
+          </div>
+        ) : null}
         {summary.feesHeld > 0 ? (
           <div
             style={{
@@ -259,8 +490,11 @@ export default function SuperAdminWalletPage() {
             The wallet is created on the first commission credit from the app.
           </p>
         ) : null}
-      </div>
+      </button>
 
+      <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 10px' }}>
+        Click a card to see the transactions behind it.
+      </p>
       <div
         style={{
           display: 'grid',
@@ -269,17 +503,52 @@ export default function SuperAdminWalletPage() {
           marginBottom: 20,
         }}
       >
-        <Stat label="Collected" value={formatMwk(summary.lifetimeFees)} />
+        <Stat
+          label="Collected"
+          value={formatMwk(summary.lifetimeFees)}
+          selected={view === 'collected'}
+          onClick={() => selectView('collected')}
+        />
         <Stat
           label="Still in escrow"
           value={formatMwk(summary.feesHeld)}
           sub={`${summary.heldCount} orders · not payable yet`}
+          selected={view === 'escrow'}
+          onClick={() => selectView('escrow')}
         />
-        <Stat label="Released order fees" value={formatMwk(summary.feesCollected)} />
+        <Stat
+          label="Released order fees"
+          value={formatMwk(summary.feesCollected)}
+          selected={view === 'released'}
+          onClick={() => selectView('released')}
+        />
         <Stat
           label="Paid out"
           value={formatMwk(summary.payoutTotal)}
           sub={`${summary.payoutCount} payouts`}
+          selected={view === 'paid_out'}
+          onClick={() => selectView('paid_out')}
+        />
+        <Stat
+          label="PawaPay took"
+          value={formatMwk(summary.pawapayTotalFees)}
+          sub={`Cash-outs ${formatMwk(summary.pawapayPayoutFees)} · collections ${formatMwk(summary.pawapayCollectionFees)}`}
+          selected={view === 'pawapay'}
+          onClick={() => selectView('pawapay')}
+        />
+        <Stat
+          label="PawaPay cash-out fees"
+          value={formatMwk(summary.pawapayPayoutFees)}
+          sub={`${summary.pawapayPayoutCount} mobile-money payouts · ~${pawapayPayoutFeePercentLabel()}`}
+          selected={view === 'pawapay_payout'}
+          onClick={() => selectView('pawapay_payout')}
+        />
+        <Stat
+          label="PawaPay collection fees"
+          value={formatMwk(summary.pawapayCollectionFees)}
+          sub={`${summary.pawapayCollectionCount} digital/ad payments · ${pawapayCollectionFeePercentLabel()}`}
+          selected={view === 'pawapay_collection'}
+          onClick={() => selectView('pawapay_collection')}
         />
       </div>
 
@@ -312,11 +581,52 @@ export default function SuperAdminWalletPage() {
                     ? `${service.count} credits`
                     : 'No credits yet'
             }
+            selected={view === `service:${service.id}`}
+            onClick={() => selectView(`service:${service.id}`)}
           />
         ))}
       </div>
 
-      <h2 style={{ fontSize: 18, fontWeight: 800, margin: '8px 0 12px' }}>Ledger</h2>
+      <div ref={ledgerRef}>
+      <h2 style={{ fontSize: 18, fontWeight: 800, margin: '8px 0 12px' }}>
+        {explain ? explain.title : 'Ledger'}
+      </h2>
+      {explain ? (
+        <div
+          style={{
+            ...card,
+            background: '#F0FDFA',
+            border: '1px solid #99F6E4',
+            marginBottom: 14,
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 14, color: '#134E4A', lineHeight: 1.5 }}>
+            {explain.body}
+          </p>
+          <p style={{ margin: '8px 0 0', fontSize: 13, color: '#0F766E' }}>
+            {filtered.length} ledger row{filtered.length === 1 ? '' : 's'}
+            {viewEscrow.length > 0
+              ? ` · ${viewEscrow.length} escrow order${viewEscrow.length === 1 ? '' : 's'}`
+              : ''}
+            {view?.startsWith('pawapay')
+              ? ` · PawaPay cut ${formatMwk(
+                  view === 'pawapay_payout'
+                    ? summary.pawapayPayoutFees
+                    : view === 'pawapay_collection'
+                      ? summary.pawapayCollectionFees
+                      : summary.pawapayTotalFees,
+                )}`
+              : ''}
+          </p>
+          <button
+            type="button"
+            onClick={() => setView(null)}
+            style={{ ...secondaryBtn, marginTop: 10, padding: '6px 10px', fontSize: 12 }}
+          >
+            Show all transactions
+          </button>
+        </div>
+      ) : null}
       <input
         value={query}
         onChange={e => setQuery(e.target.value)}
@@ -332,24 +642,49 @@ export default function SuperAdminWalletPage() {
         }}
       />
 
+      {viewEscrow.length > 0 ? (
+        <div style={{ display: 'grid', gap: 10, marginBottom: 14 }}>
+          {viewEscrow.map(row => (
+            <EscrowLine key={row.id} row={row} />
+          ))}
+        </div>
+      ) : null}
+
       {loading && transactions.length === 0 ? (
         <p style={{ color: '#6B7280' }}>Loading wallet…</p>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && viewEscrow.length === 0 ? (
         <div style={card}>
           <p style={{ margin: 0, color: '#6B7280' }}>
+<<<<<<< HEAD
             No commission or payouts yet. Marketplace, food, and stay fees land here
             when an order is released, after PawaPay processing is deducted. Ride,
             digital, advert, and promotion payments credit this wallet as soon as
             they are paid.
+=======
+            {view
+              ? 'No matching transactions for this card yet.'
+              : 'No commission or payouts yet. Marketplace, food, and stay fees land here when an order is released. Ride, digital, advert, and promotion payments credit this wallet as soon as they are paid.'}
+>>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
           </p>
         </div>
-      ) : (
+      ) : filtered.length === 0 ? null : (
         <div style={{ display: 'grid', gap: 10 }}>
           {filtered.map(t => {
             const tone = txStatusTone(t.status)
             const payout = isPayoutTx(t)
+<<<<<<< HEAD
             const processing = t.type.toLowerCase() === 'processing_fee'
             const outgoing = payout || processing
+=======
+            const pawaFee = payout
+              ? isPawaPayPayoutTx(t)
+                ? resolvedPawaPayPayoutFee(t)
+                : 0
+              : isPawaPayCollectionTx(t)
+                ? pawapayCollectionFeeMwk(t.amount)
+                : 0
+            const focusPawaFee = Boolean(view?.startsWith('pawapay') && pawaFee > 0)
+>>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
             return (
               <div key={t.transactionId} style={card}>
                 <div
@@ -380,10 +715,16 @@ export default function SuperAdminWalletPage() {
                     <div style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>
                       {formatDateTime(t.createdAt)} · {t.reference}
                       {payout && t.payoutMethod ? ` · ${t.payoutMethod}` : ''}
+<<<<<<< HEAD
                       {payout && payoutPaidToLabel(t)
                         ? ` · paid to ${payoutPaidToLabel(t)}`
                         : ''}
                       {processing ? ' · deducted from commission' : ''}
+=======
+                      {pawaFee > 0 && !focusPawaFee
+                        ? ` · PawaPay ${formatMwk(pawaFee)}`
+                        : ''}
+>>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -391,12 +732,26 @@ export default function SuperAdminWalletPage() {
                       style={{
                         fontWeight: 800,
                         fontSize: 18,
+<<<<<<< HEAD
                         color: outgoing ? '#C2410C' : '#0F766E',
                       }}
                     >
                       {outgoing ? '−' : '+'}
                       {formatMwk(t.amount)}
+=======
+                        color: payout || focusPawaFee ? '#C2410C' : '#0F766E',
+                      }}
+                    >
+                      {focusPawaFee
+                        ? formatMwk(pawaFee)
+                        : `${payout ? '−' : '+'}${formatMwk(t.amount)}`}
+>>>>>>> 072f216aeb7bb6b8ffbbf69a911673b13e925980
                     </div>
+                    {focusPawaFee ? (
+                      <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                        PawaPay on {formatMwk(t.amount)}
+                      </div>
+                    ) : null}
                     <span
                       style={{
                         display: 'inline-block',
@@ -419,6 +774,7 @@ export default function SuperAdminWalletPage() {
           })}
         </div>
       )}
+      </div>
 
       {cashOutOpen ? (
         <CashOutDialog
@@ -453,6 +809,12 @@ function CashOutDialog({
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const payoutAmount = Math.round(Number(amount)) || 0
+  const momoName = PAYOUT_MOMO.find(m => m.id === operatorId)?.name
+  const pawapayFee =
+    method === 'mobile_money' && payoutAmount > 0
+      ? pawapayPayoutFeeMwk(payoutAmount, momoName)
+      : 0
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -530,6 +892,8 @@ function CashOutDialog({
         <p style={{ margin: '0 0 16px', color: '#6B7280', fontSize: 13 }}>
           Available {formatMwk(available)}. Minimum MWK {MIN_PAYOUT_MWK.toLocaleString()}.
           Mobile money is sent instantly through PawaPay. Bank transfers stay on PayChangu.
+          PawaPay plus the mobile-money operator take about {pawapayPayoutFeePercentLabel(momoName)}{' '}
+          on cash-outs.
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -559,6 +923,12 @@ function CashOutDialog({
             required
           />
         </label>
+        {method === 'mobile_money' && pawapayFee > 0 ? (
+          <p style={{ margin: '-4px 0 14px', fontSize: 13, color: '#9A3412', fontWeight: 600 }}>
+            PawaPay takes about {formatMwk(pawapayFee)} ({pawapayPayoutFeePercentLabel(momoName)})
+            on this cash-out. Recipient still gets {formatMwk(payoutAmount)}.
+          </p>
+        ) : null}
 
         {method === 'bank' ? (
           <>
@@ -655,18 +1025,86 @@ function Stat({
   label,
   value,
   sub,
+  selected,
+  onClick,
 }: {
   label: string
   value: string
   sub?: string
+  selected?: boolean
+  onClick?: () => void
 }) {
   return (
-    <div style={card}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected || false}
+      style={{
+        ...card,
+        width: '100%',
+        textAlign: 'left',
+        cursor: 'pointer',
+        border: selected ? '2px solid #0F766E' : '1px solid #E5E7EB',
+        background: selected ? '#F0FDFA' : '#fff',
+      }}
+    >
       <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6 }}>{value}</div>
       {sub ? (
         <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{sub}</div>
-      ) : null}
+      ) : (
+        <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>View transactions</div>
+      )}
+    </button>
+  )
+}
+
+function EscrowLine({ row }: { row: WalletEscrowRow }) {
+  const tone = escrowStatusTone(row.status)
+  return (
+    <div style={card}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 700 }}>
+            {row.orderNumber} · {row.itemName}
+          </div>
+          <div style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>
+            {row.merchantName} · {row.serviceType}
+            {row.txRef ? ` · ${row.txRef}` : ''}
+            {row.createdAt ? ` · ${formatDateTime(row.createdAt)}` : ''}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontWeight: 800, fontSize: 18, color: '#0F766E' }}>
+            {formatMwk(row.serviceFeeAmount)}
+          </div>
+          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+            Platform fee ({serviceFeePercentLabel(row)})
+          </div>
+          <span
+            style={{
+              display: 'inline-block',
+              marginTop: 4,
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              padding: '2px 8px',
+              borderRadius: 999,
+              background: tone.bg,
+              color: tone.color,
+            }}
+          >
+            {row.status.replace('_', ' ')}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }

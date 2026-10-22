@@ -1,4 +1,5 @@
 import { formatDateTime, formatMwk } from '@/lib/vero-api'
+import { summarizePawaPayFees } from '@/lib/pawapay-fees'
 
 export const WALLETS_COLLECTION = 'wallets'
 export const WALLET_TX_COLLECTION = 'wallet_transactions'
@@ -76,6 +77,7 @@ export type WalletTxRow = {
   reference: string
   createdAt: string | null
   payoutMethod: string | null
+  payoutProvider: string | null
   bankName: string | null
   accountNumber: string | null
   recipientName: string | null
@@ -188,6 +190,7 @@ export function parseWalletTx(
     reference: str(data.reference) || '—',
     createdAt: tsToIso(data.createdAt),
     payoutMethod: str(data.payoutMethod) || null,
+    payoutProvider: str(data.payoutProvider || data.provider) || null,
     bankName: str(data.bankName) || null,
     accountNumber: str(data.accountNumber) || null,
     recipientName: str(data.recipientName) || null,
@@ -451,6 +454,9 @@ export type FinanceSummary = {
   payoutAmount: number
   merchantsWithPayouts: number
   txCount: number
+  pawapayPayoutFees: number
+  pawapayCollectionFees: number
+  pawapayTotalFees: number
 }
 
 /** Attach per-merchant payout totals onto wallet rows (mutates copies). */
@@ -534,6 +540,7 @@ export function buildFinanceSummary(
   const merchantsWithPayouts = new Set(
     payouts.map(t => t.walletId || t.userId || '').filter(Boolean),
   ).size
+  const pawapay = summarizePawaPayFees(txs)
 
   const held = escrow.filter(e => e.status === 'held')
   const released = escrow.filter(e => e.status === 'released')
@@ -555,6 +562,9 @@ export function buildFinanceSummary(
     payoutAmount: payouts.reduce((s, t) => s + t.amount, 0),
     merchantsWithPayouts,
     txCount: txs.length,
+    pawapayPayoutFees: pawapay.payoutFees,
+    pawapayCollectionFees: pawapay.collectionFees,
+    pawapayTotalFees: pawapay.totalFees,
   }
 }
 

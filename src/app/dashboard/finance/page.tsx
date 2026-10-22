@@ -33,6 +33,12 @@ import {
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
 import { AdminPasswordGate } from '@/app/dashboard/AdminPasswordGate'
+import {
+  isPawaPayCollectionTx,
+  isPawaPayPayoutTx,
+  pawapayCollectionFeeMwk,
+  resolvedPawaPayPayoutFee,
+} from '@/lib/pawapay-fees'
 
 type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts'
 
@@ -51,9 +57,18 @@ const EMPTY_SUMMARY: FinanceSummary = {
   payoutAmount: 0,
   merchantsWithPayouts: 0,
   txCount: 0,
+  pawapayPayoutFees: 0,
+  pawapayCollectionFees: 0,
+  pawapayTotalFees: 0,
 }
 
 type EscrowFilter = 'all' | 'held' | 'released' | 'auto_released' | 'refunded'
+
+function pawapayFeeLabel(t: WalletTxRow): string {
+  if (isPawaPayPayoutTx(t)) return formatMwk(resolvedPawaPayPayoutFee(t))
+  if (isPawaPayCollectionTx(t)) return formatMwk(pawapayCollectionFeeMwk(t.amount))
+  return '—'
+}
 
 export default function FinanceAdminPage() {
   return (
@@ -522,8 +537,14 @@ function Overview({
           {
             label: 'Super admin wallet',
             value: formatMwk(summary.platformBalance),
-            sub: '10% marketplace fee — open Admin wallet',
-            href: '/dashboard/wallet',
+            sub: 'Platform commission — open Admin wallet',
+            href: '/dashboard/wallet?view=available',
+          },
+          {
+            label: 'PawaPay took',
+            value: formatMwk(summary.pawapayTotalFees),
+            sub: `Cash-outs ${formatMwk(summary.pawapayPayoutFees)} · collections ${formatMwk(summary.pawapayCollectionFees)} (Malawi MMO + 1%)`,
+            href: '/dashboard/wallet?view=pawapay',
           },
         ]
       : []),
@@ -601,6 +622,11 @@ function Overview({
             cash-out is recorded under <strong>Payouts</strong>.
           </li>
           <li>
+            Platform-wallet mobile-money cash-outs go through <strong>PawaPay</strong>. Malawi
+            rates are about 2.75% on cash-outs and 3.33% on collections (MMO + PawaPay 1%).
+            That cut is shown on the PawaPay card and on each PawaPay payout row.
+          </li>
+          <li>
             Refunds on held escrow set status <code>refunded</code> so the merchant is never
             credited.
           </li>
@@ -625,6 +651,7 @@ function PayoutTable({ rows }: { rows: WalletTxRow[] }) {
             <th style={th}>When</th>
             <th style={th}>Merchant</th>
             <th style={th}>Amount</th>
+            <th style={th}>PawaPay fee</th>
             <th style={th}>Status</th>
             <th style={th}>Destination</th>
             <th style={th}>Reference</th>
@@ -644,6 +671,7 @@ function PayoutTable({ rows }: { rows: WalletTxRow[] }) {
                   </div>
                 </td>
                 <td style={{ ...td, fontWeight: 700 }}>{formatMwk(t.amount)}</td>
+                <td style={td}>{pawapayFeeLabel(t)}</td>
                 <td style={td}>
                   <span
                     style={{
@@ -700,6 +728,7 @@ function TxTable({ rows }: { rows: WalletTxRow[] }) {
             <th style={th}>Type</th>
             <th style={th}>Merchant</th>
             <th style={th}>Amount</th>
+            <th style={th}>PawaPay fee</th>
             <th style={th}>Status</th>
             <th style={th}>Description</th>
             <th style={th}>Reference</th>
@@ -719,6 +748,7 @@ function TxTable({ rows }: { rows: WalletTxRow[] }) {
                   </div>
                 </td>
                 <td style={{ ...td, fontWeight: 700 }}>{formatMwk(t.amount)}</td>
+                <td style={td}>{pawapayFeeLabel(t)}</td>
                 <td style={td}>
                   <span
                     style={{

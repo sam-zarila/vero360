@@ -57,10 +57,12 @@ export default function AdminNotifications() {
     drivers,
     rides,
     orders,
+    food,
     stay,
     users,
     merchantReports,
     payments,
+    carHire,
   } = useAdminAlerts()
   const [items, setItems] = useState<InboxItem[]>([])
   const [open, setOpen] = useState(false)
@@ -78,10 +80,12 @@ export default function AdminNotifications() {
   useEffect(() => {
     const sources: Array<{ toast: string | null; href: string }> = [
       { toast: orders.toast, href: '/dashboard/orders' },
+      { toast: food.toast, href: '/dashboard/food' },
       { toast: courier.toast, href: '/dashboard/vero-courier' },
       { toast: rides.toast, href: '/dashboard/vero-ride/trips' },
       { toast: stay.toast, href: '/dashboard/stay' },
       { toast: drivers.toast, href: '/dashboard/vero-ride' },
+      { toast: carHire.toast, href: '/dashboard/car-hire' },
       { toast: users.toast, href: '/dashboard/users' },
       { toast: merchantReports.toast, href: '/dashboard/merchant-reports' },
       { toast: payments.toast, href: payments.toastHref || '/dashboard/digital-services' },
@@ -106,10 +110,12 @@ export default function AdminNotifications() {
     })
   }, [
     orders.toast,
+    food.toast,
     courier.toast,
     rides.toast,
     stay.toast,
     drivers.toast,
+    carHire.toast,
     users.toast,
     merchantReports.toast,
     payments.toast,
@@ -219,7 +225,7 @@ export default function AdminNotifications() {
           </div>
           {items.length === 0 ? (
             <p style={{ padding: 16, margin: 0, fontSize: 13, color: 'var(--text-3)' }}>
-              New orders, rides, stays, courier jobs, and payments will show here.
+              New orders, food, rides, stays, courier jobs, car hire, and payments will show here.
             </p>
           ) : (
             <div style={{ maxHeight: 380, overflowY: 'auto' }}>

@@ -8,7 +8,7 @@ import Logo from '@/app/components/landing/Logo'
 import { VeroIcon } from '@/app/components/landing/icons'
 import { auth } from '@/lib/firebase'
 import { DASHBOARD_NAV_GROUPS } from '@/lib/dashboard-sections'
-import { AdminAlertsProvider, useAdminAlerts, useHelpCenterUnreadBadge } from './AdminAlertsProvider'
+import { AdminAlertsProvider, useAdminAlerts, useNavBadgeCounts } from './AdminAlertsProvider'
 import AdminNotifications from './AdminNotifications'
 import { ConfirmDialogProvider } from './ConfirmDialog'
 import {
@@ -126,28 +126,26 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
-  const unread = useHelpCenterUnreadBadge()
+  const navBadges = useNavBadgeCounts()
   const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
   const {
-    courier: { pending: courierPending, toast: courierToast, clearToast: clearCourierToast },
-    drivers: { pending: driversPending, toast: driversToast, clearToast: clearDriversToast },
-    rides: { issues: rideIssues, toast: ridesToast, clearToast: clearRidesToast },
-    orders: { pending: ordersPending, toast: ordersToast, clearToast: clearOrdersToast },
-    stay: { pending: stayPending, toast: stayToast, clearToast: clearStayToast },
-    users: { newCount: newUsers, toast: usersToast, clearToast: clearUsersToast },
+    courier: { toast: courierToast, clearToast: clearCourierToast },
+    drivers: { toast: driversToast, clearToast: clearDriversToast },
+    rides: { toast: ridesToast, clearToast: clearRidesToast },
+    orders: { toast: ordersToast, clearToast: clearOrdersToast },
+    food: { toast: foodToast, clearToast: clearFoodToast },
+    stay: { toast: stayToast, clearToast: clearStayToast },
+    users: { toast: usersToast, clearToast: clearUsersToast },
     merchantReports: {
-      open: reportsOpen,
       toast: reportsToast,
       clearToast: clearReportsToast,
     },
     payments: {
-      digitalNew,
-      homepageAdNew,
-      promoNew,
       toast: paymentsToast,
       toastHref: paymentsToastHref,
       clearToast: clearPaymentsToast,
     },
+    carHire: { toast: carHireToast, clearToast: clearCarHireToast },
   } = useAdminAlerts()
 
   const navGroups = useMemo(() => {
@@ -188,6 +186,12 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   }, [ordersToast, clearOrdersToast])
 
   useEffect(() => {
+    if (!foodToast) return
+    const timer = window.setTimeout(() => clearFoodToast(), 8000)
+    return () => window.clearTimeout(timer)
+  }, [foodToast, clearFoodToast])
+
+  useEffect(() => {
     if (!stayToast) return
     const timer = window.setTimeout(() => clearStayToast(), 8000)
     return () => window.clearTimeout(timer)
@@ -210,6 +214,12 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => clearPaymentsToast(), 10000)
     return () => window.clearTimeout(timer)
   }, [paymentsToast, clearPaymentsToast])
+
+  useEffect(() => {
+    if (!carHireToast) return
+    const timer = window.setTimeout(() => clearCarHireToast(), 8000)
+    return () => window.clearTimeout(timer)
+  }, [carHireToast, clearCarHireToast])
 
   useEffect(() => {
     setOpen(false)
@@ -407,7 +417,15 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               overscrollBehavior: 'contain',
             }}
           >
-            {navGroups.map(group => (
+            {navGroups.map(group => {
+              const groupCount = group.items.reduce((sum, item) => {
+                if (!item.badgeKey) return sum
+                return sum + (navBadges[item.badgeKey] || 0)
+              }, 0)
+              const groupBadge =
+                groupCount > 0 ? (groupCount > 99 ? '99+' : String(groupCount)) : null
+
+              return (
               <div key={group.title}>
                 <p
                   style={{
@@ -417,37 +435,39 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                     textTransform: 'uppercase',
                     color: 'var(--text-4)',
                     margin: '0 10px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
                   }}
                 >
-                  {group.title}
+                  <span>{group.title}</span>
+                  {groupBadge ? (
+                    <span
+                      style={{
+                        minWidth: 18,
+                        height: 18,
+                        padding: '0 5px',
+                        borderRadius: 100,
+                        background: 'var(--primary)',
+                        color: '#fff',
+                        fontSize: 10,
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        letterSpacing: 0,
+                        textTransform: 'none',
+                      }}
+                    >
+                      {groupBadge}
+                    </span>
+                  ) : null}
                 </p>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
                   {group.items.map(item => {
                     const active = isActivePath(pathname, item.href)
-                    const badgeCount =
-                      item.badgeKey === 'help'
-                        ? unread
-                        : item.badgeKey === 'courier'
-                          ? courierPending
-                          : item.badgeKey === 'drivers'
-                            ? driversPending
-                            : item.badgeKey === 'rides'
-                              ? rideIssues
-                            : item.badgeKey === 'orders'
-                              ? ordersPending
-                              : item.badgeKey === 'users'
-                                ? newUsers
-                                : item.badgeKey === 'reports'
-                                  ? reportsOpen
-                                  : item.badgeKey === 'digital'
-                                    ? digitalNew
-                                    : item.badgeKey === 'homepageAds'
-                                      ? homepageAdNew
-                                      : item.badgeKey === 'stay'
-                                        ? stayPending
-                                        : item.badgeKey === 'promotions'
-                                          ? promoNew
-                                      : 0
+                    const badgeCount = item.badgeKey ? navBadges[item.badgeKey] || 0 : 0
                     const badge =
                       badgeCount > 0 ? (badgeCount > 99 ? '99+' : String(badgeCount)) : null
 
@@ -504,7 +524,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                   })}
                 </ul>
               </div>
-            ))}
+            )})}
           </nav>
         </aside>
 
@@ -784,6 +804,116 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                       fontSize: 12,
                       fontWeight: 600,
                       color: '#075985',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </div>
+            )}
+            {foodToast && (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#FEF2F2',
+                  border: '1px solid #FECACA',
+                  color: '#991B1B',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  boxShadow: '0 8px 24px rgba(220,38,38,0.12)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="food" size={20} strokeWidth={2.35} />
+                  {foodToast}
+                </span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
+                  <Link
+                    href="/dashboard/food"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: '#DC2626',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Open
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={clearFoodToast}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #FECACA',
+                      background: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#991B1B',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </div>
+            )}
+            {carHireToast && (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: '#F0FDFA',
+                  border: '1px solid #99F6E4',
+                  color: '#115E59',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  boxShadow: '0 8px 24px rgba(15,118,110,0.12)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <VeroIcon name="car" size={20} strokeWidth={2.35} />
+                  {carHireToast}
+                </span>
+                <span style={{ display: 'inline-flex', gap: 8, flexShrink: 0 }}>
+                  <Link
+                    href="/dashboard/car-hire"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: '#0F766E',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Open
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={clearCarHireToast}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #99F6E4',
+                      background: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#115E59',
                     }}
                   >
                     Dismiss

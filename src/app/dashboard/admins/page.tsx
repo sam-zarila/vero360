@@ -189,23 +189,12 @@ export default function AdminsPage() {
   ) => {
     let confirmPassword = ''
     if (action === 'delete') {
-      if (
-        !(await confirmDelete(
-          admin.email,
-          'Removes panel access and the Firebase Auth account.',
-        ))
-      ) {
-        return
-      }
-      const typed = window.prompt(
-        'Enter YOUR current password to confirm this delete:',
+      const typed = await confirmDelete(
+        admin.email,
+        'Removes panel access and the Firebase Auth account.',
       )
-      if (typed == null) return
+      if (!typed) return
       confirmPassword = typed
-      if (!confirmPassword) {
-        setError('Your current password is required to delete an admin.')
-        return
-      }
     } else if (action === 'suspend') {
       if (
         !(await confirm({

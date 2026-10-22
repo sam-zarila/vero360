@@ -25,6 +25,7 @@ import {
   DashboardThumbFallback,
 } from '@/app/dashboard/DashboardChrome'
 import { useConfirmDelete } from '../ConfirmDialog'
+import { useFoodPendingBadge, useMarkFoodSeen } from '../AdminAlertsProvider'
 
 const SECTION = DASHBOARD_SECTION_MAP.food
 
@@ -94,6 +95,12 @@ export default function FoodAdminPage() {
     void load()
   }, [load])
 
+  const markFoodSeen = useMarkFoodSeen()
+  const unseenFood = useFoodPendingBadge()
+  useEffect(() => {
+    if (unseenFood > 0) markFoodSeen?.()
+  }, [unseenFood, markFoodSeen])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return items.filter(item => {
@@ -147,6 +154,44 @@ export default function FoodAdminPage() {
       setNotice(`Deleted “${item.name}”`)
       setItems(prev => prev.filter(x => x.key !== item.key))
       await loadMenus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  const removeOrder = async (item: FoodAdminOrder) => {
+    if (
+      !(await confirmDelete(
+        item.orderNumber || item.id,
+        'Permanently delete this food order? This cannot be undone.',
+      ))
+    ) {
+      return
+    }
+    setBusyKey(item.id)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(`/api/admin/food-orders/${encodeURIComponent(item.id)}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setNotice(`Deleted food order ${item.orderNumber || item.id}`)
+      setOrders(prev => prev.filter(x => x.id !== item.id))
+      setOrderCounts(prev => {
+        const next = { ...prev }
+        next.all = Math.max(0, next.all - 1)
+        if (item.status === 'pending') next.pending = Math.max(0, next.pending - 1)
+        else if (item.status === 'preparing') next.preparing = Math.max(0, next.preparing - 1)
+        else if (item.status === 'sent' || item.status === 'ready') {
+          next.sent = Math.max(0, next.sent - 1)
+        } else if (item.status === 'delivered') next.delivered = Math.max(0, next.delivered - 1)
+        else if (item.status === 'cancelled') next.cancelled = Math.max(0, next.cancelled - 1)
+        return next
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
@@ -296,18 +341,23 @@ export default function FoodAdminPage() {
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {filteredOrders.map(item => (
+              {filteredOrders.map(item => {
+                const busy = busyKey === item.id
+                return (
                 <article
                   key={item.id}
                   style={{
                     display: 'grid',
-                    gap: 8,
+                    gridTemplateColumns: '1fr auto',
+                    gap: 12,
                     padding: 14,
                     borderRadius: 14,
                     border: '1px solid var(--border)',
                     background: 'var(--surface)',
+                    alignItems: 'start',
                   }}
                 >
+                  <div style={{ display: 'grid', gap: 8 }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
                       {item.orderNumber}
@@ -345,8 +395,27 @@ export default function FoodAdminPage() {
                       Vero Courier · {item.courierTracking}
                     </div>
                   ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void removeOrder(item)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: '1px solid #FECACA',
+                      background: '#FEF2F2',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#991B1B',
+                      whiteSpace: 'nowrap',
+                      opacity: busy ? 0.6 : 1,
+                    }}
+                  >
+                    {busy ? 'Removing…' : 'Delete'}
+                  </button>
                 </article>
-              ))}
+              )})}
             </div>
           )
         ) : filtered.length === 0 ? (

@@ -76,3 +76,35 @@ export async function PATCH(request: Request, ctx: Ctx) {
     )
   }
 }
+
+export async function DELETE(request: Request, ctx: Ctx) {
+  const denied = await denyUnlessPanelAdmin(request)
+  if (denied) return denied
+  const actor = await requirePanelAdmin(request)
+  const { id } = await ctx.params
+  if (!id?.trim()) {
+    return NextResponse.json({ error: 'Invalid refund id' }, { status: 400 })
+  }
+
+  try {
+    const ref = getAdminDb().collection(REFUND_REQUESTS_COLLECTION).doc(id)
+    const snap = await ref.get()
+    if (!snap.exists) {
+      return NextResponse.json({ error: 'Refund request not found' }, { status: 404 })
+    }
+    await ref.delete()
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'refund',
+      resourceId: id,
+      summary: `Deleted refund ${id}`,
+    })
+    return NextResponse.json({ success: true, deleted: true, id })
+  } catch (err) {
+    console.error('Admin refund DELETE error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Could not delete refund' },
+      { status: 502 },
+    )
+  }
+}
