@@ -8,6 +8,7 @@ export type DashboardSectionId =
   | 'jobs'
   | 'tenders'
   | 'stay'
+  | 'car-hire'
   | 'promotion'
   | 'homepage-ads'
   | 'marketplace-promotions'
@@ -93,6 +94,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     icon: 'bed',
     color: '#7C3AED',
     bg: '#F5F3FF',
+  },
+  {
+    id: 'car-hire',
+    title: 'Car Hire',
+    desc: 'Operators, listings, and provider leads',
+    icon: 'car',
+    color: '#0F766E',
+    bg: '#F0FDFA',
   },
   {
     id: 'promotion',
@@ -353,6 +362,9 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
       { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
       { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },
       { href: '/dashboard/stay', label: 'Stay', icon: 'bed', badgeKey: 'stay' },
+      { href: '/dashboard/car-hire', label: 'Car Hire', icon: 'car' },
+      { href: '/dashboard/car-hire/listings', label: 'Car Hire listings', icon: 'car' },
+      { href: '/dashboard/car-hire/leads', label: 'Car Hire leads', icon: 'briefcase' },
       { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'cart' },
       { href: '/dashboard/orders', label: 'Orders', icon: 'package', badgeKey: 'orders' },
       { href: '/dashboard/refunds', label: 'Refunds', icon: 'refund' },

@@ -27,6 +27,15 @@ import {
   veroEndpoint,
 } from '@/lib/vero-api'
 import { digitalBrandImage } from '@/lib/digital-brand-images'
+import {
+  carSubtitle,
+  carTitle,
+  isPublicCar,
+  parseCar,
+  parseCarListings,
+  resolveCarImage,
+  type CarListing,
+} from '@/lib/car-hire'
 
 export type PublicCatalogCard = {
   id: string
@@ -406,5 +415,105 @@ export async function listPublicDigitalServices(
   } catch (err) {
     console.warn('listPublicDigitalServices:', err)
     return []
+  }
+}
+
+function carHireCard(car: CarListing): PublicCatalogCard {
+  return {
+    id: String(car.id),
+    title: carTitle(car),
+    image: media(resolveCarImage(car)),
+    price: car.dailyRate > 0 ? car.dailyRate : null,
+    location: car.pickupArea || car.location?.name || null,
+    meta: carSubtitle(car),
+    href: `/car-hire/${car.id}`,
+    externalUrl: null,
+  }
+}
+
+export async function listPublicCarHireFiltered(opts?: {
+  limit?: number
+  pickupArea?: string | null
+  startAt?: string | null
+  endAt?: string | null
+}): Promise<PublicCatalogCard[]> {
+  const take = clampLimit(opts?.limit, 120, 200)
+  const pickupArea = (opts?.pickupArea || '').trim()
+  const startAt = (opts?.startAt || '').trim()
+  const endAt = (opts?.endAt || '').trim()
+  const cars: CarListing[] = []
+
+  try {
+    let page = 1
+    while (cars.length < take && page <= 6) {
+      const qs = new URLSearchParams()
+      qs.set('page', String(page))
+      qs.set('limit', String(Math.min(50, take - cars.length)))
+      if (pickupArea) qs.set('pickupArea', pickupArea)
+      if (startAt) qs.set('startAt', startAt)
+      if (endAt) qs.set('endAt', endAt)
+
+      const res = await fetch(`${veroEndpoint('car-rental', 'cars')}?${qs}`, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      })
+      const body = await readJsonSafe(res)
+      if (!res.ok) {
+        console.warn('Public car hire API:', apiErrorMessage(body, 'failed'))
+        break
+      }
+
+      const batch = parseCarListings(body).filter(isPublicCar)
+      if (!batch.length) break
+      cars.push(...batch)
+      if (batch.length < 50) break
+      page += 1
+    }
+  } catch (err) {
+    console.warn('listPublicCarHireFiltered:', err)
+  }
+
+  const seen = new Set<number>()
+  return cars
+    .filter(car => {
+      if (seen.has(car.id)) return false
+      seen.add(car.id)
+      return true
+    })
+    .slice(0, take)
+    .map(carHireCard)
+}
+
+export async function getPublicCarHireById(
+  id: string,
+  opts?: { startAt?: string | null; endAt?: string | null },
+): Promise<CarListing | null> {
+  const key = id.trim()
+  if (!key) return null
+  try {
+    const qs = new URLSearchParams()
+    const startAt = (opts?.startAt || '').trim()
+    const endAt = (opts?.endAt || '').trim()
+    if (startAt) qs.set('startAt', startAt)
+    if (endAt) qs.set('endAt', endAt)
+    const query = qs.toString()
+    const url = query
+      ? `${veroEndpoint('car-rental', 'cars', key)}?${query}`
+      : veroEndpoint('car-rental', 'cars', key)
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    })
+    const body = await readJsonSafe(res)
+    if (!res.ok) {
+      console.warn('Public car hire detail:', apiErrorMessage(body, 'failed'))
+      return null
+    }
+    const car = parseCar(body) || parseCarListings(body)[0] || null
+    if (!car || !isPublicCar(car)) return null
+    return car
+  } catch (err) {
+    console.warn('getPublicCarHireById:', err)
+    return null
   }
 }
