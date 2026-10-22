@@ -26,7 +26,7 @@ export function opsApiError(data: unknown, status: number, fallback: string): st
         : ''
   if (serverError) return serverError
   if (status === 503) {
-    return 'Car hire operations are not configured on this server. Set CAR_HIRE_OPS_KEY and restart the panel.'
+    return 'Car hire operations are not available. Sign in again, or check that the API server has CAR_HIRE_OPS_KEY set.'
   }
   if (status === 401 || status === 403) {
     return 'Your panel session cannot perform this action. Sign in again and retry.'

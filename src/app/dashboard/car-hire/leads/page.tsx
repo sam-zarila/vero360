@@ -98,7 +98,7 @@ function parseCounts(raw: unknown): LeadCounts {
   }
 }
 
-/** Prefer the server's own text, including the CAR_HIRE_OPS_KEY setup message. */
+/** Prefer the server's own text. */
 function apiError(data: unknown, status: number, fallback: string): string {
   const body = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
   const serverError =
@@ -112,7 +112,7 @@ function apiError(data: unknown, status: number, fallback: string): string {
     return 'Your panel session cannot view leads. Sign in again and retry.'
   }
   if (status === 503) {
-    return 'Car hire operations are not configured on this server. Set CAR_HIRE_OPS_KEY and restart the panel.'
+    return 'Car hire operations are not available. Sign in again, or check that the API server has CAR_HIRE_OPS_KEY set.'
   }
   return fallback
 }

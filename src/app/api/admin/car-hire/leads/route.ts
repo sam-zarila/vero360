@@ -17,9 +17,11 @@ export async function GET(request: Request) {
     const raw = (url.searchParams.get('status') || 'NEW').trim().toUpperCase()
     const status = (STATUSES as readonly string[]).includes(raw) ? raw : 'NEW'
 
-    const { res, body, error } = await nestOpsFetch([
-      `car-hire/leads?status=${encodeURIComponent(status)}`,
-    ])
+    const { res, body, error } = await nestOpsFetch(
+      [`car-hire/leads?status=${encodeURIComponent(status)}`],
+      undefined,
+      request,
+    )
 
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })

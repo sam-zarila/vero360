@@ -20,12 +20,11 @@ export async function GET(request: Request, ctx: Ctx) {
       return NextResponse.json({ error: 'Invalid car id' }, { status: 400 })
     }
 
-    const { res, body, error } = await nestOpsFetch([
-      'car-rental',
-      'moderation',
-      'listings',
-      id,
-    ])
+    const { res, body, error } = await nestOpsFetch(
+      ['car-rental', 'moderation', 'listings', id],
+      undefined,
+      request,
+    )
 
     if (!res.ok) {
       return NextResponse.json({ error }, { status: res.status })
