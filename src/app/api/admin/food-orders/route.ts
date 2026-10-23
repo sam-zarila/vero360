@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { loadBankTransferProofs, matchBankProofForFood } from '@/lib/bank-transfer-enrich'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { parseFoodAdminOrder } from '@/lib/food-orders-admin'
 
@@ -19,13 +20,28 @@ export async function GET(request: Request) {
       snap = await db.collection('food_orders').limit(200).get()
     }
 
-    const items = snap.docs
+    let items = snap.docs
       .map(doc => parseFoodAdminOrder(doc.id, doc.data() as Record<string, unknown>))
       .sort((a, b) => {
         const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
         const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
         return bt - at
       })
+
+    try {
+      const proofs = await loadBankTransferProofs()
+      items = items.map(item => {
+        const match = matchBankProofForFood(proofs, item)
+        if (!match && item.paymentProvider !== 'bank_transfer') return item
+        return {
+          ...item,
+          paymentProvider: 'bank_transfer',
+          bankProofUrl: match?.proofUrl || item.bankProofUrl,
+        }
+      })
+    } catch (err) {
+      console.warn('Food bank-transfer enrichment skipped:', err)
+    }
 
     const counts = {
       all: items.length,

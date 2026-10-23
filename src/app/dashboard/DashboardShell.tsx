@@ -1053,7 +1053,15 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <VeroIcon
                     name={
-                      paymentsToastHref?.includes('homepage') ? 'megaphone' : 'sparkles'
+                      paymentsToastHref?.includes('homepage')
+                        ? 'megaphone'
+                        : paymentsToastHref?.includes('food')
+                          ? 'food'
+                          : paymentsToastHref?.includes('stay')
+                            ? 'bed'
+                            : paymentsToastHref?.includes('order')
+                              ? 'package'
+                              : 'sparkles'
                     }
                     size={20}
                     strokeWidth={2.35}

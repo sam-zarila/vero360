@@ -16,6 +16,10 @@ export type BankTransferPayment = {
   source: string
   title: string
   digitalOrderId: string | null
+  foodOrderId: string | null
+  stayBookingRef: string | null
+  orderIds: string[]
+  orderNumbers: string[]
   status: string
   createdAt: string | null
 }
@@ -53,6 +57,12 @@ export function parseBankTransferPayment(
   const urls = Array.isArray(data.proofUrls)
     ? data.proofUrls.map(v => str(v)).filter(Boolean)
     : []
+  const orderIds = Array.isArray(data.orderIds)
+    ? data.orderIds.map(v => str(v)).filter(Boolean)
+    : []
+  const orderNumbers = Array.isArray(data.orderNumbers)
+    ? data.orderNumbers.map(v => str(v)).filter(Boolean)
+    : []
   return {
     id,
     txRef: str(data.txRef),
@@ -65,6 +75,10 @@ export function parseBankTransferPayment(
     source: str(data.source) || 'checkout',
     title: str(data.title) || 'Bank transfer',
     digitalOrderId: str(data.digitalOrderId) || null,
+    foodOrderId: str(data.foodOrderId) || null,
+    stayBookingRef: str(data.stayBookingRef) || null,
+    orderIds,
+    orderNumbers,
     status: str(data.status) || 'pending_review',
     createdAt: tsToIso(data.createdAt),
   }

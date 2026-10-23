@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import {
+  adminHrefForBankSource,
+  bankSourceLabel,
+} from '@/lib/bank-transfer-enrich'
+import { listBankTransferPayments } from '@/lib/bank-transfer-payments'
 import { isDigitalOrderPaid } from '@/lib/digital-services'
 import { listDigitalServiceOrders } from '@/lib/digital-services-admin'
 import { listHomepageAdverts } from '@/lib/homepage-adverts-admin'
@@ -17,10 +22,11 @@ export async function GET(request: Request) {
   if (denied) return denied
 
   try {
-    const [digitalAll, adsAll, promoAll] = await Promise.all([
+    const [digitalAll, adsAll, promoAll, bankAll] = await Promise.all([
       listDigitalServiceOrders({ limit: 200 }),
       listHomepageAdverts({ limit: 200 }),
       listMarketplacePromotions(80),
+      listBankTransferPayments(80),
     ])
 
     const digital = digitalAll
@@ -76,20 +82,37 @@ export async function GET(request: Request) {
         paidAt: p.paidAt || p.createdAt,
       }))
 
+    const bankTransfers = bankAll.slice(0, 40).map(p => ({
+      id: p.id,
+      kind: 'bank_transfer' as const,
+      title: p.title,
+      amountMwk: p.amountMwk,
+      buyerName: p.buyerName,
+      buyerEmail: p.buyerEmail,
+      paidAt: p.createdAt,
+      source: p.source,
+      href: adminHrefForBankSource(p.source),
+      sourceLabel: bankSourceLabel(p.source),
+    }))
+
     return NextResponse.json({
       success: true,
       digital,
       homepageAds,
       promotions,
+      bankTransfers,
       digitalIds: digital.map(d => d.id),
       homepageAdIds: homepageAds.map(a => a.id),
       promotionIds: promotions.map(p => p.id),
+      bankTransferIds: bankTransfers.map(p => p.id),
       digitalCount: digital.length,
       homepageAdCount: homepageAds.length,
       promotionCount: promotions.length,
+      bankTransferCount: bankTransfers.length,
       latestDigital: digital[0] || null,
       latestHomepageAd: homepageAds[0] || null,
       latestPromotion: promotions[0] || null,
+      latestBankTransfer: bankTransfers[0] || null,
     })
   } catch (err) {
     console.error('Admin payments recent GET:', err)

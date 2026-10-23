@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import { loadBankTransferProofs, matchBankProofForStay } from '@/lib/bank-transfer-enrich'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import {
   cleanContactEmail,
@@ -139,6 +140,20 @@ export async function GET(request: Request) {
       items = await enrichBookingContacts(items)
     } catch (err) {
       console.warn('Stay booking contact enrichment skipped:', err)
+    }
+    try {
+      const proofs = await loadBankTransferProofs()
+      items = items.map(item => {
+        const match = matchBankProofForStay(proofs, item)
+        if (!match) return item
+        return {
+          ...item,
+          paymentProvider: 'bank_transfer',
+          bankProofUrl: match.proofUrl || item.bankProofUrl,
+        }
+      })
+    } catch (err) {
+      console.warn('Stay bank-transfer enrichment skipped:', err)
     }
 
     return NextResponse.json({

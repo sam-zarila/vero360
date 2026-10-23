@@ -73,6 +73,8 @@ export type StayBooking = {
   hostEmail: string | null
   hostPhone: string | null
   hostFirebaseUid: string | null
+  paymentProvider: string | null
+  bankProofUrl: string | null
 }
 
 function str(value: unknown): string {
@@ -421,6 +423,8 @@ export function parseStayBookings(body: unknown): StayBooking[] {
           : null,
         hostPhone: sanitizePhone(owner ? str(owner.phone) : ''),
         hostFirebaseUid: acc ? resolveHostFirebaseUid(acc, owner) : null,
+        paymentProvider: null,
+        bankProofUrl: null,
       } satisfies StayBooking
     })
     .filter(item => item.id > 0)

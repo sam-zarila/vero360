@@ -16,6 +16,9 @@ export type FoodAdminOrder = {
   itemsSummary: string
   totalMwk: number
   paymentStatus: string
+  paymentProvider: string
+  paymentTxRef: string
+  bankProofUrl: string | null
   courierTracking: string
   deliveryAddress: string
   createdAt: string
@@ -101,6 +104,9 @@ export function parseFoodAdminOrder(
     itemsSummary: itemsSummary(data),
     totalMwk: asNumber(data.totalMwk ?? data.totalAmount ?? data.total),
     paymentStatus: asString(data.paymentStatus || data.payment_status),
+    paymentProvider: asString(data.paymentProvider || data.provider),
+    paymentTxRef: asString(data.paymentTxRef || data.txRef),
+    bankProofUrl: asString(data.bankProofUrl || data.proofUrl) || null,
     courierTracking: asString(
       data.courierTrackingNumber || data.trackingNumber || data.tracking,
     ),

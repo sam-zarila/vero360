@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
+import {
+  loadBankTransferProofs,
+  matchBankProofForMarketplace,
+} from '@/lib/bank-transfer-enrich'
 import { enrichOrderContacts } from '@/lib/order-contacts'
 import { enrichOrderDelivery } from '@/lib/order-delivery'
 import { parseMarketplaceOrders } from '@/lib/orders'
@@ -46,6 +50,22 @@ export async function GET(request: Request) {
       items = await enrichOrderDelivery(items)
     } catch (err) {
       console.warn('Order delivery enrichment skipped:', err)
+    }
+    try {
+      const proofs = await loadBankTransferProofs()
+      items = items.map(item => {
+        const match = matchBankProofForMarketplace(proofs, item)
+        if (!match) return item
+        return {
+          ...item,
+          paymentProvider: 'bank_transfer',
+          bankProofUrl: match.proofUrl || item.bankProofUrl,
+          paymentStatus:
+            item.paymentStatus === 'PAID' ? item.paymentStatus : 'PENDING',
+        }
+      })
+    } catch (err) {
+      console.warn('Order bank-transfer enrichment skipped:', err)
     }
 
     const counts = {

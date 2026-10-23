@@ -1,8 +1,43 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { adminFetch, panelAuthHeaders } from '@/lib/panel-client-auth'
 import { formatDateTime, formatMwk } from '@/lib/vero-api'
+
+function sourceHref(source: string) {
+  switch ((source || '').toLowerCase()) {
+    case 'marketplace':
+    case 'checkout':
+      return '/dashboard/orders'
+    case 'food':
+      return '/dashboard/food'
+    case 'stay':
+    case 'accommodation':
+      return '/dashboard/stay?tab=bookings'
+    case 'digital':
+      return '/dashboard/digital-services'
+    default:
+      return ''
+  }
+}
+
+function sourceLabel(source: string) {
+  switch ((source || '').toLowerCase()) {
+    case 'marketplace':
+    case 'checkout':
+      return 'Marketplace order'
+    case 'food':
+      return 'Food order'
+    case 'stay':
+    case 'accommodation':
+      return 'Accommodation booking'
+    case 'digital':
+      return 'Digital service'
+    default:
+      return source || 'Checkout'
+  }
+}
 
 type Proof = {
   id: string
@@ -119,9 +154,23 @@ export function BankTransferProofsPanel() {
               {item.buyerEmail ? ` · ${item.buyerEmail}` : ''}
             </div>
             <div style={{ marginTop: 4, fontSize: 12, color: '#6B7280' }}>
-              {item.source} · Ref {item.txRef || '—'}
+              {sourceLabel(item.source)} · Ref {item.txRef || '—'}
               {item.createdAt ? ` · ${formatDateTime(item.createdAt)}` : ''}
             </div>
+            {sourceHref(item.source) ? (
+              <Link
+                href={sourceHref(item.source)}
+                style={{
+                  display: 'inline-block',
+                  marginTop: 8,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: '#9A3412',
+                }}
+              >
+                Open {sourceLabel(item.source).toLowerCase()}
+              </Link>
+            ) : null}
             <div
               style={{
                 display: 'inline-block',

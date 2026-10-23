@@ -9,6 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   escrowReleaseExplanation,
@@ -84,7 +85,30 @@ export default function FinanceAdminPage() {
 }
 
 function FinanceAdminInner() {
-  const [tab, setTab] = useState<Tab>('overview')
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [tab, setTab] = useState<Tab>(
+    initialTab === 'bank_proofs' ||
+      initialTab === 'escrow' ||
+      initialTab === 'transactions' ||
+      initialTab === 'wallets' ||
+      initialTab === 'payouts'
+      ? initialTab
+      : 'overview',
+  )
+  useEffect(() => {
+    const next = searchParams.get('tab')
+    if (
+      next === 'bank_proofs' ||
+      next === 'escrow' ||
+      next === 'transactions' ||
+      next === 'wallets' ||
+      next === 'payouts' ||
+      next === 'overview'
+    ) {
+      setTab(next)
+    }
+  }, [searchParams])
   const [wallets, setWallets] = useState<WalletRow[]>([])
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])
   const [escrow, setEscrow] = useState<EscrowRow[]>([])

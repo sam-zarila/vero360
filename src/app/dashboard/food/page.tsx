@@ -374,6 +374,20 @@ export default function FoodAdminPage() {
                     >
                       {foodOrderStatusLabel(item.status)}
                     </span>
+                    {item.paymentProvider === 'bank_transfer' ? (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          padding: '3px 8px',
+                          borderRadius: 100,
+                          background: '#FFF7ED',
+                          color: '#9A3412',
+                        }}
+                      >
+                        Bank transfer
+                      </span>
+                    ) : null}
                     <span style={{ marginLeft: 'auto', fontWeight: 800 }}>
                       {formatMwk(item.totalMwk)}
                     </span>
@@ -394,6 +408,16 @@ export default function FoodAdminPage() {
                     <div style={{ fontSize: 12, fontWeight: 700, color: SECTION.color }}>
                       Vero Courier · {item.courierTracking}
                     </div>
+                  ) : null}
+                  {item.bankProofUrl ? (
+                    <a
+                      href={item.bankProofUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: 12, fontWeight: 800, color: '#9A3412' }}
+                    >
+                      View bank slip
+                    </a>
                   ) : null}
                   </div>
                   <button

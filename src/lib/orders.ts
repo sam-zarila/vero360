@@ -39,6 +39,8 @@ export type MarketplaceOrder = {
   tracking: string | null
   /** Firebase Storage download URL from `order_delivery_proofs`. */
   proofUrl: string | null
+  paymentProvider: string | null
+  bankProofUrl: string | null
 }
 
 export function isOrderStatus(value: string): value is OrderStatus {
@@ -70,7 +72,12 @@ function parsePayment(raw: unknown): string {
   const s = str(raw).toUpperCase()
   if (!s) return 'UNPAID'
   if (['PAID', 'SUCCESS', 'SUCCESSFUL', 'COMPLETED', 'COMPLETE'].includes(s)) return 'PAID'
-  if (['PENDING', 'PROCESSING', 'AWAITING'].includes(s)) return 'PENDING'
+  if (
+    ['PENDING', 'PROCESSING', 'AWAITING', 'PENDING_BANK', 'AWAITING_BANK', 'BANK'].includes(s) ||
+    s.includes('BANK')
+  ) {
+    return 'PENDING'
+  }
   if (s === 'FAILED') return 'FAILED'
   return s
 }
@@ -257,6 +264,10 @@ export function parseMarketplaceOrders(body: unknown): MarketplaceOrder[] {
         courierMethod: parseCourierFromDescription(description),
         tracking: null,
         proofUrl: null,
+        paymentProvider: description?.toLowerCase().includes('[banktransfer]')
+          ? 'bank_transfer'
+          : null,
+        bankProofUrl: null,
       } satisfies MarketplaceOrder
     })
     .filter(o => o.id > 0)

@@ -352,6 +352,21 @@ export default function OrdersAdminPage() {
                       >
                         {item.paymentStatus}
                       </span>
+                      {item.paymentProvider === 'bank_transfer' ? (
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: '4px 10px',
+                            borderRadius: 100,
+                            background: '#FFF7ED',
+                            color: '#9A3412',
+                            border: '1px solid #FED7AA',
+                          }}
+                        >
+                          Bank transfer
+                        </span>
+                      ) : null}
                     </div>
 
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>
@@ -397,7 +412,7 @@ export default function OrdersAdminPage() {
                       <Meta label="Ordered" value={formatDateTime(item.orderDate)} />
                     </div>
 
-                    {(item.proofUrl || courierTrackingUrl(item.courierMethod)) && (
+                    {(item.bankProofUrl || item.proofUrl || courierTrackingUrl(item.courierMethod)) && (
                       <div
                         style={{
                           display: 'flex',
@@ -406,6 +421,29 @@ export default function OrdersAdminPage() {
                           marginTop: 10,
                         }}
                       >
+                        {item.bankProofUrl && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setProofPreview({
+                                url: item.bankProofUrl!,
+                                orderNumber: item.orderNumber,
+                              })
+                            }
+                            style={{
+                              padding: '7px 12px',
+                              borderRadius: 10,
+                              border: '1px solid #FED7AA',
+                              background: '#FFF7ED',
+                              color: '#9A3412',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            View bank slip
+                          </button>
+                        )}
                         {item.proofUrl && (
                           <button
                             type="button"

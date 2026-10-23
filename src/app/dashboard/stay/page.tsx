@@ -2,6 +2,7 @@
 import { adminFetch } from '@/lib/panel-client-auth'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { VeroIcon } from '@/app/components/landing/icons'
 import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
@@ -78,7 +79,14 @@ const EMPTY_BOOKING_COUNTS: BookingCounts = {
 
 export default function StayAdminPage() {
   const confirmDelete = useConfirmDelete()
-  const [mainTab, setMainTab] = useState<MainTab>('listings')
+  const searchParams = useSearchParams()
+  const [mainTab, setMainTab] = useState<MainTab>(
+    searchParams.get('tab') === 'bookings' ? 'bookings' : 'listings',
+  )
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'bookings') setMainTab('bookings')
+  }, [searchParams])
   const [listings, setListings] = useState<StayListing[]>([])
   const [bookings, setBookings] = useState<StayBooking[]>([])
   const [listingCounts, setListingCounts] = useState<ListingCounts>(EMPTY_LISTING_COUNTS)
@@ -658,6 +666,11 @@ export default function StayAdminPage() {
                         {item.accommodationName || 'Accommodation'}
                       </h3>
                       <Chip {...pay}>{item.paymentStatus}</Chip>
+                      {item.paymentProvider === 'bank_transfer' ? (
+                        <Chip bg="#FFF7ED" color="#9A3412" border="#FED7AA">
+                          Bank transfer
+                        </Chip>
+                      ) : null}
                       <Chip bg="#EFF6FF" color="#1D4ED8" border="#BFDBFE">
                         {bookingStatusLabel(item.bookingStatus)}
                       </Chip>
@@ -717,6 +730,22 @@ export default function StayAdminPage() {
                         sub={formatDateTime(item.createdAt)}
                       />
                     </div>
+                    {item.bankProofUrl ? (
+                      <a
+                        href={item.bankProofUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-block',
+                          marginTop: 10,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: '#9A3412',
+                        }}
+                      >
+                        View bank slip
+                      </a>
+                    ) : null}
                   </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 110 }}>
                       <button
