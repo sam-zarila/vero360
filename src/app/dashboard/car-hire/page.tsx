@@ -6,7 +6,6 @@ import { carHireStatusTone, prettyStatus } from '@/lib/car-hire'
 import {
   companyActionLabel,
   companyActionRequiresNote,
-  maskAccountNumber,
   opsCompanyActions,
   parseOpsCompanyPage,
   type CarHireCompanyReviewAction,
@@ -412,24 +411,11 @@ function documentHref(url: string): string | null {
  */
 function CompanyVerification({ company }: { company: OpsCompany }) {
   const isBusiness = company.type.toUpperCase() === 'BUSINESS'
-  const payoutMethod =
-    company.payoutMethod === 'BANK'
-      ? 'Bank transfer'
-      : company.payoutMethod === 'MOBILE_MONEY'
-        ? 'Mobile money'
-        : '—'
   const rows = [
     isBusiness
       ? { label: 'Registration', value: company.registrationNumber || '—' }
       : { label: 'National ID', value: company.idNumber || '—' },
     { label: 'TPIN', value: company.taxId || '—' },
-    { label: 'Payout method', value: payoutMethod },
-    {
-      label: 'Payout account',
-      value: maskAccountNumber(company.payoutAccountNumber) || '—',
-    },
-    { label: 'Account name', value: company.payoutAccountName || '—' },
-    { label: 'Bank', value: company.payoutBankName || '—' },
   ]
 
   return (
