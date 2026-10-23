@@ -4,7 +4,7 @@ import {
   adminHrefForBankSource,
   bankSourceLabel,
 } from '@/lib/bank-transfer-enrich'
-import { listBankTransferPayments } from '@/lib/bank-transfer-payments'
+import { isBankTransferPending, listBankTransferPayments } from '@/lib/bank-transfer-payments'
 import { isDigitalOrderPaid } from '@/lib/digital-services'
 import { listDigitalServiceOrders } from '@/lib/digital-services-admin'
 import { listHomepageAdverts } from '@/lib/homepage-adverts-admin'
@@ -82,7 +82,8 @@ export async function GET(request: Request) {
         paidAt: p.paidAt || p.createdAt,
       }))
 
-    const bankTransfers = bankAll.slice(0, 40).map(p => ({
+    const pendingBank = bankAll.filter(p => isBankTransferPending(p.status))
+    const bankTransfers = pendingBank.slice(0, 40).map(p => ({
       id: p.id,
       kind: 'bank_transfer' as const,
       title: p.title,
@@ -91,7 +92,7 @@ export async function GET(request: Request) {
       buyerEmail: p.buyerEmail,
       paidAt: p.createdAt,
       source: p.source,
-      href: adminHrefForBankSource(p.source),
+      href: '/dashboard/bank-transfers',
       sourceLabel: bankSourceLabel(p.source),
     }))
 

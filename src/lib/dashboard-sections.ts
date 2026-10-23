@@ -29,6 +29,7 @@ export type DashboardSectionId =
   | 'agents'
   | 'admins'
   | 'finance'
+  | 'bank-transfers'
   | 'wallet'
   | 'rewards'
   | 'verochat'
@@ -267,11 +268,19 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   },
   {
     id: 'finance',
-    title: 'Finance',
-    desc: 'Wallets, escrow, and merchant cash-outs',
+    title: 'Finance (PawaPay)',
+    desc: 'PawaPay wallets, escrow, and merchant cash-outs',
     icon: 'wallet',
     color: '#15803D',
     bg: '#F0FDF4',
+  },
+  {
+    id: 'bank-transfers',
+    title: 'Bank transfers',
+    desc: 'National Bank slips, confirmations, and amounts — separate from PawaPay',
+    icon: 'wallet',
+    color: '#B45309',
+    bg: '#FFFBEB',
   },
   {
     id: 'wallet',
@@ -329,6 +338,7 @@ export type DashboardNavBadgeKey =
   | 'carHire'
   | 'carHireListings'
   | 'carHireLeads'
+  | 'bankTransfers'
 
 export type DashboardNavItem = {
   href: string
@@ -444,7 +454,8 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
   {
     title: 'System',
     items: [
-      { href: '/dashboard/finance', label: 'Finance', icon: 'wallet' },
+      { href: '/dashboard/bank-transfers', label: 'Bank transfers', icon: 'wallet', badgeKey: 'bankTransfers' },
+      { href: '/dashboard/finance', label: 'Finance (PawaPay)', icon: 'wallet' },
       { href: '/dashboard/wallet', label: 'Platform wallet', icon: 'wallet', superAdminOnly: true },
       { href: '/dashboard/audit', label: 'Audit trail', icon: 'shield', superAdminOnly: true },
       {

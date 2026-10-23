@@ -9,7 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { panelAuthHeaders, adminFetch } from '@/lib/panel-client-auth'
 import {
   escrowReleaseExplanation,
@@ -34,8 +34,6 @@ import {
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
 import { AdminPasswordGate } from '@/app/dashboard/AdminPasswordGate'
-import { BankTransferPanel } from './BankTransferPanel'
-import { BankTransferProofsPanel } from './BankTransferProofsPanel'
 import {
   isPawaPayCollectionTx,
   isPawaPayPayoutTx,
@@ -43,7 +41,7 @@ import {
   resolvedPawaPayPayoutFee,
 } from '@/lib/pawapay-fees'
 
-type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts' | 'bank_proofs'
+type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts'
 
 const EMPTY_SUMMARY: FinanceSummary = {
   walletCount: 0,
@@ -76,8 +74,8 @@ function pawapayFeeLabel(t: WalletTxRow): string {
 export default function FinanceAdminPage() {
   return (
     <AdminPasswordGate
-      title="Finance"
-      description="Enter your admin panel password to open Finance. Use the same password you sign in with at /panel."
+      title="Finance (PawaPay)"
+      description="Enter your admin panel password to open PawaPay Finance. Bank transfers have their own page."
     >
       <FinanceAdminInner />
     </AdminPasswordGate>
@@ -86,10 +84,10 @@ export default function FinanceAdminPage() {
 
 function FinanceAdminInner() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const initialTab = searchParams.get('tab')
   const [tab, setTab] = useState<Tab>(
-    initialTab === 'bank_proofs' ||
-      initialTab === 'escrow' ||
+    initialTab === 'escrow' ||
       initialTab === 'transactions' ||
       initialTab === 'wallets' ||
       initialTab === 'payouts'
@@ -97,9 +95,12 @@ function FinanceAdminInner() {
       : 'overview',
   )
   useEffect(() => {
+    if (searchParams.get('tab') === 'bank_proofs') {
+      router.replace('/dashboard/bank-transfers')
+      return
+    }
     const next = searchParams.get('tab')
     if (
-      next === 'bank_proofs' ||
       next === 'escrow' ||
       next === 'transactions' ||
       next === 'wallets' ||
@@ -108,7 +109,7 @@ function FinanceAdminInner() {
     ) {
       setTab(next)
     }
-  }, [searchParams])
+  }, [searchParams, router])
   const [wallets, setWallets] = useState<WalletRow[]>([])
   const [transactions, setTransactions] = useState<WalletTxRow[]>([])
   const [escrow, setEscrow] = useState<EscrowRow[]>([])
@@ -230,7 +231,6 @@ function FinanceAdminInner() {
     { id: 'escrow', label: `Escrow (${summary.escrowHeldCount} held)` },
     { id: 'transactions', label: `Transactions (${summary.txCount})` },
     { id: 'payouts', label: `Payouts (${summary.payoutCount})` },
-    { id: 'bank_proofs', label: 'Bank proofs' },
     { id: 'wallets', label: `Wallets (${summary.walletCount})` },
   ]
 
@@ -264,8 +264,8 @@ function FinanceAdminInner() {
 
       <DashboardPageHeader
         sectionId="finance"
-        title="Finance & wallets"
-        description="Merchant balances, escrow holds, and every instant cash-out merchants run."
+        title="Finance (PawaPay)"
+        description="PawaPay wallets, escrow holds, and merchant cash-outs. National Bank transfers are tracked separately under Bank transfers."
         actions={
           <DashboardRefreshButton
             onClick={() => void load()}
@@ -309,14 +309,11 @@ function FinanceAdminInner() {
       ) : null}
 
       {tab === 'overview' ? (
-        <>
-          <BankTransferPanel />
-          <Overview
-            summary={summary}
-            onGo={setTab}
-            showPlatformWallet={canViewPlatformWallet}
-          />
-        </>
+        <Overview
+          summary={summary}
+          onGo={setTab}
+          showPlatformWallet={canViewPlatformWallet}
+        />
       ) : null}
 
       {tab === 'escrow' ? (
@@ -350,8 +347,6 @@ function FinanceAdminInner() {
           )}
         </>
       ) : null}
-
-      {tab === 'bank_proofs' ? <BankTransferProofsPanel /> : null}
 
       {tab === 'payouts' ? (
         <>
@@ -564,6 +559,12 @@ function Overview({
       sub: `${summary.payoutCount} payouts · ${summary.merchantsWithPayouts} merchants`,
       go: 'payouts',
     },
+    {
+      label: 'Bank transfers',
+      value: 'Separate ledger',
+      sub: 'National Bank slips are tracked by service on Bank transfers — not in PawaPay',
+      href: '/dashboard/bank-transfers',
+    },
     ...(showPlatformWallet
       ? [
           {
@@ -656,7 +657,8 @@ function Overview({
           <li>
             Platform-wallet mobile-money cash-outs go through <strong>PawaPay</strong>. Malawi
             rates are about 2.75% on cash-outs and 3.33% on collections (MMO + PawaPay 1%).
-            That cut is shown on the PawaPay card and on each PawaPay payout row.
+            That cut is shown on the PawaPay card and on each PawaPay payout row. National Bank
+            deposits stay on <Link href="/dashboard/bank-transfers">Bank transfers</Link>.
           </li>
           <li>
             Refunds on held escrow set status <code>refunded</code> so the merchant is never

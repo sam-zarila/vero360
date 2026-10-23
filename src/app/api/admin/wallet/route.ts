@@ -7,6 +7,7 @@ import {
   WALLETS_COLLECTION,
   WALLET_TX_COLLECTION,
   PLATFORM_SERVICES,
+  belongsOnPawapayFinance,
   isPayoutTx,
   parseEscrow,
   parseWallet,
@@ -18,6 +19,7 @@ import {
   type WalletRow,
   type WalletTxRow,
 } from '@/lib/finance'
+import { bankLedgerKeys, listBankTransferPayments } from '@/lib/bank-transfer-payments'
 import { backfillMissingPlatformFees } from '@/lib/platform-fee-backfill'
 import { summarizePawaPayFees } from '@/lib/pawapay-fees'
 
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
       console.warn('Platform fee backfill skipped:', err)
     }
 
-    const [platformWalletSnap, feeSnap, payoutSnap, processingSnap, escrowSnap] = await Promise.all([
+    const [platformWalletSnap, feeSnap, payoutSnap, processingSnap, escrowSnap, bankProofs] = await Promise.all([
       db.collection(WALLETS_COLLECTION).doc('super_admin').get(),
       db
         .collection(WALLET_TX_COLLECTION)
@@ -92,7 +94,9 @@ export async function GET(request: Request) {
             .catch(() => null),
         ),
       db.collection(ORDER_ESCROW_COLLECTION).get(),
+      listBankTransferPayments(400).catch(() => []),
     ])
+    const bankKeys = bankLedgerKeys(bankProofs)
 
     let walletsSnapDocs = platformWalletSnap.exists
       ? [platformWalletSnap]
@@ -176,7 +180,7 @@ export async function GET(request: Request) {
     })
 
     const escrow = escrowSnap.docs
-      .filter(d => d.data()?.platformFeeCleared !== true)
+      .filter(d => belongsOnPawapayFinance(d.id, d.data() as Record<string, unknown>, bankKeys))
       .map(d => parseEscrow(d.id, d.data() as Record<string, unknown>))
     const held = escrow.filter(e => e.status === 'held')
     const collected = escrow.filter(

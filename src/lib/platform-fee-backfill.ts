@@ -5,6 +5,7 @@ import {
   PLATFORM_WALLET_USER_ID,
   WALLETS_COLLECTION,
   WALLET_TX_COLLECTION,
+  isBankTransferEscrow,
 } from '@/lib/finance'
 import { pawapayProcessingFee } from '@/lib/buyer-commission'
 
@@ -153,6 +154,11 @@ export async function backfillMissingPlatformFees(db: Firestore): Promise<{
     // A cleared wallet removes the fee rows. Honor either flag so those fees
     // are not credited a second time on the next wallet load.
     if (data.platformFeeCredited === true || data.platformFeeCleared === true) {
+      skipped += 1
+      continue
+    }
+
+    if (isBankTransferEscrow(data)) {
       skipped += 1
       continue
     }

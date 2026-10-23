@@ -8,21 +8,8 @@ function bookingKey(value: unknown): string {
   return norm(value).replace(/^#/, '').replace(/^vero/, '')
 }
 
-export function adminHrefForBankSource(source: string): string {
-  switch (norm(source)) {
-    case 'marketplace':
-    case 'checkout':
-      return '/dashboard/orders'
-    case 'food':
-      return '/dashboard/food'
-    case 'stay':
-    case 'accommodation':
-      return '/dashboard/stay?tab=bookings'
-    case 'digital':
-      return '/dashboard/digital-services'
-    default:
-      return '/dashboard/finance?tab=bank_proofs'
-  }
+export function adminHrefForBankSource(_source: string): string {
+  return '/dashboard/bank-transfers'
 }
 
 export function bankSourceLabel(source: string): string {

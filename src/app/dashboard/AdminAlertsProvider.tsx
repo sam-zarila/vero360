@@ -89,6 +89,7 @@ export function useNavBadgeCounts(): Record<DashboardNavBadgeKey, number> {
     carHire: ctx?.carHire.companies ?? 0,
     carHireListings: ctx?.carHire.listings ?? 0,
     carHireLeads: ctx?.carHire.leads ?? 0,
+    bankTransfers: ctx?.payments.bankNew ?? 0,
   }
 }
 
@@ -166,6 +167,11 @@ export function useHomepageAdPaymentsNewBadge() {
 export function usePromoPaymentsNewBadge() {
   const ctx = useContext(AdminAlertsContext)
   return ctx?.payments.promoNew ?? 0
+}
+
+export function useBankTransfersNewBadge() {
+  const ctx = useContext(AdminAlertsContext)
+  return ctx?.payments.bankNew ?? 0
 }
 
 export function useCarHireCompaniesBadge() {

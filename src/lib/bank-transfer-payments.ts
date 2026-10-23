@@ -4,6 +4,19 @@ import { getAdminDb } from '@/lib/firebase-admin'
 
 export const BANK_TRANSFER_PAYMENTS_COLLECTION = 'bank_transfer_payments'
 
+export function isBankTransferPending(status: string) {
+  const s = status.trim().toLowerCase()
+  return s !== 'confirmed' && s !== 'paid' && s !== 'rejected'
+}
+
+export function bankTransferSourceGroup(source: string) {
+  const s = source.trim().toLowerCase()
+  if (s === 'food') return 'food' as const
+  if (s === 'stay' || s === 'accommodation') return 'stay' as const
+  if (s === 'digital') return 'digital' as const
+  return 'marketplace' as const
+}
+
 export type BankTransferPayment = {
   id: string
   txRef: string
@@ -82,6 +95,29 @@ export function parseBankTransferPayment(
     status: str(data.status) || 'pending_review',
     createdAt: tsToIso(data.createdAt),
   }
+}
+
+export function bankLedgerKeys(items: BankTransferPayment[]): {
+  txRefs: Set<string>
+  docIds: Set<string>
+} {
+  const txRefs = new Set<string>()
+  const docIds = new Set<string>()
+  for (const item of items) {
+    if (item.txRef) txRefs.add(item.txRef)
+    for (const id of item.orderIds) {
+      if (id) docIds.add(id)
+    }
+    if (item.foodOrderId) docIds.add(item.foodOrderId)
+    if (item.stayBookingRef) {
+      const safe = item.stayBookingRef
+        .trim()
+        .replace(/[/\s.#$[\] ]/g, '_')
+        .replace(/_+/g, '_')
+      if (safe) docIds.add(`acc_${safe}`)
+    }
+  }
+  return { txRefs, docIds }
 }
 
 export async function listBankTransferPayments(limit = 200): Promise<BankTransferPayment[]> {

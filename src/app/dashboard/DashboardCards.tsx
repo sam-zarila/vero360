@@ -19,6 +19,7 @@ import {
   useOrdersPendingBadge,
   usePromoPaymentsNewBadge,
   useStayPendingBadge,
+  useBankTransfersNewBadge,
 } from './AdminAlertsProvider'
 import { usePanelSession } from './PanelSessionProvider'
 
@@ -38,6 +39,7 @@ export default function DashboardCards() {
   const carHireCompanies = useCarHireCompaniesBadge()
   const carHireListings = useCarHireListingsBadge()
   const carHireLeads = useCarHireLeadsBadge()
+  const bankTransfersNew = useBankTransfersNewBadge()
   const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
 
   return (
@@ -66,6 +68,7 @@ export default function DashboardCards() {
         const isPromos = card.id === 'marketplace-promotions'
         const isFood = card.id === 'food'
         const isCarHire = card.id === 'car-hire'
+        const isBank = card.id === 'bank-transfers'
         const badgeCount = isHelp
           ? unread
           : isCourier
@@ -90,6 +93,8 @@ export default function DashboardCards() {
                               ? foodPending
                               : isCarHire
                                 ? carHireCompanies + carHireListings + carHireLeads
+                                : isBank
+                                  ? bankTransfersNew
                         : 0
         const showBadge = badgeCount > 0
         const alertLabel = isHelp
@@ -116,6 +121,8 @@ export default function DashboardCards() {
                               ? `${badgeCount} pending food order${badgeCount === 1 ? '' : 's'}`
                               : isCarHire
                                 ? `${badgeCount} car-hire item${badgeCount === 1 ? '' : 's'} need review`
+                              : isBank
+                                ? `${badgeCount} bank transfer${badgeCount === 1 ? '' : 's'} waiting`
                         : ''
         const alertDesc = isHelp
           ? `${badgeCount} new message${badgeCount === 1 ? '' : 's'} waiting`
@@ -141,6 +148,8 @@ export default function DashboardCards() {
                               ? `${badgeCount} order${badgeCount === 1 ? '' : 's'} waiting in the kitchen`
                               : isCarHire
                                 ? `${badgeCount} operator, listing, or lead${badgeCount === 1 ? '' : 's'} to review`
+                              : isBank
+                                ? `${badgeCount} National Bank slip${badgeCount === 1 ? '' : 's'} to confirm`
                         : ''
         const alertCta = isHelp
           ? 'Reply now →'
@@ -166,6 +175,8 @@ export default function DashboardCards() {
                               ? 'Open food orders →'
                               : isCarHire
                                 ? 'Open car hire →'
+                              : isBank
+                                ? 'Open bank transfers →'
                         : ''
 
         return (

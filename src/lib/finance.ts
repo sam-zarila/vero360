@@ -90,6 +90,7 @@ export type EscrowRow = {
   id: string
   status: EscrowStatus
   serviceType: string
+  paymentRail: string
   orderNumber: string
   itemName: string
   buyerUid: string
@@ -277,11 +278,32 @@ export function platformServiceOf(input: {
   return 'other'
 }
 
+export function isBankTransferEscrow(data: Record<string, unknown>): boolean {
+  const rail = str(data.paymentRail || data.paymentProvider).toLowerCase()
+  return rail === 'bank_transfer' || rail === 'bank'
+}
+
+/** PawaPay Finance / platform wallet only. Bank holds live on Bank transfers. */
+export function belongsOnPawapayFinance(
+  id: string,
+  data: Record<string, unknown>,
+  bank?: { txRefs: Set<string>; docIds: Set<string> },
+): boolean {
+  if (data.platformFeeCleared === true) return false
+  if (isBankTransferEscrow(data)) return false
+  if (bank?.docIds.has(id)) return false
+  const txRef = str(data.txRef || data.tx_ref)
+  if (txRef && bank?.txRefs.has(txRef)) return false
+  return true
+}
+
 export function parseEscrow(id: string, data: Record<string, unknown>): EscrowRow {
+  const bank = isBankTransferEscrow(data)
   return {
     id,
     status: str(data.status).toLowerCase() || 'held',
     serviceType: str(data.serviceType) || 'marketplace',
+    paymentRail: bank ? 'bank_transfer' : str(data.paymentRail) || 'pawapay',
     orderNumber: str(data.orderNumber) || id,
     itemName: str(data.itemName) || '—',
     buyerUid: str(data.buyerUid),

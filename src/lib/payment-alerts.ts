@@ -17,11 +17,13 @@ export type PaymentAlertState = {
   digitalNew: number
   homepageAdNew: number
   promoNew: number
+  bankNew: number
   toast: string | null
   toastHref: string | null
   clearToast: () => void
   markDigitalSeen: () => void
   markHomepageAdSeen: () => void
+  markBankSeen: () => void
 }
 
 type PaidItem = {
@@ -145,6 +147,7 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
   const [digitalNew, setDigitalNew] = useState(0)
   const [homepageAdNew, setHomepageAdNew] = useState(0)
   const [promoNew, setPromoNew] = useState(0)
+  const [bankNew, setBankNew] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [toastHref, setToastHref] = useState<string | null>(null)
   const latestDigitalIds = useRef<string[]>([])
@@ -170,6 +173,13 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
     if (!ids.length) return
     writeIds(ADS_SEEN_KEY, ids)
     setHomepageAdNew(0)
+  }, [])
+
+  const markBankSeen = useCallback(() => {
+    const ids = latestBankIds.current
+    if (!ids.length) return
+    writeIds(BANK_SEEN_KEY, ids)
+    setBankNew(0)
   }, [])
 
   useEffect(() => {
@@ -241,12 +251,14 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
           )
           setHomepageAdNew(adIds.filter(id => !new Set(readIds(ADS_SEEN_KEY)).has(id)).length)
           setPromoNew(promoIds.filter(id => !new Set(readIds(PROMO_SEEN_KEY)).has(id)).length)
+          setBankNew(bankIds.filter(id => !new Set(readIds(BANK_SEEN_KEY)).has(id)).length)
           return
         }
 
         const digitalSeenSet = new Set(readIds(DIGITAL_SEEN_KEY))
         const adsSeenSet = new Set(readIds(ADS_SEEN_KEY))
         const promoSeenSet = new Set(readIds(PROMO_SEEN_KEY))
+        const bankSeenSet = new Set(readIds(BANK_SEEN_KEY))
         const digitalNotifiedSet = new Set(readIds(DIGITAL_NOTIFIED_KEY))
         const adsNotifiedSet = new Set(readIds(ADS_NOTIFIED_KEY))
         const promoNotifiedSet = new Set(readIds(PROMO_NOTIFIED_KEY))
@@ -255,6 +267,7 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
         const unseenDigital = digitalIds.filter(id => !digitalSeenSet.has(id))
         const unseenAds = adIds.filter(id => !adsSeenSet.has(id))
         const unseenPromo = promoIds.filter(id => !promoSeenSet.has(id))
+        const unseenBank = bankIds.filter(id => !bankSeenSet.has(id))
         const freshDigital = digitalIds.filter(id => !digitalNotifiedSet.has(id))
         const freshAds = adIds.filter(id => !adsNotifiedSet.has(id))
         const freshPromo = promoIds.filter(id => !promoNotifiedSet.has(id))
@@ -263,6 +276,7 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
         setDigitalNew(unseenDigital.length)
         setHomepageAdNew(unseenAds.length)
         setPromoNew(unseenPromo.length)
+        setBankNew(unseenBank.length)
 
         if (
           freshDigital.length > 0 ||
@@ -280,7 +294,7 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
           setToast(combined)
           setToastHref(
             bMsg
-              ? bankHref || '/dashboard/finance?tab=bank_proofs'
+              ? bankHref || '/dashboard/bank-transfers'
               : dMsg
                 ? '/dashboard/digital-services'
                 : aMsg
@@ -323,10 +337,12 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
     digitalNew,
     homepageAdNew,
     promoNew,
+    bankNew,
     toast,
     toastHref,
     clearToast,
     markDigitalSeen,
     markHomepageAdSeen,
+    markBankSeen,
   }
 }

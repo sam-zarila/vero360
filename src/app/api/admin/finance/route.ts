@@ -7,6 +7,7 @@ import {
   PLATFORM_WALLET_USER_ID,
   WALLETS_COLLECTION,
   WALLET_TX_COLLECTION,
+  belongsOnPawapayFinance,
   buildFinanceSummary,
   isPayoutTx,
   parseEscrow,
@@ -18,6 +19,7 @@ import {
   type WalletTxRow,
 } from '@/lib/finance'
 import { enrichFinanceMerchants } from '@/lib/enrich-finance'
+import { bankLedgerKeys, listBankTransferPayments } from '@/lib/bank-transfer-payments'
 
 function mergeTx(into: WalletTxRow[], row: WalletTxRow) {
   if (!into.some(t => t.transactionId === row.transactionId)) {
@@ -42,7 +44,7 @@ export async function GET(request: Request) {
   try {
     const db = getAdminDb()
 
-    const [walletsSnap, txSnap, payoutSnap, escrowSnap] = await Promise.all([
+    const [walletsSnap, txSnap, payoutSnap, escrowSnap, bankProofs] = await Promise.all([
       db.collection(WALLETS_COLLECTION).get(),
       db
         .collection(WALLET_TX_COLLECTION)
@@ -61,7 +63,9 @@ export async function GET(request: Request) {
           return db.collection(WALLET_TX_COLLECTION).limit(1000).get()
         }),
       db.collection(ORDER_ESCROW_COLLECTION).get(),
+      listBankTransferPayments(400).catch(() => []),
     ])
+    const bankKeys = bankLedgerKeys(bankProofs)
 
     let wallets: WalletRow[] = walletsSnap.docs
       .map(d => parseWallet(d.id, d.data() as Record<string, unknown>))
@@ -136,7 +140,10 @@ export async function GET(request: Request) {
     const allTx = enriched.transactions
 
     const escrow: EscrowRow[] = escrowSnap.docs
-      .filter(d => d.data()?.platformFeeCleared !== true)
+      .filter(d => {
+        const data = d.data() as Record<string, unknown>
+        return belongsOnPawapayFinance(d.id, data, bankKeys)
+      })
       .map(d => parseEscrow(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => {
         const at = a.updatedAt
