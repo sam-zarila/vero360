@@ -67,9 +67,13 @@ export function buildLandingCrawlDisplay(
 
     if (type === 'app_update') {
       const v = (item.latestVersion || item.linkId || '').trim()
+      const news = (item.subtitle || '').trim()
+      const bits = [title]
+      if (news && news.toLowerCase() !== title.toLowerCase()) bits.push(news)
+      if (v) bits.push(`Latest: v${v}`)
       updates.push({
         id: item.id,
-        text: v ? `Update to latest version v${v}` : title || 'Update available',
+        text: bits.filter(Boolean).join(' · ') || (v ? `Update to latest version v${v}` : 'New Vero360 update is ready'),
         linkType: 'app_update',
         actionLabel: 'Update',
       })

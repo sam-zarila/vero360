@@ -44,7 +44,7 @@ export default function HomeCrawlAdminPage() {
   const [updateVersion, setUpdateVersion] = useState('')
   const [updateTitle, setUpdateTitle] = useState('Update available')
   const [updateSubtitle, setUpdateSubtitle] = useState(
-    'A new version of Vero360 is ready. Tap Update to install.',
+    'A new version of Vero360 is ready. This update improves orders, chats, and payments. Tap Update to install from the store.',
   )
 
   const load = useCallback(async () => {
@@ -116,7 +116,7 @@ export default function HomeCrawlAdminPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to post update notice')
       setNotice(
-        `App update notice posted for v${version}. Users on an older build will see Update on home.`,
+        `App update notice posted for v${version}. It crawls in the app only on installs older than v${version}.`,
       )
       await load()
     } catch (err) {
@@ -161,7 +161,7 @@ export default function HomeCrawlAdminPage() {
       <DashboardBackLink />
       <DashboardPageHeader
         sectionId="home-crawl"
-        description="Messages that scroll under “what are you looking for?” on the Vero360 app home. Promotions are included automatically."
+        description="Messages that scroll under “what are you looking for?” on the Vero360 app home and on the website. App-update notices crawl in the app only on older installs, with the what’s-new text you write here."
         actions={<DashboardRefreshButton onClick={() => void load()} />}
       />
 
@@ -178,9 +178,9 @@ export default function HomeCrawlAdminPage() {
           lineHeight: 1.4,
         }}
       >
-        Keep titles short (one line). They scroll continuously right → left on the homepage.
-        Use <strong>App update</strong> below when you publish a new store version. Users on older
-        builds see an Update button.
+        Keep titles short. They scroll continuously right → left on the <strong>app home</strong> and
+        on the website. Use <strong>App update</strong> below when you publish a new store version —
+        phones on an older build crawl that notice with what is new. Current builds do not.
       </div>
 
       {error ? (
@@ -195,8 +195,9 @@ export default function HomeCrawlAdminPage() {
           Notify users to update the app
         </h3>
         <p style={{ margin: 0, fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
-          Post after you ship a new build. Only one update notice stays active. The app compares this
-          version to the installed build and shows <strong>Update</strong> when needed.
+          Post after you ship a new build. Only one update notice stays active. On the app it crawls
+          only if the installed version is older than the number below. The what&apos;s-new text
+          scrolls with an <strong>Update</strong> button to the store.
         </p>
         <label style={labelStyle}>
           Latest version *
@@ -218,13 +219,18 @@ export default function HomeCrawlAdminPage() {
           />
         </label>
         <label style={labelStyle}>
-          Message
-          <input
+          What&apos;s new (scrolls on app home)
+          <textarea
             value={updateSubtitle}
             onChange={e => setUpdateSubtitle(e.target.value)}
-            maxLength={160}
-            style={inputStyle}
+            maxLength={400}
+            rows={3}
+            placeholder="Tell users what this update changes — this text crawls in the app and on the website."
+            style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }}
           />
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#9A3412' }}>
+            {updateSubtitle.length}/400 · Shown in the home crawl and when someone taps Update
+          </span>
         </label>
         <button type="submit" disabled={savingUpdate} style={primaryBtn}>
           {savingUpdate ? 'Posting…' : 'Post update notice'}
