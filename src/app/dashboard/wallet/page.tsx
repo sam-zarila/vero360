@@ -352,7 +352,7 @@ export default function SuperAdminWalletPage() {
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Platform wallet</h1>
           <p style={{ color: '#6B7280', marginTop: 6, marginBottom: 0, maxWidth: 640 }}>
-            Vero360 commission from marketplace, food, stay, rides, digital services,
+            Vero360 commission from marketplace, food, stay, car hire, rides, digital services,
             promoted ads, and homepage ads is collected here. PawaPay’s processing
             fee is deducted from that commission; the rest stays in this wallet.
             Pay out the available balance to a bank or mobile money.
@@ -654,7 +654,7 @@ export default function SuperAdminWalletPage() {
           <p style={{ margin: 0, color: '#6B7280' }}>
             {view
               ? 'No matching transactions for this card yet.'
-              : 'No commission or payouts yet. Marketplace, food, and stay fees land here when an order is released, after PawaPay processing is deducted. Ride, digital, advert, and promotion payments credit this wallet as soon as they are paid.'}
+              : 'No commission or payouts yet. Marketplace, food, stay, and car hire fees land here when an order is released, after PawaPay processing is deducted. Ride, digital, advert, and promotion payments credit this wallet as soon as they are paid.'}
           </p>
         </div>
       ) : filtered.length === 0 ? null : (

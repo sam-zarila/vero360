@@ -98,7 +98,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'car-hire',
     title: 'Car Hire',
-    desc: 'Operators, listings, and provider leads',
+    desc: 'Operators, listings, commission, and provider leads',
     icon: 'car',
     color: '#0F766E',
     bg: '#F0FDFA',

@@ -88,6 +88,9 @@ export default function CarHireCompaniesPage() {
     action: CarHireCompanyReviewAction
   } | null>(null)
   const [note, setNote] = useState('')
+  const [commissionPercent, setCommissionPercent] = useState('8')
+  const [commissionSaved, setCommissionSaved] = useState('')
+  const [commissionBusy, setCommissionBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -101,6 +104,14 @@ export default function CarHireCompaniesPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(opsApiError(data, res.status, 'Failed to load companies'))
       setItems(parseOpsCompanyPage(data))
+      const commissionRes = await adminFetch('/api/admin/car-hire/commission', {
+        headers,
+        cache: 'no-store',
+      })
+      const commissionData = await commissionRes.json().catch(() => ({}))
+      if (commissionRes.ok && commissionData?.config?.ratePercent != null) {
+        setCommissionPercent(String(commissionData.config.ratePercent))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load companies')
     } finally {
@@ -170,6 +181,28 @@ export default function CarHireCompaniesPage() {
     void run(company, action)
   }
 
+  async function saveCommission() {
+    setCommissionBusy(true)
+    setError('')
+    setCommissionSaved('')
+    try {
+      const res = await adminFetch('/api/admin/car-hire/commission', {
+        method: 'PUT',
+        body: JSON.stringify({ ratePercent: Number(commissionPercent) }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not save commission')
+      if (data?.config?.ratePercent != null) {
+        setCommissionPercent(String(data.config.ratePercent))
+      }
+      setCommissionSaved(data.message || 'Commission saved.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save commission')
+    } finally {
+      setCommissionBusy(false)
+    }
+  }
+
   function closeNote() {
     if (busy) return
     setNoteTarget(null)
@@ -196,6 +229,41 @@ export default function CarHireCompaniesPage() {
           </div>
         }
       />
+
+      <section style={commissionCardStyle}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Operator commission</h2>
+          <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: 13, lineHeight: 1.5 }}>
+            Taken from the rental when the trip is paid. The deposit is not commissioned. The
+            operator wallet receives the rest after the return inspection.
+          </p>
+        </div>
+        <form
+          onSubmit={event => {
+            event.preventDefault()
+            void saveCommission()
+          }}
+          style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}
+        >
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}>
+            Rate
+            <input
+              type="number"
+              min={0}
+              max={50}
+              step={0.1}
+              value={commissionPercent}
+              onChange={event => setCommissionPercent(event.target.value)}
+              style={commissionInputStyle}
+            />
+            %
+          </label>
+          <button type="submit" disabled={commissionBusy} style={neutralButtonStyle}>
+            {commissionBusy ? 'Saving…' : 'Save rate'}
+          </button>
+        </form>
+        {commissionSaved ? <p style={{ ...noticeStyle, margin: 0 }}>{commissionSaved}</p> : null}
+      </section>
 
       {notice ? (
         <div role="status" style={noticeStyle}>
@@ -553,6 +621,24 @@ const gapWarningStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   lineHeight: 1.5,
+}
+
+const commissionCardStyle: CSSProperties = {
+  display: 'grid',
+  gap: 12,
+  padding: 16,
+  borderRadius: 16,
+  border: '1px solid var(--border)',
+  background: 'var(--surface)',
+}
+
+const commissionInputStyle: CSSProperties = {
+  width: 88,
+  borderRadius: 10,
+  border: '1px solid var(--border)',
+  padding: '8px 10px',
+  fontSize: 14,
+  fontWeight: 700,
 }
 
 const linkButtonStyle: CSSProperties = {

@@ -214,6 +214,7 @@ export const PLATFORM_SERVICES = [
   'promotions',
   'homepage_ads',
   'courier',
+  'car_hire',
   'other',
 ] as const
 
@@ -239,6 +240,8 @@ export function platformServiceLabel(service: string): string {
       return 'Homepage ads'
     case 'courier':
       return 'Vero Courier'
+    case 'car_hire':
+      return 'Car hire'
     default:
       return 'Other'
   }
@@ -267,6 +270,9 @@ export function platformServiceOf(input: {
   if (text.includes('homepage') || text.includes('advert')) return 'homepage_ads'
   if (text.includes('promote')) return 'promotions'
   if (text.includes('courier')) return 'courier'
+  if (text.includes('car hire') || text.includes('car-hire') || text.includes('car_hire')) {
+    return 'car_hire'
+  }
   if (text.includes('marketplace')) return 'marketplace'
   return 'other'
 }
