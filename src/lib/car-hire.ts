@@ -1357,6 +1357,7 @@ export type DispatchBoard = {
   latePickups: DispatchBooking[]
   overdueReturns: DispatchBooking[]
   awaitingResponse: DispatchBooking[]
+  upcomingPickups: DispatchBooking[]
   serviceDue: {
     carId: number
     title: string
@@ -1388,6 +1389,7 @@ export function parseDispatchBoard(body: unknown): DispatchBoard {
     latePickups: bookings(row.latePickups),
     overdueReturns: bookings(row.overdueReturns),
     awaitingResponse: bookings(row.awaitingResponse),
+    upcomingPickups: bookings(row.upcomingPickups),
     serviceDue: unwrapList(row.serviceDue).flatMap(item => {
       const record = asRecord(item)
       const carId = asNumber(record?.carId)

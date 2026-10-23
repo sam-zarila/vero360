@@ -130,6 +130,14 @@ export default function ProviderDispatchPage() {
             tone="warning"
           />
         ) : null}
+        {board.upcomingPickups.length > 0 ? (
+          <BookingSection
+            title="Paid upcoming pickups"
+            hint="The renter has paid. Prepare the car before the pickup date."
+            rows={board.upcomingPickups}
+            time="start"
+          />
+        ) : null}
         {board.latePickups.length > 0 ? (
           <BookingSection
             title="Late pickups"

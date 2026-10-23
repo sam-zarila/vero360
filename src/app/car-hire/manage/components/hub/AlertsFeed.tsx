@@ -106,6 +106,22 @@ function buildAlerts(board: DispatchBoard | null, now: number | null): Alert[] {
     })
   }
 
+  for (const booking of board.upcomingPickups.slice(0, 2)) {
+    alerts.push({
+      id: `upcoming-${booking.id}`,
+      tone: 'info',
+      Icon: LuTimer,
+      title: bookingLabel(booking),
+      badge: 'Paid booking',
+      when: dayOf(booking.startAt),
+      body: `${booking.renterName || 'A renter'} paid. Pickup ${dayOf(booking.startAt)}${
+        booking.branch ? ` at ${booking.branch.name}` : ''
+      }. Prepare the car.`,
+      primary: { label: 'Open booking', href: bookingHref(booking) },
+      secondary: { label: 'All bookings', href: '/car-hire/manage/bookings' },
+    })
+  }
+
   for (const booking of board.awaitingResponse.slice(0, 2)) {
     const rel = relativeLabel(booking.holdExpiresAt, now)
     alerts.push({

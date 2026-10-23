@@ -206,7 +206,10 @@ function TurnaroundCard({ board }: { board: DispatchBoard | null }) {
   const departures = board ? board.pickups.length : 0
   const returns = board ? board.returns.length : 0
   const attention = board
-    ? board.latePickups.length + board.overdueReturns.length + board.awaitingResponse.length
+    ? board.latePickups.length +
+      board.overdueReturns.length +
+      board.awaitingResponse.length +
+      board.upcomingPickups.length
     : 0
   const serviceDue = board ? board.serviceDue.length : 0
 
