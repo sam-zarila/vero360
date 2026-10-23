@@ -121,6 +121,11 @@ export function parseDigitalServiceOrder(
     amountMwk: num(data.amountMwk ?? data.amount),
     status,
     txRef: str(data.txRef || data.tx_ref) || null,
+    paymentProvider: str(data.paymentProvider || data.provider) || null,
+    bankProofUrl:
+      str(data.bankProofUrl || data.proofUrl) ||
+      (Array.isArray(data.bankProofUrls) ? str(data.bankProofUrls[0]) : '') ||
+      null,
     buyerUid: str(data.buyerUid || data.userId),
     buyerName: str(data.buyerName || data.userName) || 'Buyer',
     buyerEmail: str(data.buyerEmail || data.email),

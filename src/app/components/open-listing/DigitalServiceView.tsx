@@ -94,6 +94,18 @@ export default function DigitalServiceView({
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [network, setNetwork] = useState<'airtel' | 'tnm'>('airtel')
+  const [payMethod, setPayMethod] = useState<'momo' | 'bank'>('momo')
+  const [bank, setBank] = useState<{
+    enabled: boolean
+    bankName?: string
+    accountName?: string
+    accountNumber?: string
+    branch?: string
+  } | null>(null)
+  const [bankOrder, setBankOrder] = useState<{
+    txRef: string
+    amountMwk: number
+  } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const [paid, setPaid] = useState(false)
@@ -123,6 +135,22 @@ export default function DigitalServiceView({
     selectedUsd,
     customUsd,
   ])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/public/bank-transfer', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return
+        setBank(data && data.enabled ? data : { enabled: false })
+      })
+      .catch(() => {
+        if (!cancelled) setBank({ enabled: false })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const digits = phone.replace(/\D/g, '')
@@ -198,8 +226,12 @@ export default function DigitalServiceView({
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (waiting || paid) return
+    if (waiting || paid || bankOrder) return
     setError('')
+    if (payMethod === 'bank' && !kycUrls.bankProofUrl) {
+      setError('Upload a photo of your transfer slip so we can confirm the payment.')
+      return
+    }
     setSubmitting(true)
     try {
       const custom = Number(customUsd)
@@ -232,12 +264,22 @@ export default function DigitalServiceView({
           buyerPhone: phone.trim(),
           selectedUsd: usdPayload,
           network,
+          method: payMethod === 'bank' ? 'bank_transfer' : 'momo',
           payoutKyc,
+          proofUrl: payMethod === 'bank' ? kycUrls.bankProofUrl || '' : '',
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(data.error || 'Could not start payment')
+      }
+      if (payMethod === 'bank' || data.method === 'bank_transfer') {
+        setBankOrder({
+          txRef: String(data.txRef || '').trim(),
+          amountMwk: Number(data.amountMwk) || amountMwk,
+        })
+        setSubmitting(false)
+        return
       }
       const id = String(data.depositId || '').trim()
       if (!id) throw new Error('PawaPay did not start the payment.')
@@ -474,6 +516,45 @@ export default function DigitalServiceView({
                 onChange={e => setPhone(e.target.value)}
               />
             </div>
+            {bank?.enabled ? (
+              <div style={{ marginBottom: 12 }}>
+                <span style={label}>Pay with</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(
+                    [
+                      ['momo', 'Airtel / TNM'],
+                      ['bank', 'Bank transfer'],
+                    ] as const
+                  ).map(([id, text]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      disabled={waiting || paid || Boolean(bankOrder)}
+                      onClick={() => setPayMethod(id)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 8px',
+                        borderRadius: 12,
+                        border:
+                          payMethod === id
+                            ? '2px solid #EA580C'
+                            : '1px solid var(--border)',
+                        background: payMethod === id ? '#FFF7ED' : '#fff',
+                        color: '#111827',
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: waiting || paid || bankOrder ? 'default' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {payMethod === 'momo' ? (
             <div style={{ marginBottom: 12 }}>
               <span style={label}>Network</span>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -509,6 +590,7 @@ export default function DigitalServiceView({
                 ))}
               </div>
             </div>
+            ) : null}
             <div style={{ marginBottom: 12 }}>
               <label style={label} htmlFor="buyer-email">
                 Email
@@ -583,6 +665,56 @@ export default function DigitalServiceView({
               </div>
             ) : null}
 
+            {payMethod === 'bank' && bank?.enabled ? (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: '#FFF7ED',
+                  border: '1px solid #FED7AA',
+                }}
+              >
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#9A3412', marginBottom: 8 }}>
+                  Transfer to this account
+                </div>
+                <BankLine label="Bank" value={bank.bankName || ''} />
+                <BankLine label="Account name" value={bank.accountName || ''} />
+                <BankLine label="Account number" value={bank.accountNumber || ''} />
+                <BankLine label="Branch" value={bank.branch || ''} />
+                {bankOrder?.txRef ? (
+                  <BankLine label="Payment reference" value={bankOrder.txRef} />
+                ) : null}
+                <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9A3412', lineHeight: 1.45 }}>
+                  Send the exact amount {formatMwk(bankOrder?.amountMwk || amountMwk)}. Use the
+                  payment reference as the deposit description so we can match it.
+                </p>
+                <p
+                  style={{
+                    margin: '10px 0 0',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: '#B08968',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  🔒 Secured by Vero escrow
+                </p>
+                {!bankOrder ? (
+                  <div style={{ marginTop: 12 }}>
+                    <KycFile
+                      label="Upload transfer slip / proof of payment"
+                      ready={Boolean(kycUrls.bankProofUrl)}
+                      busy={kycBusy === 'bankProofUrl'}
+                      onFile={file => void uploadKyc('bankProofUrl', file)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             {paid ? (
               <div
                 style={{
@@ -635,21 +767,42 @@ export default function DigitalServiceView({
 
             <button
               type="submit"
-              disabled={submitting || waiting || paid || Boolean(kycBusy)}
+              disabled={
+                submitting ||
+                waiting ||
+                paid ||
+                Boolean(kycBusy) ||
+                Boolean(bankOrder) ||
+                (payMethod === 'bank' && !kycUrls.bankProofUrl)
+              }
               style={{
                 ...btn,
                 background: 'linear-gradient(135deg, #EA580C, #F97316)',
                 color: '#fff',
-                opacity: submitting || waiting || paid || kycBusy ? 0.7 : 1,
+                opacity:
+                  submitting ||
+                  waiting ||
+                  paid ||
+                  kycBusy ||
+                  bankOrder ||
+                  (payMethod === 'bank' && !kycUrls.bankProofUrl)
+                    ? 0.7
+                    : 1,
               }}
             >
               {paid
                 ? 'Payment received'
-                : waiting
-                  ? 'Waiting for approval…'
-                  : submitting
-                    ? 'Sending prompt…'
-                    : `Pay ${formatMwk(amountMwk)} with mobile money`}
+                : bankOrder
+                  ? 'Transfer recorded — we’ll confirm it'
+                  : waiting
+                    ? 'Waiting for approval…'
+                    : submitting
+                      ? payMethod === 'bank'
+                        ? 'Saving order…'
+                        : 'Sending prompt…'
+                      : payMethod === 'bank'
+                        ? `Send proof · ${formatMwk(amountMwk)}`
+                        : `Pay ${formatMwk(amountMwk)} with mobile money`}
             </button>
             <p
               style={{
@@ -660,13 +813,32 @@ export default function DigitalServiceView({
                 textAlign: 'center',
               }}
             >
-              Approve the prompt on your Airtel Money or TNM Mpamba phone.
-              Secured by PawaPay. We’ll email fulfilment details after payment.
+              {payMethod === 'bank'
+                ? 'Secured by Vero escrow. We’ll confirm your order when the transfer lands, then email fulfilment details.'
+                : 'Approve the prompt on your Airtel Money or TNM Mpamba phone. Secured by PawaPay. We’ll email fulfilment details after payment.'}
             </p>
           </form>
         </div>
       </div>
     </main>
+  )
+}
+
+function BankLine({ label, value }: { label: string; value: string }) {
+  if (!value) return null
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 12,
+        fontSize: 13,
+        marginBottom: 6,
+      }}
+    >
+      <span style={{ color: '#9A3412', fontWeight: 700 }}>{label}</span>
+      <span style={{ color: '#111827', fontWeight: 800, textAlign: 'right' }}>{value}</span>
+    </div>
   )
 }
 

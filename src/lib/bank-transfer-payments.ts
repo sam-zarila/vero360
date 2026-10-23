@@ -1,0 +1,85 @@
+import 'server-only'
+
+import { getAdminDb } from '@/lib/firebase-admin'
+
+export const BANK_TRANSFER_PAYMENTS_COLLECTION = 'bank_transfer_payments'
+
+export type BankTransferPayment = {
+  id: string
+  txRef: string
+  amountMwk: number
+  proofUrl: string
+  buyerUid: string
+  buyerName: string
+  buyerEmail: string
+  buyerPhone: string
+  source: string
+  title: string
+  digitalOrderId: string | null
+  status: string
+  createdAt: string | null
+}
+
+function str(value: unknown): string {
+  return value == null ? '' : String(value).trim()
+}
+
+function num(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  return Number(String(value ?? '').replace(/,/g, '')) || 0
+}
+
+function tsToIso(value: unknown): string | null {
+  if (!value) return null
+  if (typeof value === 'string') {
+    const d = new Date(value)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  }
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    try {
+      return (value as { toDate: () => Date }).toDate().toISOString()
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+export function parseBankTransferPayment(
+  id: string,
+  data: Record<string, unknown>,
+): BankTransferPayment {
+  const urls = Array.isArray(data.proofUrls)
+    ? data.proofUrls.map(v => str(v)).filter(Boolean)
+    : []
+  return {
+    id,
+    txRef: str(data.txRef),
+    amountMwk: num(data.amountMwk ?? data.amount),
+    proofUrl: str(data.proofUrl) || urls[0] || '',
+    buyerUid: str(data.buyerUid),
+    buyerName: str(data.buyerName) || 'Buyer',
+    buyerEmail: str(data.buyerEmail),
+    buyerPhone: str(data.buyerPhone),
+    source: str(data.source) || 'checkout',
+    title: str(data.title) || 'Bank transfer',
+    digitalOrderId: str(data.digitalOrderId) || null,
+    status: str(data.status) || 'pending_review',
+    createdAt: tsToIso(data.createdAt),
+  }
+}
+
+export async function listBankTransferPayments(limit = 200): Promise<BankTransferPayment[]> {
+  const snap = await getAdminDb()
+    .collection(BANK_TRANSFER_PAYMENTS_COLLECTION)
+    .limit(limit)
+    .get()
+  return snap.docs
+    .map(d => parseBankTransferPayment(d.id, d.data() as Record<string, unknown>))
+    .sort((a, b) => {
+      const at = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return bt - at
+    })
+}

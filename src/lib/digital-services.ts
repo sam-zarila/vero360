@@ -20,6 +20,8 @@ export type DigitalServiceOrder = {
   amountMwk: number
   status: DigitalOrderStatus
   txRef: string | null
+  paymentProvider: string | null
+  bankProofUrl: string | null
   buyerUid: string
   buyerName: string
   buyerEmail: string
@@ -86,7 +88,10 @@ export function normalizeDigitalOrderStatus(raw: unknown): DigitalOrderStatus {
     v === 'awaiting_payment' ||
     v === 'awaitingpayment' ||
     v === 'unpaid' ||
-    v === 'payment_pending'
+    v === 'payment_pending' ||
+    v === 'awaiting_bank' ||
+    v === 'awaiting_bank_confirmation' ||
+    v === 'bank_transfer_pending'
   ) {
     return 'pending_payment'
   }

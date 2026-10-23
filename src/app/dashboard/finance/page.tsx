@@ -33,6 +33,8 @@ import {
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
 import { AdminPasswordGate } from '@/app/dashboard/AdminPasswordGate'
+import { BankTransferPanel } from './BankTransferPanel'
+import { BankTransferProofsPanel } from './BankTransferProofsPanel'
 import {
   isPawaPayCollectionTx,
   isPawaPayPayoutTx,
@@ -40,7 +42,7 @@ import {
   resolvedPawaPayPayoutFee,
 } from '@/lib/pawapay-fees'
 
-type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts'
+type Tab = 'overview' | 'escrow' | 'transactions' | 'wallets' | 'payouts' | 'bank_proofs'
 
 const EMPTY_SUMMARY: FinanceSummary = {
   walletCount: 0,
@@ -204,6 +206,7 @@ function FinanceAdminInner() {
     { id: 'escrow', label: `Escrow (${summary.escrowHeldCount} held)` },
     { id: 'transactions', label: `Transactions (${summary.txCount})` },
     { id: 'payouts', label: `Payouts (${summary.payoutCount})` },
+    { id: 'bank_proofs', label: 'Bank proofs' },
     { id: 'wallets', label: `Wallets (${summary.walletCount})` },
   ]
 
@@ -282,11 +285,14 @@ function FinanceAdminInner() {
       ) : null}
 
       {tab === 'overview' ? (
-        <Overview
-          summary={summary}
-          onGo={setTab}
-          showPlatformWallet={canViewPlatformWallet}
-        />
+        <>
+          <BankTransferPanel />
+          <Overview
+            summary={summary}
+            onGo={setTab}
+            showPlatformWallet={canViewPlatformWallet}
+          />
+        </>
       ) : null}
 
       {tab === 'escrow' ? (
@@ -320,6 +326,8 @@ function FinanceAdminInner() {
           )}
         </>
       ) : null}
+
+      {tab === 'bank_proofs' ? <BankTransferProofsPanel /> : null}
 
       {tab === 'payouts' ? (
         <>

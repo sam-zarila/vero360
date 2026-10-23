@@ -73,6 +73,8 @@ export async function createPendingDigitalOrder(input: {
   source?: string
   isGuest?: boolean
   payoutKyc?: Record<string, unknown> | null
+  paymentProvider?: string
+  bankProofUrl?: string | null
 }): Promise<string> {
   const isCrypto = String(input.product.category || '').toLowerCase() === 'crypto'
   const kind = isCrypto
@@ -96,7 +98,14 @@ export async function createPendingDigitalOrder(input: {
     status: 'pending_payment',
     txRef: input.txRef,
     depositId: null,
-    paymentProvider: 'pawapay',
+    paymentProvider: input.paymentProvider || 'pawapay',
+    ...(input.bankProofUrl
+      ? {
+          bankProofUrl: input.bankProofUrl,
+          bankProofUrls: [input.bankProofUrl],
+          bankTransferReportedAt: FieldValue.serverTimestamp(),
+        }
+      : {}),
     buyerUid: input.buyerUid,
     isGuest: input.isGuest !== false,
     buyerName: input.buyerName,

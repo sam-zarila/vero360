@@ -55,6 +55,9 @@ const emptyCounts: DigitalServiceOrderCounts = {
 }
 
 function statusTone(o: DigitalServiceOrder): { label: string; bg: string; color: string } {
+  if (isDigitalOrderPending(o) && o.bankProofUrl) {
+    return { label: 'Bank proof received', bg: '#FEF3C7', color: '#92400E' }
+  }
   if (isDigitalOrderPending(o)) {
     return { label: 'Pending payment', bg: '#FFF7ED', color: '#C2410C' }
   }
@@ -676,10 +679,35 @@ export default function DigitalServicesAdminPage() {
                       </>
                     )}
                     <Field label="Phone" value={o.buyerPhone || '—'} />
+                    <Field
+                      label="Pay method"
+                      value={
+                        o.paymentProvider === 'bank_transfer'
+                          ? 'Bank transfer (National Bank)'
+                          : o.paymentProvider || '—'
+                      }
+                    />
                     <Field label="Buyer UID" value={o.buyerUid || '—'} mono />
                     <Field label="Tx ref" value={o.txRef || '—'} mono />
                     <Field label="Brand" value={o.brandTag || o.productKey || '—'} />
                   </div>
+
+                  {o.bankProofUrl ? (
+                    <div
+                      style={{
+                        marginTop: 14,
+                        padding: 12,
+                        borderRadius: 12,
+                        background: '#FEF3C7',
+                        border: '1px solid #FCD34D',
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 8 }}>
+                        Bank transfer proof
+                      </div>
+                      <KycThumb label="Transfer slip" url={o.bankProofUrl} />
+                    </div>
+                  ) : null}
 
                   {kyc ? (
                     <div

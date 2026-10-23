@@ -21,6 +21,10 @@ import {
   providerForNetwork,
   type PawaPayNetwork,
 } from '@/lib/pawapay'
+import {
+  getBankTransferConfig,
+  publicBankTransferPayload,
+} from '@/lib/bank-transfer-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +34,15 @@ function isEmail(v: string) {
 
 export async function POST(request: Request) {
   try {
-    if (!pawaPayConfigured()) {
+    const body = (await request.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >
+    const payMethod = String(body.method || body.payMethod || '')
+      .trim()
+      .toLowerCase()
+    const isBank = payMethod === 'bank' || payMethod === 'bank_transfer'
+    if (!isBank && !pawaPayConfigured()) {
       return NextResponse.json(
         {
           error:
@@ -39,11 +51,6 @@ export async function POST(request: Request) {
         { status: 503 },
       )
     }
-
-    const body = (await request.json().catch(() => ({}))) as Record<
-      string,
-      unknown
-    >
     const productKey = String(body.productKey || '').trim()
     const buyerName = String(body.buyerName || '').trim()
     const buyerEmail = String(body.buyerEmail || '').trim().toLowerCase()
@@ -124,17 +131,19 @@ export async function POST(request: Request) {
     const requested = String(body.network || '').trim().toLowerCase()
     const network: PawaPayNetwork | '' =
       requested === 'airtel' || requested === 'tnm' ? requested : guessed
-    if (!network) {
-      return NextResponse.json(
-        { error: 'Use an Airtel Money (099) or TNM Mpamba (088) number.' },
-        { status: 400 },
-      )
-    }
-    if (guessed && network !== guessed) {
-      return NextResponse.json(
-        { error: 'This number does not match the network you selected.' },
-        { status: 400 },
-      )
+    if (!isBank) {
+      if (!network) {
+        return NextResponse.json(
+          { error: 'Use an Airtel Money (099) or TNM Mpamba (088) number.' },
+          { status: 400 },
+        )
+      }
+      if (guessed && network !== guessed) {
+        return NextResponse.json(
+          { error: 'This number does not match the network you selected.' },
+          { status: 400 },
+        )
+      }
     }
 
     const payoutKind = detectDigitalPayoutKycKind(product)
@@ -166,6 +175,75 @@ export async function POST(request: Request) {
 
     const txRef = `vero-digital-${Date.now()}`
     const buyerUid = `web:${randomUUID()}`
+    if (isBank) {
+      const bank = await getBankTransferConfig()
+      if (!bank.enabled) {
+        return NextResponse.json(
+          { error: 'Bank transfer is not available right now. Use mobile money.' },
+          { status: 400 },
+        )
+      }
+      const proofUrl = String(body.proofUrl || body.bankProofUrl || '').trim()
+      if (!/^https?:\/\//i.test(proofUrl)) {
+        return NextResponse.json(
+          { error: 'Upload a photo of your transfer slip so we can confirm the payment.' },
+          { status: 400 },
+        )
+      }
+      const orderId = await createPendingDigitalOrder({
+        product,
+        amountMwk,
+        selectedUsd: usd,
+        isSubscription,
+        txRef,
+        buyerUid,
+        buyerName,
+        buyerEmail,
+        buyerPhone,
+        source: 'web',
+        isGuest: true,
+        payoutKyc,
+        paymentProvider: 'bank_transfer',
+        bankProofUrl: proofUrl,
+      })
+      await getAdminDb()
+        .collection('bank_transfer_payments')
+        .doc(orderId)
+        .set({
+          txRef,
+          amountMwk,
+          proofUrl,
+          proofUrls: [proofUrl],
+          buyerUid,
+          buyerName,
+          buyerEmail,
+          buyerPhone,
+          source: 'digital',
+          title: product.name,
+          digitalOrderId: orderId,
+          status: 'pending_review',
+          paymentProvider: 'bank_transfer',
+          createdAt: FieldValue.serverTimestamp(),
+        })
+      return NextResponse.json({
+        success: true,
+        pending: true,
+        method: 'bank_transfer',
+        orderId,
+        txRef,
+        amountMwk,
+        status: 'pending',
+        bank: publicBankTransferPayload(bank),
+      })
+    }
+
+    if (!network) {
+      return NextResponse.json(
+        { error: 'Use an Airtel Money (099) or TNM Mpamba (088) number.' },
+        { status: 400 },
+      )
+    }
+
     const orderId = await createPendingDigitalOrder({
       product,
       amountMwk,
