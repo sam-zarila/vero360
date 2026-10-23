@@ -2,6 +2,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { NextResponse } from 'next/server'
 import { authErrorResponse, requirePanelAdmin } from '@/lib/admin-auth'
 import { isFullAdminRole } from '@/lib/admins'
+import { recordPanelAudit } from '@/lib/audit-trail-admin'
 import {
   BANK_TRANSFER_PAYMENTS_COLLECTION,
   parseBankTransferPayment,
@@ -91,5 +92,47 @@ export async function PATCH(
   } catch (err) {
     console.error('Admin bank-transfers PATCH:', err)
     return NextResponse.json({ error: 'Could not update bank transfer' }, { status: 502 })
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  let actor
+  try {
+    actor = await requirePanelAdmin(request)
+    if (!isFullAdminRole(actor.admin.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  } catch (err) {
+    const auth = authErrorResponse(err)
+    if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { id } = await params
+  const clean = String(id || '').trim()
+  if (!clean) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  try {
+    const ref = getAdminDb().collection(BANK_TRANSFER_PAYMENTS_COLLECTION).doc(clean)
+    const snap = await ref.get()
+    if (!snap.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const item = parseBankTransferPayment(snap.id, snap.data() as Record<string, unknown>)
+    await ref.delete()
+    await recordPanelAudit(actor, {
+      action: 'delete',
+      resource: 'bank-transfer',
+      resourceId: clean,
+      summary: `Deleted bank transfer ${item.txRef || clean} (${item.source})`,
+    })
+    return NextResponse.json({ success: true, deleted: true, id: clean })
+  } catch (err) {
+    console.error('Admin bank-transfers DELETE:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Could not delete bank transfer' },
+      { status: 502 },
+    )
   }
 }

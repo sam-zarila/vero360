@@ -11,7 +11,7 @@ import {
   DashboardSearchField,
 } from '@/app/dashboard/DashboardChrome'
 import { BankTransferPanel } from '@/app/dashboard/finance/BankTransferPanel'
-import { useConfirm } from '@/app/dashboard/ConfirmDialog'
+import { useConfirm, useConfirmDelete } from '@/app/dashboard/ConfirmDialog'
 import { useAdminAlerts } from '@/app/dashboard/AdminAlertsProvider'
 import { adminFetch, panelAuthHeaders } from '@/lib/panel-client-auth'
 import { DASHBOARD_SECTION_MAP } from '@/lib/dashboard-sections'
@@ -100,6 +100,7 @@ export default function BankTransfersAdminPage() {
 
 function BankTransfersInner() {
   const confirm = useConfirm()
+  const confirmDelete = useConfirmDelete()
   const payments = useAdminAlerts().payments
   const [items, setItems] = useState<Proof[]>([])
   const [loading, setLoading] = useState(true)
@@ -224,6 +225,47 @@ function BankTransfersInner() {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const removeTransfer = async (item: Proof) => {
+    if (
+      !(await confirmDelete(
+        item.title || item.txRef || item.id,
+        `Permanently delete this ${sourceLabel(item.source).toLowerCase()} bank transfer? This cannot be undone.`,
+      ))
+    ) {
+      return
+    }
+    setBusyId(item.id)
+    setError('')
+    setNotice('')
+    try {
+      const res = await adminFetch(
+        `/api/admin/finance/bank-transfers/${encodeURIComponent(item.id)}`,
+        { method: 'DELETE' },
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setNotice(`Deleted ${item.title || item.txRef || 'bank transfer'}`)
+      setItems(prev => prev.filter(x => x.id !== item.id))
+      const group = sourceGroup(item.source)
+      setBySource(prev => ({ ...prev, [group]: Math.max(0, prev[group] - 1) }))
+      setBySourceAmount(prev => ({
+        ...prev,
+        [group]: Math.max(0, prev[group] - item.amountMwk),
+      }))
+      if (isPending(item.status)) {
+        setPending(n => Math.max(0, n - 1))
+        setPendingAmount(n => Math.max(0, n - item.amountMwk))
+      } else if (item.status === 'confirmed' || item.status === 'paid') {
+        setConfirmed(n => Math.max(0, n - 1))
+        setConfirmedAmount(n => Math.max(0, n - item.amountMwk))
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setBusyId(null)
     }
@@ -455,6 +497,14 @@ function BankTransfersInner() {
                       Back to waiting
                     </button>
                   )}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void removeTransfer(item)}
+                    style={actionBtn('#991B1B', '#FEF2F2', '#FECACA')}
+                  >
+                    {busy ? 'Removing…' : 'Delete'}
+                  </button>
                 </div>
               </article>
             )
