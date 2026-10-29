@@ -195,7 +195,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   }}
                   required
                   disabled={busy}
-                  placeholder="Same password you use at /panel"
+                  placeholder="Same password you sign in with"
                   style={passwordInput}
                 />
               </label>

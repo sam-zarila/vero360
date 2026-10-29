@@ -132,7 +132,7 @@ async function collectFcmTokens(uid: string): Promise<string[]> {
   return [...tokens]
 }
 
-async function sendFcmToUid(
+export async function sendFcmToUid(
   uid: string,
   title: string,
   body: string,

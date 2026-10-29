@@ -22,6 +22,15 @@ export type DigitalProductPriceConfig = {
   /** Product picture (Firebase Storage / HTTPS URL). */
   imageUrl?: string
   active?: boolean
+  /** Hub tile (ChatGPT / Claude) — opens a plan picker, not checkout. */
+  isHub?: boolean
+  /** When set, this product is a plan under that hub key. */
+  hubKey?: string | null
+  /** Badge on the plan card, e.g. Students / Private. */
+  planBadge?: string
+  /** ChatGPT-style feature steps shown on the plan picker. */
+  featureLines?: string[]
+  recommended?: boolean
 }
 
 export type DigitalServicesConfig = {
@@ -60,6 +69,7 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
       category: 'streaming',
       brandTag: 'Netflix',
       fixedMwkPrice: null,
+      isHub: true,
       active: true,
     },
     {
@@ -69,6 +79,7 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
         'Fair · 480p · Phone/tablet · 1 stream · 1 download',
       category: 'streaming',
       brandTag: 'Netflix',
+      hubKey: 'netflix',
       fixedMwkPrice: 8000,
       active: true,
     },
@@ -79,6 +90,7 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
         'Good · 720p HD · TV/computer/phone/tablet · 1 stream · 1 download',
       category: 'streaming',
       brandTag: 'Netflix',
+      hubKey: 'netflix',
       fixedMwkPrice: 12000,
       active: true,
     },
@@ -89,6 +101,7 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
         'Great · 1080p Full HD · TV/computer/phone/tablet · 2 streams · 2 downloads',
       category: 'streaming',
       brandTag: 'Netflix',
+      hubKey: 'netflix',
       fixedMwkPrice: 15000,
       active: true,
     },
@@ -99,6 +112,8 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
         'Most popular · Best · 4K+HDR · Spatial audio · 4 streams · 6 downloads',
       category: 'streaming',
       brandTag: 'Popular',
+      hubKey: 'netflix',
+      recommended: true,
       fixedMwkPrice: 20000,
       active: true,
     },
@@ -109,6 +124,7 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
       category: 'streaming',
       brandTag: 'GPT',
       fixedMwkPrice: null,
+      isHub: true,
       active: true,
     },
     {
@@ -117,6 +133,14 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
       subtitle: 'Shared account for up to 15 students · school work · chats are not private',
       category: 'streaming',
       brandTag: 'Students',
+      hubKey: 'chatgpt',
+      planBadge: 'For students',
+      featureLines: [
+        'Shared account for up to 15 students',
+        'Best for assignments and school work',
+        'One shared login, so chats are not private',
+      ],
+      recommended: true,
       fixedMwkPrice: 10000,
       active: true,
     },
@@ -126,6 +150,13 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
       subtitle: 'Your own account · work and personal use · chats stay private',
       category: 'streaming',
       brandTag: 'Private',
+      hubKey: 'chatgpt',
+      planBadge: 'Private',
+      featureLines: [
+        'Your own account. Not shared with anyone',
+        'Best for work and personal use',
+        'Your chats stay private',
+      ],
       fixedMwkPrice: 65000,
       active: true,
     },
@@ -228,6 +259,19 @@ function num(v: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback
 }
 
+function parseStringList(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map((x) => String(x ?? '').trim()).filter(Boolean)
+  }
+  if (typeof raw === 'string') {
+    return raw
+      .split(/\r?\n|,/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
 function parseProduct(raw: unknown): DigitalProductPriceConfig | null {
   if (!raw || typeof raw !== 'object') return null
   const d = raw as Record<string, unknown>
@@ -283,6 +327,17 @@ function parseProduct(raw: unknown): DigitalProductPriceConfig | null {
     maxOtherAmount: isSub ? null : maxOtherAmount,
     imageUrl,
     active: d.active === false ? false : true,
+    isHub: d.isHub === true || key === 'chatgpt' || key === 'netflix',
+    hubKey:
+      String(d.hubKey || '').trim() ||
+      (key.startsWith('netflix_')
+        ? 'netflix'
+        : key === 'chatgpt_basic' || key === 'chatgpt_plus'
+          ? 'chatgpt'
+          : null),
+    planBadge: String(d.planBadge || '').trim() || undefined,
+    featureLines: parseStringList(d.featureLines),
+    recommended: d.recommended === true,
   }
 }
 
@@ -328,6 +383,20 @@ function productForFirestore(p: DigitalProductPriceConfig): Record<string, unkno
   }
   const imageUrl = (p.imageUrl || '').trim()
   if (imageUrl) out.imageUrl = imageUrl
+  const isHub = p.isHub === true || p.key === 'chatgpt' || p.key === 'netflix'
+  if (isHub) {
+    out.isHub = true
+    out.fixedMwkPrice = null
+  }
+  const hubKey = (p.hubKey || '').trim()
+  if (hubKey) out.hubKey = hubKey
+  const planBadge = (p.planBadge || '').trim()
+  if (planBadge) out.planBadge = planBadge
+  const featureLines = (p.featureLines || [])
+    .map((x) => String(x || '').trim())
+    .filter(Boolean)
+  if (featureLines.length) out.featureLines = featureLines
+  if (p.recommended === true) out.recommended = true
   return out
 }
 
@@ -346,6 +415,13 @@ function mergeWithDefaults(saved: Partial<DigitalServicesConfig> | null): Digita
       ...p,
       name: p.name || prev?.name || p.key,
       category: p.category || prev?.category || 'gift_cards',
+      featureLines:
+        p.featureLines && p.featureLines.length
+          ? p.featureLines
+          : prev?.featureLines || p.featureLines || [],
+      hubKey: p.hubKey || prev?.hubKey || null,
+      planBadge: p.planBadge || prev?.planBadge,
+      isHub: p.isHub === true || prev?.isHub === true,
     })
   }
   // Older configs sold one ChatGPT Plus at MWK 35,000. Show the two plans.
@@ -491,6 +567,75 @@ export async function uploadDigitalProductImage(file: File): Promise<string> {
     resumable: false,
     metadata: {
       contentType,
+      metadata: {
+        firebaseStorageDownloadTokens: token,
+      },
+    },
+  })
+
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`
+}
+
+const MAX_FILE_BYTES = 8 * 1024 * 1024
+const ALLOWED_FULFILLMENT_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+])
+
+function fulfillmentExt(contentType: string, fileName: string): string {
+  const fromName = (fileName.split('.').pop() || '').toLowerCase()
+  if (
+    fromName === 'png' ||
+    fromName === 'webp' ||
+    fromName === 'gif' ||
+    fromName === 'jpg' ||
+    fromName === 'jpeg' ||
+    fromName === 'pdf'
+  ) {
+    return fromName === 'jpeg' ? 'jpg' : fromName
+  }
+  if (contentType.includes('pdf')) return 'pdf'
+  return imageExt(contentType, fileName)
+}
+
+/** Screenshot, photo, or PDF attached when sending an order to a buyer. */
+export async function uploadDigitalFulfillmentFile(file: File): Promise<string> {
+  const { randomUUID } = await import('crypto')
+  const { getAdminStorage, getAdminStorageBucket } = await import(
+    '@/lib/firebase-admin'
+  )
+
+  if (file.size <= 0) throw new Error('Empty file')
+  if (file.size > MAX_FILE_BYTES) throw new Error('File must be 8MB or smaller')
+
+  const contentType = (file.type || 'application/octet-stream').toLowerCase()
+  const isImage = contentType.startsWith('image/')
+  const isPdf = contentType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+  if (!isImage && !isPdf) {
+    throw new Error('Upload a picture (JPEG, PNG, WebP, GIF) or a PDF')
+  }
+  if (isImage && !ALLOWED_IMAGE_TYPES.has(contentType) && contentType !== 'image/jpg') {
+    throw new Error('Use JPEG, PNG, WebP, GIF, or PDF')
+  }
+  if (isPdf && contentType && !ALLOWED_FULFILLMENT_TYPES.has(contentType) && contentType !== 'application/octet-stream') {
+    throw new Error('Use JPEG, PNG, WebP, GIF, or PDF')
+  }
+
+  const ext = fulfillmentExt(isPdf ? 'application/pdf' : contentType, file.name)
+  const objectPath = `digital_fulfillment/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const bucket = getAdminStorage().bucket(getAdminStorageBucket())
+  const token = randomUUID()
+  const storedType = isPdf ? 'application/pdf' : contentType || 'image/jpeg'
+
+  await bucket.file(objectPath).save(buffer, {
+    resumable: false,
+    metadata: {
+      contentType: storedType,
       metadata: {
         firebaseStorageDownloadTokens: token,
       },

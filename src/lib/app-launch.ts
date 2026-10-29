@@ -4,6 +4,11 @@ export const APP_STORE_LAUNCHED = true
 export const APP_LAUNCH_LABEL = 'Available now'
 export const APP_LAUNCH_HEADLINE = 'Get Vero360 on Google Play'
 
+export const IOS_REVIEW_TITLE = 'Thank you'
+export const IOS_REVIEW_HEADLINE = 'Vero360 for iPhone is almost here'
+export const IOS_REVIEW_BODY =
+  'Our iOS app is currently under review with Apple. We are working closely with their team to bring Vero360 to the App Store. Android is available on Google Play today — we will let you know as soon as iPhone downloads go live.'
+
 /** Countdown runs through the end of September 2026 (local time). */
 export const APP_LAUNCH_COUNTDOWN_AT = new Date(2026, 8, 30, 23, 59, 59, 999)
 

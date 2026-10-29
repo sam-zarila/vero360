@@ -62,7 +62,7 @@ export function AdminPasswordGate({ title, description, children }: Props) {
               autoFocus
               disabled={busy}
               style={input}
-              placeholder="Your /panel sign-in password"
+              placeholder="Your sign-in password"
             />
           </label>
           {error ? <div style={errorText}>{error}</div> : null}

@@ -5,7 +5,7 @@ import { auth } from '@/lib/firebase'
 export async function reauthPanelPassword(password: string): Promise<void> {
   const user = auth.currentUser
   if (!user?.email) {
-    throw new Error('Sign in again at /panel, then try delete again.')
+    throw new Error('Sign in again, then try delete again.')
   }
   const cred = EmailAuthProvider.credential(user.email, password)
   await reauthenticateWithCredential(user, cred)

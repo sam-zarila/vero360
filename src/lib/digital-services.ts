@@ -48,6 +48,7 @@ export type DigitalServiceOrder = {
     cardDetails: string
     joiningLink: string
     notes: string
+    fileUrls: string[]
     sentAt: string | null
     sentVia: string[]
   } | null

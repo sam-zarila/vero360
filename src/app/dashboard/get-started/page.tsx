@@ -65,7 +65,7 @@ export default function GetStartedVideosAdminPage() {
     if (sessionLoading) return
     if (!authenticated) {
       setLoading(false)
-      setError('Sign in at /panel to manage Get started videos.')
+      setError('Sign in to manage Get started videos.')
       return
     }
     void load()

@@ -17,6 +17,11 @@ type DigitalProductPriceConfig = {
   maxOtherAmount?: number | null
   imageUrl?: string
   active?: boolean
+  isHub?: boolean
+  hubKey?: string | null
+  planBadge?: string
+  featureLines?: string[]
+  recommended?: boolean
 }
 
 type DigitalServicesConfig = {
@@ -37,12 +42,25 @@ function toDraft(p: DigitalProductPriceConfig): DraftProduct {
   }
 }
 
+function linesFromText(raw: string | string[] | undefined): string[] {
+  const text = Array.isArray(raw) ? raw.join('\n') : raw || ''
+  return text
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function isHubProduct(p: { isHub?: boolean; key: string }): boolean {
+  return p.isHub === true || p.key === 'chatgpt' || p.key === 'netflix'
+}
+
 function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
   const isSub = p.category === 'streaming' || p.category === 'subscription'
   const amounts = p.usdAmountsText
     .split(/[,\s]+/)
     .map((x) => Number(x.trim()))
     .filter((x) => Number.isFinite(x) && x > 0)
+  const hub = isHubProduct(p)
 
   return {
     key: p.key,
@@ -51,7 +69,7 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
     category: p.category,
     brandTag: (p.brandTag || '').trim() || undefined,
     fixedMwkPrice: isSub
-      ? p.key === 'netflix' || p.key === 'chatgpt'
+      ? hub
         ? null
         : Math.max(0, Math.round(Number(p.fixedMwkPrice) || 0))
       : null,
@@ -67,6 +85,11 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
         : null,
     imageUrl: (p.imageUrl || '').trim() || undefined,
     active: p.active !== false,
+    isHub: hub,
+    hubKey: (p.hubKey || '').trim() || null,
+    planBadge: (p.planBadge || '').trim() || undefined,
+    featureLines: linesFromText(p.featureLines),
+    recommended: p.recommended === true,
   }
 }
 
@@ -123,6 +146,21 @@ export function DigitalServicesPricingPanel() {
   const [newRate, setNewRate] = useState(4700)
   const [newMaxOther, setNewMaxOther] = useState(1000)
   const [newImageUrl, setNewImageUrl] = useState('')
+
+  const [subName, setSubName] = useState('')
+  const [subImageUrl, setSubImageUrl] = useState('')
+  const [subAsHub, setSubAsHub] = useState(true)
+  const [subSimplePrice, setSubSimplePrice] = useState(15000)
+  const [subStudentName, setSubStudentName] = useState('Student plan')
+  const [subStudentPrice, setSubStudentPrice] = useState(10000)
+  const [subStudentFeatures, setSubStudentFeatures] = useState(
+    'Shared account for students\nBest for school work\nChats are not private',
+  )
+  const [subPrivateName, setSubPrivateName] = useState('Private plan')
+  const [subPrivatePrice, setSubPrivatePrice] = useState(65000)
+  const [subPrivateFeatures, setSubPrivateFeatures] = useState(
+    'Your own account. Not shared with anyone\nBest for work and personal use\nYour chats stay private',
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -248,6 +286,7 @@ export function DigitalServicesPricingPanel() {
       const url = String(data.imageUrl || '')
       if (!url) throw new Error('No image URL returned')
       if (target === 'new') setNewImageUrl(url)
+      else if (target === 'sub') setSubImageUrl(url)
       else updateProduct(target, { imageUrl: url })
       setNotice('Picture uploaded.')
     } catch (err) {
@@ -318,22 +357,149 @@ export function DigitalServicesPricingPanel() {
     }
   }
 
+  const uniqueKey = (() => {
+    const existing = new Set(products.map((p) => p.key))
+    return (base: string) => {
+      let key = slugKey(base)
+      if (existing.has(key)) key = `${key}_${Date.now().toString(36).slice(-4)}`
+      existing.add(key)
+      return key
+    }
+  })()
+
+  const createSubscription = async () => {
+    const name = subName.trim()
+    if (!name) {
+      setError('Enter a subscription name (e.g. Claude, Canva).')
+      return
+    }
+    const hubKey = uniqueKey(name)
+    const imageUrl = subImageUrl.trim() || undefined
+    const next: DraftProduct[] = [...products]
+
+    if (subAsHub) {
+      const studentPrice = Math.round(Number(subStudentPrice) || 0)
+      const privatePrice = Math.round(Number(subPrivatePrice) || 0)
+      if (studentPrice < 1 && privatePrice < 1) {
+        setError('Set at least one plan price in MWK.')
+        return
+      }
+      next.push({
+        key: hubKey,
+        name,
+        subtitle: 'Choose a plan',
+        category: 'streaming',
+        brandTag: name,
+        imageUrl,
+        fixedMwkPrice: null,
+        usdAmounts: [],
+        usdAmountsText: '',
+        isHub: true,
+        active: true,
+      })
+      if (studentPrice >= 1) {
+        const studentName = subStudentName.trim() || 'Student plan'
+        next.push({
+          key: uniqueKey(`${hubKey}_student`),
+          name: studentName,
+          subtitle: linesFromText(subStudentFeatures).join(' · ') || studentName,
+          category: 'streaming',
+          brandTag: 'Students',
+          hubKey,
+          planBadge: 'For students',
+          featureLines: linesFromText(subStudentFeatures),
+          recommended: true,
+          fixedMwkPrice: studentPrice,
+          usdAmounts: [],
+          usdAmountsText: '',
+          active: true,
+        })
+      }
+      if (privatePrice >= 1) {
+        const privateName = subPrivateName.trim() || 'Private plan'
+        next.push({
+          key: uniqueKey(`${hubKey}_private`),
+          name: privateName,
+          subtitle: linesFromText(subPrivateFeatures).join(' · ') || privateName,
+          category: 'streaming',
+          brandTag: 'Private',
+          hubKey,
+          planBadge: 'Private',
+          featureLines: linesFromText(subPrivateFeatures),
+          recommended: false,
+          fixedMwkPrice: privatePrice,
+          usdAmounts: [],
+          usdAmountsText: '',
+          active: true,
+        })
+      }
+    } else {
+      const price = Math.round(Number(subSimplePrice) || 0)
+      if (price < 1) {
+        setError('MWK price must be at least 1.')
+        return
+      }
+      next.push({
+        key: hubKey,
+        name,
+        subtitle: '1-month subscription',
+        category: 'streaming',
+        brandTag: name,
+        imageUrl,
+        fixedMwkPrice: price,
+        usdAmounts: [],
+        usdAmountsText: '',
+        isHub: false,
+        active: true,
+      })
+    }
+
+    const ok = await save(next)
+    if (ok) {
+      setSubName('')
+      setSubImageUrl('')
+      setSubSimplePrice(15000)
+      setNotice(
+        subAsHub
+          ? `${name} is live. App users tap it, then pick Student or Private — like ChatGPT.`
+          : `${name} is live in the app.`,
+      )
+    }
+  }
+
   const removeProduct = async (key: string) => {
     const name = products.find((p) => p.key === key)?.name || key
-    if (!(await confirmDelete(name, 'It will disappear from the app.'))) return
-    const next = products.filter((p) => p.key !== key)
+    const extra = products.some((p) => p.hubKey === key)
+      ? ' Its plans will be removed too.'
+      : ''
+    if (!(await confirmDelete(name, `It will disappear from the app.${extra}`))) return
+    const next = products.filter((p) => p.key !== key && p.hubKey !== key)
     await save(next)
   }
 
   const subs = products.filter(
     (p) => p.category === 'streaming' || p.category === 'subscription',
   )
-  const netflixPlans = subs.filter((p) => p.key.startsWith('netflix_'))
+  const netflixPlans = subs.filter((p) => p.key.startsWith('netflix_') || p.hubKey === 'netflix')
   const chatGptPlans = subs.filter(
-    (p) => p.key === 'chatgpt_basic' || p.key === 'chatgpt_plus',
+    (p) =>
+      p.hubKey === 'chatgpt' ||
+      p.key === 'chatgpt_basic' ||
+      p.key === 'chatgpt_plus',
+  )
+  const customHubs = subs.filter(
+    (p) => isHubProduct(p) && p.key !== 'netflix' && p.key !== 'chatgpt',
   )
   const otherSubs = subs.filter(
-    (p) => !p.key.startsWith('netflix') && p.key !== 'chatgpt_basic' && p.key !== 'chatgpt_plus',
+    (p) =>
+      !p.key.startsWith('netflix') &&
+      p.key !== 'chatgpt' &&
+      p.key !== 'chatgpt_basic' &&
+      p.key !== 'chatgpt_plus' &&
+      p.hubKey !== 'netflix' &&
+      p.hubKey !== 'chatgpt' &&
+      !isHubProduct(p) &&
+      !p.hubKey,
   )
   const cryptos = products.filter((p) => p.category === 'crypto')
   const gifts = products.filter(
@@ -437,6 +603,154 @@ export function DigitalServicesPricingPanel() {
               Example: $10 gift card = MWK {(10 * (Number(rate) || 0)).toLocaleString()}
             </span>
           </label>
+
+          <h3 style={sectionTitle}>Create subscription</h3>
+          <p style={{ margin: '0 0 12px', color: 'var(--muted)', fontSize: 13 }}>
+            Same as a gift card, but for apps like Claude or Canva. Turn on plan
+            picker to add a student plan and a private plan — the same steps as ChatGPT.
+          </p>
+          <article style={{ ...cardStyle, borderColor: '#FDBA74', background: '#FFF7ED' }}>
+            <div style={rowStyle}>
+              <label style={fieldLabel}>
+                Name
+                <input
+                  value={subName}
+                  onChange={(e) => setSubName(e.target.value)}
+                  placeholder="Claude"
+                  style={inputStyle}
+                />
+              </label>
+              <label style={{ ...checkLabel, alignSelf: 'end', paddingBottom: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={subAsHub}
+                  onChange={(e) => setSubAsHub(e.target.checked)}
+                />
+                Plan picker (student / private)
+              </label>
+            </div>
+            <div style={rowStyle}>
+              <label style={fieldLabel}>
+                Picture URL (optional)
+                <input
+                  value={subImageUrl}
+                  onChange={(e) => setSubImageUrl(e.target.value)}
+                  placeholder="https://…"
+                  style={inputStyle}
+                />
+              </label>
+              <label style={fieldLabel}>
+                Or upload picture
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploading || saving}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) void uploadImage(file, 'sub')
+                    e.target.value = ''
+                  }}
+                  style={{ ...inputStyle, padding: 8 }}
+                />
+              </label>
+            </div>
+            {subImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={subImageUrl}
+                alt=""
+                style={{
+                  marginTop: 12,
+                  width: 72,
+                  height: 72,
+                  objectFit: 'cover',
+                  borderRadius: 12,
+                  border: '1px solid #FDBA74',
+                }}
+              />
+            ) : null}
+            {subAsHub ? (
+              <>
+                <div style={rowStyle}>
+                  <label style={fieldLabel}>
+                    Student plan name
+                    <input
+                      value={subStudentName}
+                      onChange={(e) => setSubStudentName(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={fieldLabel}>
+                    Student MWK / month
+                    <input
+                      type="number"
+                      min={0}
+                      value={subStudentPrice}
+                      onChange={(e) => setSubStudentPrice(Number(e.target.value) || 0)}
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+                <label style={{ ...fieldLabel, marginTop: 10 }}>
+                  Student steps (one per line)
+                  <textarea
+                    value={subStudentFeatures}
+                    onChange={(e) => setSubStudentFeatures(e.target.value)}
+                    rows={3}
+                    style={{ ...inputStyle, resize: 'vertical' }}
+                  />
+                </label>
+                <div style={rowStyle}>
+                  <label style={fieldLabel}>
+                    Private plan name
+                    <input
+                      value={subPrivateName}
+                      onChange={(e) => setSubPrivateName(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={fieldLabel}>
+                    Private MWK / month
+                    <input
+                      type="number"
+                      min={0}
+                      value={subPrivatePrice}
+                      onChange={(e) => setSubPrivatePrice(Number(e.target.value) || 0)}
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+                <label style={{ ...fieldLabel, marginTop: 10 }}>
+                  Private steps (one per line)
+                  <textarea
+                    value={subPrivateFeatures}
+                    onChange={(e) => setSubPrivateFeatures(e.target.value)}
+                    rows={3}
+                    style={{ ...inputStyle, resize: 'vertical' }}
+                  />
+                </label>
+              </>
+            ) : (
+              <label style={{ ...fieldLabel, marginTop: 10, maxWidth: 280 }}>
+                MWK price / month
+                <input
+                  type="number"
+                  min={1}
+                  value={subSimplePrice}
+                  onChange={(e) => setSubSimplePrice(Number(e.target.value) || 0)}
+                  style={inputStyle}
+                />
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => void createSubscription()}
+              disabled={saving || uploading}
+              style={{ ...primaryBtn, marginTop: 12 }}
+            >
+              {saving ? 'Creating…' : 'Create subscription'}
+            </button>
+          </article>
 
           <h3 style={sectionTitle}>Create crypto / FX gift card</h3>
           <p style={{ margin: '0 0 12px', color: 'var(--muted)', fontSize: 13 }}>
@@ -899,6 +1213,19 @@ export function DigitalServicesPricingPanel() {
                     />
                   </label>
                 </div>
+                <label style={{ ...fieldLabel, marginTop: 10 }}>
+                  Plan steps (one per line)
+                  <textarea
+                    value={(p.featureLines || []).join('\n')}
+                    onChange={(e) =>
+                      updateProduct(p.key, {
+                        featureLines: linesFromText(e.target.value),
+                      })
+                    }
+                    rows={3}
+                    style={{ ...inputStyle, resize: 'vertical' }}
+                  />
+                </label>
               </article>
             ))}
             {chatGptPlans.length === 0 ? (
@@ -908,6 +1235,155 @@ export function DigitalServicesPricingPanel() {
               </p>
             ) : null}
           </div>
+
+          {customHubs.length > 0 ? (
+            <>
+              <h3 style={sectionTitle}>Your subscriptions (plan picker)</h3>
+              <p style={{ margin: '0 0 10px', color: 'var(--muted)', fontSize: 13 }}>
+                Each one opens a ChatGPT-style chooser in the app. Edit plan names,
+                MWK prices, and the student/private steps.
+              </p>
+              <div style={{ display: 'grid', gap: 14, marginBottom: 18 }}>
+                {customHubs.map((hub) => {
+                  const plans = subs.filter((p) => p.hubKey === hub.key)
+                  return (
+                    <article
+                      key={hub.key}
+                      style={{
+                        ...cardStyle,
+                        borderColor: '#FDBA74',
+                        opacity: hub.active === false ? 0.72 : 1,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <strong style={{ fontSize: 15 }}>{hub.name}</strong>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <label style={checkLabel}>
+                            <input
+                              type="checkbox"
+                              checked={hub.active !== false}
+                              disabled={saving}
+                              onChange={(e) => void toggleActive(hub.key, e.target.checked)}
+                            />
+                            {hub.active !== false ? 'Active' : 'Out of stock'}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => void removeProduct(hub.key)}
+                            style={{ ...ghostBtn, color: '#B91C1C' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                      <div style={rowStyle}>
+                        <label style={fieldLabel}>
+                          Display name
+                          <input
+                            value={hub.name}
+                            onChange={(e) => updateProduct(hub.key, { name: e.target.value })}
+                            style={inputStyle}
+                          />
+                        </label>
+                        <label style={fieldLabel}>
+                          Subtitle
+                          <input
+                            value={hub.subtitle || ''}
+                            onChange={(e) =>
+                              updateProduct(hub.key, { subtitle: e.target.value })
+                            }
+                            style={inputStyle}
+                          />
+                        </label>
+                      </div>
+                      {plans.map((plan) => (
+                        <div
+                          key={plan.key}
+                          style={{
+                            marginTop: 12,
+                            padding: 12,
+                            borderRadius: 12,
+                            border: '1px solid #FED7AA',
+                            background: '#fff',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                            <strong style={{ fontSize: 13 }}>
+                              {plan.name}
+                              {plan.planBadge ? (
+                                <span style={{ marginLeft: 8, fontSize: 11, color: '#EA580C' }}>
+                                  {plan.planBadge}
+                                </span>
+                              ) : null}
+                            </strong>
+                            <label style={checkLabel}>
+                              <input
+                                type="checkbox"
+                                checked={plan.active !== false}
+                                disabled={saving}
+                                onChange={(e) => void toggleActive(plan.key, e.target.checked)}
+                              />
+                              {plan.active !== false ? 'Active' : 'Hidden'}
+                            </label>
+                          </div>
+                          <div style={rowStyle}>
+                            <label style={fieldLabel}>
+                              Plan name
+                              <input
+                                value={plan.name}
+                                onChange={(e) =>
+                                  updateProduct(plan.key, { name: e.target.value })
+                                }
+                                style={inputStyle}
+                              />
+                            </label>
+                            <label style={fieldLabel}>
+                              Badge
+                              <input
+                                value={plan.planBadge || ''}
+                                onChange={(e) =>
+                                  updateProduct(plan.key, { planBadge: e.target.value })
+                                }
+                                placeholder="For students"
+                                style={inputStyle}
+                              />
+                            </label>
+                            <label style={fieldLabel}>
+                              MWK / month
+                              <input
+                                type="number"
+                                min={0}
+                                value={plan.fixedMwkPrice ?? 0}
+                                onChange={(e) =>
+                                  updateProduct(plan.key, {
+                                    fixedMwkPrice: Number(e.target.value) || 0,
+                                  })
+                                }
+                                style={inputStyle}
+                              />
+                            </label>
+                          </div>
+                          <label style={{ ...fieldLabel, marginTop: 10 }}>
+                            Steps (one per line)
+                            <textarea
+                              value={(plan.featureLines || []).join('\n')}
+                              onChange={(e) =>
+                                updateProduct(plan.key, {
+                                  featureLines: linesFromText(e.target.value),
+                                })
+                              }
+                              rows={3}
+                              style={{ ...inputStyle, resize: 'vertical' }}
+                            />
+                          </label>
+                        </div>
+                      ))}
+                    </article>
+                  )
+                })}
+              </div>
+            </>
+          ) : null}
 
           <h3 style={sectionTitle}>Other subscriptions (fixed MWK)</h3>
           <div style={{ display: 'grid', gap: 10 }}>

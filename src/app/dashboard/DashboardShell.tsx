@@ -20,6 +20,7 @@ import {
   PanelSessionProvider,
   usePanelSession,
 } from './PanelSessionProvider'
+import PanelSignIn from './PanelSignIn'
 
 function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard'
@@ -71,15 +72,7 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
   } = usePanelSession()
 
   useEffect(() => {
-    if (sessionLoading) return
-    if (!authenticated) {
-      const next =
-        pathname && pathname.startsWith('/dashboard')
-          ? `?next=${encodeURIComponent(pathname)}`
-          : ''
-      router.replace(`/panel${next}`)
-      return
-    }
+    if (sessionLoading || !authenticated) return
     if (isMarketer && !isMarketerAllowedPath(pathname)) {
       router.replace(MARKETER_HOME)
       return
@@ -93,7 +86,7 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [sessionLoading, isSuperAdmin, isMarketer, isAgent, pathname, router, authenticated])
 
-  if (sessionLoading || !authenticated) {
+  if (sessionLoading) {
     return (
       <div
         style={{
@@ -106,10 +99,14 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
         }}
       >
         <p style={{ color: 'var(--text-3)', fontSize: 15, fontWeight: 600, margin: 0 }}>
-          {sessionLoading ? 'Checking admin access…' : 'Redirecting to sign in…'}
+          Checking admin access…
         </p>
       </div>
     )
+  }
+
+  if (!authenticated) {
+    return <PanelSignIn />
   }
 
   return (
@@ -246,7 +243,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     } catch {
       // Still send them to the sign-in page if Firebase sign-out fails.
     }
-    router.push('/panel')
+    router.replace('/dashboard')
   }
 
   return (

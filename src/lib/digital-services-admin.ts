@@ -18,6 +18,7 @@ import {
   isAppBuyerUid,
   parsePayoutKyc,
 } from '@/lib/digital-payout-kyc'
+import { sendFcmToUid } from '@/lib/courier-push'
 
 export const PLATFORM_WALLET_USER_ID = 'super_admin'
 export const PLATFORM_WALLET_DOC_ID = 'super_admin'
@@ -146,14 +147,18 @@ export function parseDigitalServiceOrder(
       const cardDetails = str(map.cardDetails || data.cardDetails)
       const joiningLink = str(map.joiningLink || data.joiningLink)
       const notes = str(map.notes || data.fulfillmentNotes)
+      const fileUrls = Array.isArray(map.fileUrls)
+        ? map.fileUrls.map((v) => str(v)).filter(Boolean)
+        : []
       const sentVia = Array.isArray(map.sentVia)
         ? map.sentVia.map(v => String(v))
         : []
-      if (!cardDetails && !joiningLink && !notes) return null
+      if (!cardDetails && !joiningLink && !notes && !fileUrls.length) return null
       return {
         cardDetails,
         joiningLink,
         notes,
+        fileUrls,
         sentAt: tsToIso(map.sentAt || data.fulfilledAt),
         sentVia,
       }
@@ -333,7 +338,59 @@ export async function updateDigitalServiceOrderStatus(
   await ref.set(updates, { merge: true })
 
   const updated = await ref.get()
-  return parseDigitalServiceOrder(updated.id, updated.data() || {})
+  const parsed = parseDigitalServiceOrder(updated.id, updated.data() || {})
+  const wasPaid = isDigitalOrderPaid({
+    status: normalizeDigitalOrderStatus(existingData.status),
+    paidAt: tsToIso(existingData.paidAt),
+  })
+  if ((nextStatus === 'paid' || nextStatus === 'fulfilled') && !wasPaid) {
+    await notifyDigitalBuyer({
+      order: parsed,
+      type: 'digital_order',
+      title: `Payment received · ${parsed.productName}`,
+      body: `We received your ${parsed.productName} payment. Open My Digital Orders — we will send your details there.`,
+    })
+  }
+  return parsed
+}
+
+async function notifyDigitalBuyer(opts: {
+  order: DigitalServiceOrder
+  type: 'digital_order' | 'digital_fulfillment'
+  title: string
+  body: string
+}): Promise<boolean> {
+  const uid = str(opts.order.buyerUid)
+  if (!uid || !isAppBuyerUid(uid, opts.order.isGuest)) return false
+  try {
+    await getAdminDb().collection('order_party_alerts').add({
+      toUid: uid,
+      title: opts.title,
+      body: opts.body,
+      payload: {
+        type: opts.type,
+        orderId: opts.order.id,
+        productName: opts.order.productName,
+        badgeRoute: 'quick_digital_orders',
+      },
+      createdAt: FieldValue.serverTimestamp(),
+      consumed: false,
+      read: false,
+    })
+  } catch (err) {
+    console.warn('notifyDigitalBuyer firestore:', err)
+  }
+  try {
+    await sendFcmToUid(uid, opts.title, opts.body, {
+      type: opts.type,
+      orderId: opts.order.id,
+      productName: opts.order.productName,
+      badgeRoute: 'quick_digital_orders',
+    })
+  } catch (err) {
+    console.warn('notifyDigitalBuyer fcm:', err)
+  }
+  return true
 }
 
 export async function deleteDigitalServiceOrder(id: string): Promise<void> {
@@ -524,6 +581,7 @@ async function emailDigitalFulfillment(opts: {
   cardDetails: string
   joiningLink: string
   notes: string
+  fileUrls?: string[]
 }): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) return false
@@ -542,6 +600,10 @@ async function emailDigitalFulfillment(opts: {
   }
   if (opts.notes) {
     lines.push(opts.notes, '')
+  }
+  const files = (opts.fileUrls || []).map((u) => u.trim()).filter(Boolean)
+  if (files.length) {
+    lines.push('Files:', ...files, '')
   }
   lines.push('Keep these details private.', '', '— Vero360')
 
@@ -571,6 +633,7 @@ export async function sendDigitalOrderFulfillment(
     cardDetails?: string
     joiningLink?: string
     notes?: string
+    fileUrls?: string[]
   },
 ): Promise<{
   order: DigitalServiceOrder
@@ -582,8 +645,9 @@ export async function sendDigitalOrderFulfillment(
   const cardDetails = str(input.cardDetails)
   const joiningLink = str(input.joiningLink)
   const notes = str(input.notes)
-  if (!cardDetails && !joiningLink && !notes) {
-    throw new Error('Enter card details, a joining link, or a note to send.')
+  const fileUrls = (input.fileUrls || []).map((u) => str(u)).filter(Boolean)
+  if (!cardDetails && !joiningLink && !notes && !fileUrls.length) {
+    throw new Error('Enter card details, a joining link, a note, or upload a file.')
   }
 
   const db = getAdminDb()
@@ -602,27 +666,21 @@ export async function sendDigitalOrderFulfillment(
   const appBuyer = isAppBuyerUid(order.buyerUid, order.isGuest)
 
   if (appBuyer) {
-    await db.collection('order_party_alerts').add({
-      toUid: order.buyerUid,
+    const inAppBody = [
+      `Your ${order.productName} details are ready.`,
+      cardDetails ? `Details: ${cardDetails}` : '',
+      joiningLink ? `Link: ${joiningLink}` : '',
+      notes,
+      fileUrls.length ? `${fileUrls.length} file(s) attached.` : '',
+      'Open My Digital Orders to copy them.',
+    ]
+      .filter(Boolean)
+      .join('\n')
+    await notifyDigitalBuyer({
+      order,
+      type: 'digital_fulfillment',
       title: `${order.productName} is ready`,
-      body: [
-        `Your ${order.productName} details are ready.`,
-        cardDetails ? `Details: ${cardDetails}` : '',
-        joiningLink ? `Link: ${joiningLink}` : '',
-        notes,
-        'Open My Digital Orders to copy them.',
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      payload: {
-        type: 'digital_fulfillment',
-        orderId: order.id,
-        productName: order.productName,
-        badgeRoute: 'quick_digital_orders',
-      },
-      createdAt: FieldValue.serverTimestamp(),
-      consumed: false,
-      read: false,
+      body: inAppBody,
     })
     sentVia.push('in_app')
   }
@@ -642,6 +700,7 @@ export async function sendDigitalOrderFulfillment(
         cardDetails,
         joiningLink,
         notes,
+        fileUrls,
       })
       if (emailed) sentVia.push('email')
       if (!appBuyer && !emailed) {
@@ -663,6 +722,7 @@ export async function sendDigitalOrderFulfillment(
         cardDetails,
         joiningLink,
         notes,
+        fileUrls,
         sentAt: FieldValue.serverTimestamp(),
         sentVia,
       },

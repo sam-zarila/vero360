@@ -222,7 +222,6 @@ function openHelpCenter() {
               © {new Date().getFullYear()} Vero360 Technologies Ltd. All rights reserved.
             </p>
             <div style={{ display: 'flex', gap: 16 }}>
-              <Link href="/panel" className="footer-legal-link">Panel</Link>
               <Link href="/privacy" className="footer-legal-link">Privacy</Link>
               <Link href="/terms" className="footer-legal-link">Terms</Link>
               <Link href="/legal" className="footer-legal-link">Legal</Link>

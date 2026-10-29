@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
 import { PLAY_STORE_URL, APP_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
+import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import OpenAppBridge from '@/app/components/open-listing/OpenAppBridge'
 import ShareListingButton from '@/app/components/open-listing/ShareListingButton'
 import type { ListingModel } from '@/lib/open-listing-types'
@@ -256,14 +257,11 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
             </a>
           ) : null}
           {appStoreLinks.ios || APP_STORE_URL ? (
-            <a
-              href={appStoreLinks.ios || APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+            <IosStoreCta
               style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
             >
               Get on the App Store
-            </a>
+            </IosStoreCta>
           ) : null}
           <p
             style={{

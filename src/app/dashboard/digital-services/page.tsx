@@ -94,6 +94,8 @@ export default function DigitalServicesAdminPage() {
   const [cardDetails, setCardDetails] = useState('')
   const [joiningLink, setJoiningLink] = useState('')
   const [sendNotes, setSendNotes] = useState('')
+  const [sendFileUrls, setSendFileUrls] = useState<string[]>([])
+  const [sendUploading, setSendUploading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -298,6 +300,30 @@ export default function DigitalServicesAdminPage() {
     setCardDetails(o.fulfillment?.cardDetails || '')
     setJoiningLink(o.fulfillment?.joiningLink || '')
     setSendNotes(o.fulfillment?.notes || '')
+    setSendFileUrls(o.fulfillment?.fileUrls || [])
+  }
+
+  const uploadSendFile = async (file: File) => {
+    setSendUploading(true)
+    setError('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await adminFetch('/api/admin/digital-services/fulfillment-file', {
+        method: 'POST',
+        body: form,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      const url = String(data.fileUrl || '')
+      if (!url) throw new Error('No file URL returned')
+      setSendFileUrls((prev) => [...prev, url])
+      setNotice('File attached. Send to buyer when ready.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setSendUploading(false)
+    }
   }
 
   const sendDetails = async (id: string) => {
@@ -313,6 +339,7 @@ export default function DigitalServicesAdminPage() {
           cardDetails,
           joiningLink,
           notes: sendNotes,
+          fileUrls: sendFileUrls,
         }),
       })
       const data = await res.json()
@@ -766,6 +793,39 @@ export default function DigitalServicesAdminPage() {
                         </div>
                       ) : null}
                       {o.fulfillment.notes ? <div>{o.fulfillment.notes}</div> : null}
+                      {(o.fulfillment.fileUrls || []).length ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                          {o.fulfillment.fileUrls.map((url) => {
+                            const isPdf = url.toLowerCase().includes('.pdf')
+                            return isPdf ? (
+                              <a
+                                key={url}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ fontWeight: 700, color: '#166534' }}
+                              >
+                                Open PDF
+                              </a>
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <a key={url} href={url} target="_blank" rel="noreferrer">
+                                <img
+                                  src={url}
+                                  alt=""
+                                  style={{
+                                    width: 72,
+                                    height: 72,
+                                    objectFit: 'cover',
+                                    borderRadius: 10,
+                                    border: '1px solid #BBF7D0',
+                                  }}
+                                />
+                              </a>
+                            )
+                          })}
+                        </div>
+                      ) : null}
                       <div style={{ color: '#166534', marginTop: 4, fontWeight: 700 }}>
                         Via {(o.fulfillment.sentVia || []).join(' + ') || 'saved'}
                       </div>
@@ -807,10 +867,64 @@ export default function DigitalServicesAdminPage() {
                         placeholder="Optional note for the buyer"
                         style={search}
                       />
+                      <label style={{ fontSize: 13, fontWeight: 700 }}>
+                        Picture or file
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          disabled={busy || sendUploading}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) void uploadSendFile(file)
+                            e.target.value = ''
+                          }}
+                          style={{ ...search, marginTop: 6, padding: 8 }}
+                        />
+                      </label>
+                      {sendFileUrls.length ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {sendFileUrls.map((url) => (
+                            <div key={url} style={{ position: 'relative' }}>
+                              {url.toLowerCase().includes('.pdf') ? (
+                                <a href={url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                                  PDF attached
+                                </a>
+                              ) : (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={url}
+                                  alt=""
+                                  style={{
+                                    width: 64,
+                                    height: 64,
+                                    objectFit: 'cover',
+                                    borderRadius: 8,
+                                    border: '1px solid var(--border)',
+                                  }}
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSendFileUrls((prev) => prev.filter((u) => u !== url))
+                                }
+                                style={{
+                                  ...outlineBtn,
+                                  marginLeft: 6,
+                                  padding: '4px 8px',
+                                  fontSize: 12,
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
                           type="button"
-                          disabled={busy}
+                          disabled={busy || sendUploading}
                           onClick={() => void sendDetails(o.id)}
                           style={primaryBtn}
                         >

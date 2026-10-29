@@ -167,7 +167,7 @@ export default function AdminsPage() {
 
       setNotice(
         data.message ||
-          'Admin created. Sign in at /panel with this email and password.',
+          'Admin created. Sign in with this email and password.',
       )
       setEmail('')
       setPassword('')
@@ -277,8 +277,8 @@ export default function AdminsPage() {
                 {formOpen ? 'Close form' : '+ Create account'}
               </button>
             ) : needsSignIn ? (
-              <Link href="/panel" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-block' }}>
-                Sign in at /panel
+              <Link href="/dashboard" style={{ ...btnPrimary, textDecoration: 'none', display: 'inline-block' }}>
+                Sign in
               </Link>
             ) : null}
           </>
@@ -290,16 +290,15 @@ export default function AdminsPage() {
         </p>
       ) : bootstrap ? (
         <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#B45309' }}>
-          No admins yet. Create the first <strong>super admin</strong> below, then sign in at{' '}
-          <Link href="/panel">/panel</Link>.
+          No admins yet. Create the first <strong>super admin</strong> below, then sign in.p
         </p>
       ) : needsSignIn ? (
         <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#047857' }}>
-          Super admin exists. <Link href="/panel">Sign in at /panel</Link> to manage accounts.
+          Super admin exists. Sign in to manage accounts.
         </p>
       ) : (
         <p style={{ margin: '-8px 0 18px', fontSize: 13, color: '#B45309' }}>
-          Sign in at <Link href="/panel">/panel</Link> as a super admin to manage accounts.
+          Sign in as a super admin to manage accounts.
         </p>
       )}
 

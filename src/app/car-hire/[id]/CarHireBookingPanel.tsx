@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { APP_STORE_URL, PLAY_STORE_URL } from '@/app/components/landing/veroServices'
+import { PLAY_STORE_URL } from '@/app/components/landing/veroServices'
+import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import { carHireAppHref } from '@/lib/car-hire'
 import { formatMwk } from '@/lib/vero-api'
 
@@ -219,9 +220,7 @@ function StoreFallback() {
         <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" style={storeLink}>
           Google Play
         </a>
-        <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" style={storeLink}>
-          App Store
-        </a>
+        <IosStoreCta style={storeLink}>App Store</IosStoreCta>
       </div>
     </div>
   )

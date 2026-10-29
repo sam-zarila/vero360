@@ -15,6 +15,7 @@ import {
   type CarListing,
 } from '@/lib/car-hire'
 import { formatMwk, resolveVeroMediaUrl } from '@/lib/vero-api'
+import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import CarHireBookingPanel from './CarHireBookingPanel'
 
 export const dynamic = 'force-dynamic'
@@ -459,9 +460,7 @@ function UnavailablePage({ id, title, body }: { id: string; title: string; body:
             Google Play
           </a>{' '}
           ·{' '}
-          <a href="https://apps.apple.com/search?term=Vero360" style={inlineLink}>
-            App Store
-          </a>
+          <IosStoreCta style={inlineLink}>App Store</IosStoreCta>
         </p>
       </div>
     </main>

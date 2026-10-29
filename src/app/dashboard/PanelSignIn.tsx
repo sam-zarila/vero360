@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { signInWithEmailAndPassword, signOut, type AuthError } from 'firebase/auth'
 import Logo from '@/app/components/landing/Logo'
 import { auth } from '@/lib/firebase'
@@ -30,6 +31,7 @@ function firebaseSignInMessage(err: unknown): string {
 }
 
 export default function PanelSignIn() {
+  const pathname = usePathname()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -63,8 +65,16 @@ export default function PanelSignIn() {
 
   const goToDashboard = () => {
     const next = new URLSearchParams(window.location.search).get('next') || ''
+    const fromPath = pathname.startsWith('/dashboard') ? pathname : ''
+    const candidate = next || fromPath || '/dashboard'
     const safe =
-      next.startsWith('/dashboard') && !next.startsWith('//') ? next : '/dashboard'
+      candidate.startsWith('/dashboard') && !candidate.startsWith('//')
+        ? candidate
+        : '/dashboard'
+    if (safe === pathname) {
+      window.location.reload()
+      return
+    }
     window.location.href = safe
   }
 

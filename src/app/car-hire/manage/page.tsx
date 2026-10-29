@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { APP_STORE_URL, PLAY_STORE_URL } from '@/app/components/landing/veroServices'
+import { PLAY_STORE_URL } from '@/app/components/landing/veroServices'
+import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import { getDispatchBoard, getFleet, getSummary, ProviderApiError } from '@/lib/car-hire-owner-api'
 import type { DispatchBoard, OwnerVehicle, ProviderSummary } from '@/lib/car-hire'
 import { formatDateTime } from '@/lib/vero-api'
@@ -219,9 +220,7 @@ export default function ProviderOverviewPage() {
             <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" style={ghostButton}>
               Google Play
             </a>
-            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" style={ghostButton}>
-              App Store
-            </a>
+            <IosStoreCta style={ghostButton}>App Store</IosStoreCta>
           </div>
         </section>
       </div>

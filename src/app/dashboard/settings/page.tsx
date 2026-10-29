@@ -51,7 +51,7 @@ export default function SettingsPage() {
       const res = await adminFetch('/api/admin/admins/me', { headers, cache: 'no-store' })
       const data = await res.json()
       if (!res.ok || !data.authenticated) {
-        throw new Error(data.error || 'Sign in at /panel to manage your settings.')
+        throw new Error(data.error || 'Sign in to manage your settings.')
       }
       setMe(data.me)
       setDisplayName(data.me?.displayName || '')
@@ -68,7 +68,7 @@ export default function SettingsPage() {
     if (!user) {
       setLoading(false)
       setMe(null)
-      setError('Sign in at /panel to change your name or password.')
+      setError('Sign in to change your name or password.')
       return
     }
     void load()
@@ -169,10 +169,10 @@ export default function SettingsPage() {
             You need an active admin session to change settings.
           </p>
           <Link
-            href="/panel"
+            href="/dashboard"
             style={{ ...btnPrimary, display: 'inline-block', marginTop: 14, textDecoration: 'none' }}
           >
-            Sign in at /panel
+            Sign in
           </Link>
         </div>
       ) : (

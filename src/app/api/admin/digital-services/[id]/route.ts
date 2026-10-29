@@ -41,6 +41,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       cardDetails?: string
       joiningLink?: string
       notes?: string
+      fileUrls?: string[]
     }
 
     if (body.action === 'credit_platform_fee') {
@@ -53,6 +54,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
         cardDetails: body.cardDetails,
         joiningLink: body.joiningLink,
         notes: body.notes,
+        fileUrls: body.fileUrls,
       })
       return NextResponse.json({ success: true, ...result })
     }

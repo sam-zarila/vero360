@@ -2,7 +2,8 @@ import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import Navbar from '@/app/components/landing/navbar'
 import Footer from '@/app/components/landing/Footer '
-import { APP_STORE_URL, PLAY_STORE_URL } from '@/app/components/landing/veroServices'
+import { PLAY_STORE_URL } from '@/app/components/landing/veroServices'
+import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import LeadForm from './LeadForm'
 
 /**
@@ -141,14 +142,9 @@ export default function ListYourCarsPage() {
             >
               Get the app on Google Play
             </a>
-            <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={primaryStoreButton}
-            >
+            <IosStoreCta style={primaryStoreButton}>
               Download on the App Store
-            </a>
+            </IosStoreCta>
           </div>
 
           <p style={{ margin: '16px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.85)' }}>

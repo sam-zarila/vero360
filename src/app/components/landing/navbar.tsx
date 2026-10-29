@@ -18,7 +18,6 @@ const moreLinks = [
   { label: 'Terms of service', href: '/terms' },
   { label: 'Legal documents', href: '/legal' },
   { label: 'Business certificate', href: '/business-certificate' },
-  { label: 'Admin panel', href: '/panel' },
 ]
 
 export default function Navbar() {

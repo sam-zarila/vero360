@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import Image from 'next/image'
 import { APP_LAUNCH_HEADLINE, isAppStoreLaunched } from '@/lib/app-launch'
+import { IosStoreCta } from './IosReviewNotice'
 import { APP_STORE_URL, appStoreLinks, storeBadgeImages } from './veroServices'
 
 type Props = {
@@ -61,7 +62,11 @@ export default function StoreDownloadLinks({
         <div style={{ textAlign: 'left', flex: 1 }}>
           <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{topLabel}</div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{storeLabel}</div>
-          {downloadsLocked ? (
+          {key === 'ios' ? (
+            <div style={{ fontSize: 11, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>
+              Under Apple review
+            </div>
+          ) : downloadsLocked ? (
             <div style={{ fontSize: 11, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>
               {APP_LAUNCH_HEADLINE}
             </div>
@@ -69,6 +74,23 @@ export default function StoreDownloadLinks({
         </div>
       </>
     )
+
+    if (key === 'ios') {
+      return (
+        <IosStoreCta
+          key={key}
+          className="store-download-link"
+          style={{
+            ...linkStyle,
+            ...(downloadsLocked
+              ? { opacity: 0.92, background: 'var(--surface)' }
+              : {}),
+          }}
+        >
+          {content}
+        </IosStoreCta>
+      )
+    }
 
     if (downloadsLocked) {
       return (
