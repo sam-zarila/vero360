@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  poweredByHeader: false,
   serverExternalPackages: [
     'firebase-admin',
     '@google-cloud/storage',
@@ -11,9 +13,8 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
+      { protocol: 'https', hostname: 'api-yiyudxvfrxex.vero360.app' },
       { protocol: 'https', hostname: 'www.gstatic.com' },
-      { protocol: 'http', hostname: '67.211.220.69', port: '3000' },
-      { protocol: 'https', hostname: '67.211.220.69' },
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
       { protocol: 'https', hostname: 'storage.googleapis.com' },
       { protocol: 'https', hostname: 'vero360.app' },
@@ -22,27 +23,11 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      {
-        source: '/merchant/:id',
-        destination: '/shop/:id',
-        permanent: false,
-      },
-      {
-        source: '/bussiness%20certificate',
-        destination: '/business-certificate',
-        permanent: true,
-      },
-      {
-        source: '/bussiness certificate',
-        destination: '/business-certificate',
-        permanent: true,
-      },
-      {
-        source: '/bussiness-certificate',
-        destination: '/business-certificate',
-        permanent: true,
-      },
-    ]
+      { source: '/merchant/:id', destination: '/shop/:id', permanent: false },
+      { source: '/bussiness%20certificate', destination: '/business-certificate', permanent: true },
+      { source: '/bussiness certificate', destination: '/business-certificate', permanent: true },
+      { source: '/bussiness-certificate', destination: '/business-certificate', permanent: true },
+    ];
   },
 };
 
