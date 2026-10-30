@@ -6,6 +6,10 @@ import {
   cleanContactEmail,
   cleanContactPhone,
 } from '@/lib/orders'
+import {
+  guestOrderToStayBooking,
+  listGuestOrders,
+} from '@/lib/guest-checkout'
 import { parseStayBookings, type StayBooking } from '@/lib/stay'
 import { USERS_COLLECTION } from '@/lib/users'
 import {
@@ -110,19 +114,18 @@ export async function GET(request: Request) {
     })
     const body = await readJsonSafe(res)
 
-    if (!res.ok) {
-      return NextResponse.json(
-        {
-          error: apiErrorMessage(
-            body,
-            'Failed to load bookings. Redeploy vero-backend with GET /bookings/admin/all (aggregates the same rows as app /bookings/me + /bookings/merchant/me).',
-          ),
-        },
-        { status: res.status },
-      )
+    const parsed = res.ok ? parseStayBookings(body) : []
+    let guestItems: StayBooking[] = []
+    try {
+      guestItems = (await listGuestOrders('stay')).map(guestOrderToStayBooking)
+    } catch (err) {
+      console.warn('Guest stay bookings skipped:', err)
     }
-
-    let items = parseStayBookings(body).sort((a, b) => {
+    const seen = new Set(parsed.map(item => item.bookingNumber))
+    let items = [
+      ...parsed,
+      ...guestItems.filter(item => !seen.has(item.bookingNumber)),
+    ].sort((a, b) => {
       const at = a.createdAt
         ? new Date(a.createdAt).getTime()
         : a.bookingDate
@@ -135,6 +138,18 @@ export async function GET(request: Request) {
           : 0
       return bt - at
     })
+
+    if (!res.ok && items.length === 0) {
+      return NextResponse.json(
+        {
+          error: apiErrorMessage(
+            body,
+            'Failed to load bookings. Redeploy vero-backend with GET /bookings/admin/all (aggregates the same rows as app /bookings/me + /bookings/merchant/me).',
+          ),
+        },
+        { status: res.status },
+      )
+    }
 
     try {
       items = await enrichBookingContacts(items)

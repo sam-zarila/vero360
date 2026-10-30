@@ -6,6 +6,13 @@ import {
 } from '@/lib/digital-services-checkout'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { DIGITAL_SERVICE_ORDERS_COLLECTION } from '@/lib/digital-services'
+import { fulfillCourierGuestOrder } from '@/lib/courier-public'
+import {
+  findGuestOrderById,
+  findGuestOrderByTxRef,
+  settleGuestOrderPayment,
+  WEB_GUEST_ORDERS_COLLECTION,
+} from '@/lib/guest-checkout'
 import {
   findMarketplacePromotionByTxRef,
   settleMarketplacePromotionPayment,
@@ -70,6 +77,65 @@ export async function settleConfirmedDeposit(deposit: StoredPawaPayDeposit) {
       depositId: deposit.depositId,
       alreadyPaid: settled.alreadyPaid,
       kind: 'digital_order',
+    }
+  }
+
+  let guestOrderId = ''
+  const guestKind = String(deposit.kind || '')
+  const isGuestKind =
+    guestKind === 'marketplace_order' ||
+    guestKind === 'food_order' ||
+    guestKind === 'stay_booking' ||
+    guestKind === 'courier_delivery'
+  if (isGuestKind && orderHint) {
+    const snap = await getAdminDb()
+      .collection(WEB_GUEST_ORDERS_COLLECTION)
+      .doc(orderHint)
+      .get()
+    if (snap.exists && String(snap.data()?.txRef || '') === txRef) {
+      guestOrderId = orderHint
+    }
+  }
+  if (!guestOrderId && txRef) {
+    const found = await findGuestOrderByTxRef(txRef)
+    if (found) guestOrderId = found.id
+  }
+  if (guestOrderId) {
+    const settled = await settleGuestOrderPayment({
+      orderId: guestOrderId,
+      txRef,
+    })
+    let trackingNumber = ''
+    if (settled.kind === 'courier') {
+      const latest = await findGuestOrderById(guestOrderId)
+      const fulfilled = await fulfillCourierGuestOrder({
+        orderId: guestOrderId,
+        data: latest?.data || settled.data,
+      })
+      trackingNumber = fulfilled.trackingNumber
+    }
+    if (!settled.alreadyPaid) {
+      await recordAudit({
+        action: 'settle',
+        resource: 'payment',
+        resourceId: guestOrderId,
+        summary: `PawaPay paid ${settled.kind} guest order ${guestOrderId} (${txRef})`,
+        actorUid: 'pawapay',
+        actorEmail: '',
+        actorName: 'PawaPay',
+        actorRole: 'webhook',
+      })
+    }
+    return {
+      success: true,
+      paid: true,
+      status: 'paid',
+      orderId: guestOrderId,
+      txRef,
+      depositId: deposit.depositId,
+      alreadyPaid: settled.alreadyPaid,
+      kind: settled.kind,
+      trackingNumber,
     }
   }
 

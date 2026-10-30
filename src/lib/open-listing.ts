@@ -408,10 +408,10 @@ export async function listingFromProps(
     (kind === 'shop'
       ? 'Browse this shop in the Vero360 app, or view it here.'
       : kind === 'marketplace'
-        ? 'Open this product in the Vero360 app, or view it here.'
+        ? 'Buy this product here as a guest, or open it in the Vero360 app.'
         : kind === 'food'
-          ? 'Order this dish in the Vero360 app, or view it here.'
-          : 'Open this stay in the Vero360 app, or view it here.')
+          ? 'Order this dish here as a guest, or open it in the Vero360 app.'
+          : 'Book this stay here as a guest, or open it in the Vero360 app.')
 
   const webPath =
     kind === 'shop'

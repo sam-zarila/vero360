@@ -1,15 +1,17 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
-import { PLAY_STORE_URL, APP_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
-import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import OpenAppBridge from '@/app/components/open-listing/OpenAppBridge'
 import ShareListingButton from '@/app/components/open-listing/ShareListingButton'
+import GuestBuyForm, {
+  guestFieldInput,
+  guestFieldLabel,
+} from '@/app/components/open-listing/GuestBuyForm'
 import type { ListingModel } from '@/lib/open-listing-types'
-import { listingPriceLabel } from '@/lib/open-listing-utils'
+import { listingAmountMwk, listingPriceLabel } from '@/lib/open-listing-utils'
 
 const page: CSSProperties = {
   minHeight: '100vh',
@@ -59,6 +61,11 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
   } = listing
 
   const priceLabel = listingPriceLabel(listing)
+  const unitMwk = listingAmountMwk(listing)
+  const [quantity, setQuantity] = useState(1)
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [notes, setNotes] = useState('')
+  const amountMwk = unitMwk * Math.max(1, quantity)
 
   const photos = useMemo(() => {
     const out: string[] = []
@@ -303,40 +310,74 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
         ) : null}
 
         <div style={card}>
-          <a
-            href={appHref}
-            style={{ ...btn, background: 'var(--primary-dark)', color: '#fff', marginTop: 0 }}
-          >
-            Open in Vero360 app
-          </a>
-          {appStoreLinks.android || PLAY_STORE_URL ? (
-            <a
-              href={appStoreLinks.android || PLAY_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
-            >
-              Get on Google Play
-            </a>
-          ) : null}
-          {appStoreLinks.ios || APP_STORE_URL ? (
-            <IosStoreCta
-              style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
-            >
-              Get on the App Store
-            </IosStoreCta>
-          ) : null}
-          <p
+          <h2
             style={{
-              fontSize: 13,
-              color: 'var(--text-3)',
-              marginTop: 12,
-              lineHeight: 1.45,
+              fontSize: 16,
+              fontWeight: 800,
+              marginBottom: 12,
+              fontFamily: 'var(--font-display)',
             }}
           >
-            Have Vero360? Open this product in the app. If you don’t, get it on Google Play or the
-            App Store.
-          </p>
+            Buy as guest
+          </h2>
+          <GuestBuyForm
+            checkoutUrl="/api/public/marketplace/checkout"
+            amountMwk={amountMwk}
+            submitLabel="Pay and place order"
+            successMessage="Payment received. We will confirm your order and arrange delivery."
+            payload={{
+              listingId: id,
+              quantity,
+              deliveryAddress,
+              notes,
+            }}
+            extraFields={
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={guestFieldLabel} htmlFor="mp-qty">
+                    Quantity
+                  </label>
+                  <input
+                    id="mp-qty"
+                    style={guestFieldInput}
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={quantity}
+                    onChange={e => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={guestFieldLabel} htmlFor="mp-addr">
+                    Delivery address
+                  </label>
+                  <input
+                    id="mp-addr"
+                    style={guestFieldInput}
+                    required
+                    placeholder="Area, city, landmark"
+                    value={deliveryAddress}
+                    onChange={e => setDeliveryAddress(e.target.value)}
+                  />
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={guestFieldLabel} htmlFor="mp-notes">
+                    Notes (optional)
+                  </label>
+                  <input
+                    id="mp-notes"
+                    style={guestFieldInput}
+                    placeholder="Colour, size, call on arrival…"
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                  />
+                </div>
+              </>
+            }
+          />
+          <a href={appHref} style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}>
+            Or open in the Vero360 app
+          </a>
         </div>
       </section>
     </main>

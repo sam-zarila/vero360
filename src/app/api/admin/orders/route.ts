@@ -6,6 +6,10 @@ import {
 } from '@/lib/bank-transfer-enrich'
 import { enrichOrderContacts } from '@/lib/order-contacts'
 import { enrichOrderDelivery } from '@/lib/order-delivery'
+import {
+  guestOrderToMarketplace,
+  listGuestOrders,
+} from '@/lib/guest-checkout'
 import { parseMarketplaceOrders } from '@/lib/orders'
 import {
   apiErrorMessage,
@@ -22,7 +26,24 @@ export async function GET(request: Request) {
       cache: 'no-store',
     })
     const body = await readJsonSafe(res)
-    if (!res.ok) {
+    const parsed = res.ok ? parseMarketplaceOrders(body) : []
+    let guestItems = [] as ReturnType<typeof guestOrderToMarketplace>[]
+    try {
+      guestItems = (await listGuestOrders('marketplace')).map(guestOrderToMarketplace)
+    } catch (err) {
+      console.warn('Guest marketplace orders skipped:', err)
+    }
+    const seen = new Set(parsed.map(item => item.orderNumber))
+    const merged = [
+      ...parsed,
+      ...guestItems.filter(item => !seen.has(item.orderNumber)),
+    ].sort((a, b) => {
+      const at = a.orderDate ? new Date(a.orderDate).getTime() : 0
+      const bt = b.orderDate ? new Date(b.orderDate).getTime() : 0
+      return bt - at
+    })
+
+    if (!res.ok && merged.length === 0) {
       return NextResponse.json(
         {
           error: apiErrorMessage(
@@ -34,13 +55,7 @@ export async function GET(request: Request) {
       )
     }
 
-    const parsed = parseMarketplaceOrders(body).sort((a, b) => {
-      const at = a.orderDate ? new Date(a.orderDate).getTime() : 0
-      const bt = b.orderDate ? new Date(b.orderDate).getTime() : 0
-      return bt - at
-    })
-
-    let items = parsed
+    let items = merged
     try {
       items = await enrichOrderContacts(items)
     } catch (err) {
