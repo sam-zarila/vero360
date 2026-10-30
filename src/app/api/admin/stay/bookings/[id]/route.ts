@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { denyUnlessPanelAdmin, requirePanelAdmin } from '@/lib/admin-auth'
 import { recordPanelAudit } from '@/lib/audit-trail-admin'
+import { deleteGuestOrderByAdminId, isGuestAdminId } from '@/lib/guest-checkout'
 import {
   apiErrorMessage,
   getVeroAuthHeader,
@@ -24,6 +25,20 @@ export async function DELETE(request: Request, ctx: Ctx) {
   }
 
   try {
+    if (isGuestAdminId(id)) {
+      const deleted = await deleteGuestOrderByAdminId(id)
+      if (!deleted) {
+        return NextResponse.json({ error: 'Guest booking not found' }, { status: 404 })
+      }
+      await recordPanelAudit(actor, {
+        action: 'delete',
+        resource: 'stay-booking',
+        resourceId: String(id),
+        summary: `Deleted web guest stay booking ${id}`,
+      })
+      return NextResponse.json({ success: true, deleted: true, id })
+    }
+
     const headers: HeadersInit = { Accept: 'application/json' }
     const auth = getVeroAuthHeader(request)
     if (auth) headers.Authorization = auth

@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { FieldValue, type DocumentData } from 'firebase-admin/firestore'
-import { getAdminDb } from '@/lib/firebase-admin'
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import {
   DIGITAL_SERVICE_ORDERS_COLLECTION,
   computeSubscriptionEndDate,
@@ -19,6 +19,7 @@ import {
   parsePayoutKyc,
 } from '@/lib/digital-payout-kyc'
 import { sendFcmToUid } from '@/lib/courier-push'
+import { sendPaidDigitalOrderEmail } from '@/lib/digital-services-email'
 
 export const PLATFORM_WALLET_USER_ID = 'super_admin'
 export const PLATFORM_WALLET_DOC_ID = 'super_admin'
@@ -347,21 +348,66 @@ export async function updateDigitalServiceOrderStatus(
     await notifyDigitalBuyer({
       order: parsed,
       type: 'digital_order',
-      title: `Payment received · ${parsed.productName}`,
-      body: `We received your ${parsed.productName} payment. Open My Digital Orders — we will send your details there.`,
+      title: `We received your order · ${parsed.productName}`,
+      body: `We have received your ${parsed.productName} payment. We are processing your order now — you will get your details in My Digital Orders.`,
     })
+    await sendPaidDigitalOrderEmail(parsed.id, {
+      ...existingData,
+      ...updates,
+      buyerEmail: parsed.buyerEmail,
+      buyerName: parsed.buyerName,
+      buyerPhone: parsed.buyerPhone,
+      productName: parsed.productName,
+      productSubtitle: parsed.productSubtitle,
+      amountMwk: parsed.amountMwk,
+      selectedUsd: parsed.selectedUsd,
+      txRef: parsed.txRef,
+      paymentProvider: parsed.paymentProvider,
+      periodLabel: parsed.periodLabel,
+    } as Record<string, unknown>)
   }
   return parsed
 }
 
-async function notifyDigitalBuyer(opts: {
-  order: DigitalServiceOrder
-  type: 'digital_order' | 'digital_fulfillment'
+export async function notifyDigitalBuyer(opts: {
+  order: Pick<
+    DigitalServiceOrder,
+    'id' | 'buyerUid' | 'buyerEmail' | 'isGuest' | 'productName'
+  >
+  type: 'digital_order' | 'digital_fulfillment' | 'digital_pending'
   title: string
   body: string
 }): Promise<boolean> {
-  const uid = str(opts.order.buyerUid)
-  if (!uid || !isAppBuyerUid(uid, opts.order.isGuest)) return false
+  const orderRef = getAdminDb()
+    .collection(DIGITAL_SERVICE_ORDERS_COLLECTION)
+    .doc(opts.order.id)
+  const flag =
+    opts.type === 'digital_pending'
+      ? 'pendingPushSentAt'
+      : opts.type === 'digital_fulfillment'
+        ? 'fulfillmentPushSentAt'
+        : 'paidPushSentAt'
+  try {
+    const snap = await orderRef.get()
+    if (snap.exists && snap.data()?.[flag]) return false
+  } catch {
+    // still try to notify
+  }
+
+  let uid = str(opts.order.buyerUid)
+  if (!isAppBuyerUid(uid, opts.order.isGuest)) {
+    uid = ''
+    const email = str(opts.order.buyerEmail).toLowerCase()
+    if (email) {
+      try {
+        uid = (await getAdminAuth().getUserByEmail(email)).uid
+      } catch {
+        uid = ''
+      }
+    }
+  }
+  if (!uid) return false
+
   try {
     await getAdminDb().collection('order_party_alerts').add({
       toUid: uid,
@@ -390,6 +436,15 @@ async function notifyDigitalBuyer(opts: {
   } catch (err) {
     console.warn('notifyDigitalBuyer fcm:', err)
   }
+  await orderRef
+    .set(
+      {
+        [flag]: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    )
+    .catch(() => {})
   return true
 }
 
@@ -665,25 +720,23 @@ export async function sendDigitalOrderFulfillment(
   const sentVia: string[] = []
   const appBuyer = isAppBuyerUid(order.buyerUid, order.isGuest)
 
-  if (appBuyer) {
-    const inAppBody = [
-      `Your ${order.productName} details are ready.`,
-      cardDetails ? `Details: ${cardDetails}` : '',
-      joiningLink ? `Link: ${joiningLink}` : '',
-      notes,
-      fileUrls.length ? `${fileUrls.length} file(s) attached.` : '',
-      'Open My Digital Orders to copy them.',
-    ]
-      .filter(Boolean)
-      .join('\n')
-    await notifyDigitalBuyer({
-      order,
-      type: 'digital_fulfillment',
-      title: `${order.productName} is ready`,
-      body: inAppBody,
-    })
-    sentVia.push('in_app')
-  }
+  const inAppBody = [
+    `Your ${order.productName} details are ready.`,
+    cardDetails ? `Details: ${cardDetails}` : '',
+    joiningLink ? `Link: ${joiningLink}` : '',
+    notes,
+    fileUrls.length ? `${fileUrls.length} file(s) attached.` : '',
+    'Open My Digital Orders to copy them.',
+  ]
+    .filter(Boolean)
+    .join('\n')
+  const pushed = await notifyDigitalBuyer({
+    order,
+    type: 'digital_fulfillment',
+    title: `${order.productName} is ready`,
+    body: inAppBody,
+  })
+  if (pushed) sentVia.push('in_app')
 
   const shouldEmail = !appBuyer || Boolean(order.buyerEmail)
   let emailed = false

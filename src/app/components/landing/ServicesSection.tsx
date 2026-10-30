@@ -195,7 +195,7 @@ export default function ServicesSection() {
             }}
           >
             Marketplace, food, stays, digital services, jobs, and tenders from the same catalogs
-            as the app. Tap a product for details, or view more to see the full list.
+            as the app. Tap a product to buy as a guest, or view more to see the full list.
           </p>
         </div>
 
@@ -209,7 +209,7 @@ export default function ServicesSection() {
           }}
         >
           <QuickChip icon="car" label="Vero Ride" onClick={openApp} />
-          <QuickChip icon="truck" label="Courier · Lilongwe" onClick={openApp} accent />
+          <QuickChip icon="truck" label="Courier · Lilongwe" href="/courier" accent />
           <QuickChip icon="bike" label="Vero Bike" onClick={openApp} />
         </div>
 
@@ -233,14 +233,13 @@ export default function ServicesSection() {
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Vero Courier</h3>
               <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>
                 Same-day parcel delivery in <strong>Lilongwe only</strong>. Blantyre, Zomba, and
-                other cities are expanding soon. Order courier from the app when you&apos;re in
-                Lilongwe.
+                other cities are expanding soon. Book on the website as a guest, or in the app.
               </p>
             </div>
           </div>
-          <button type="button" onClick={openApp} style={primaryBtn}>
-            Order in app
-          </button>
+          <Link href="/courier" style={primaryBtnLink}>
+            Book courier
+          </Link>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
@@ -339,32 +338,40 @@ function QuickChip({
   icon,
   label,
   onClick,
+  href,
   accent,
 }: {
   icon: VeroIconName
   label: string
-  onClick: () => void
+  onClick?: () => void
+  href?: string
   accent?: boolean
 }) {
+  const style: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 14px',
+    borderRadius: 999,
+    border: accent ? '1px solid #FDBA74' : '1px solid var(--border)',
+    background: accent ? '#FFF7ED' : '#fff',
+    color: accent ? '#C2410C' : 'var(--text-2)',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textDecoration: 'none',
+  }
+  if (href) {
+    return (
+      <Link href={href} style={style}>
+        <IconBadge name={icon} size={16} />
+        {label}
+      </Link>
+    )
+  }
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '10px 14px',
-        borderRadius: 999,
-        border: accent ? '1px solid #FDBA74' : '1px solid var(--border)',
-        background: accent ? '#FFF7ED' : '#fff',
-        color: accent ? '#C2410C' : 'var(--text-2)',
-        fontWeight: 700,
-        fontSize: 13,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
+    <button type="button" onClick={onClick} style={style}>
       <IconBadge name={icon} size={16} />
       {label}
     </button>

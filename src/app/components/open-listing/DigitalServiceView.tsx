@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
+import ImagePickField from '@/app/components/open-listing/ImagePickField'
 import { formatMwk } from '@/lib/vero-api'
 
 export type DigitalServicePublicDetail = {
@@ -614,22 +615,22 @@ export default function DigitalServiceView({
               <div style={{ marginBottom: 14 }}>
                 <div style={{ ...label, marginBottom: 8 }}>Payout photos</div>
                 <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
-                  For Chinese Yuan / USD TT upload your Alipay or WeChat code, your ID held in
-                  your hands, and a photo of your face.
+                  For Chinese Yuan / USD TT take a photo or upload your Alipay or WeChat code, your
+                  ID held in your hands, and a photo of your face.
                 </p>
-                <KycFile
+                <ImagePickField
                   label="Alipay / WeChat code"
                   ready={Boolean(kycUrls.alipayWechatCodeUrl)}
                   busy={kycBusy === 'alipayWechatCodeUrl'}
                   onFile={file => void uploadKyc('alipayWechatCodeUrl', file)}
                 />
-                <KycFile
+                <ImagePickField
                   label="ID held in your hands"
                   ready={Boolean(kycUrls.idInHandUrl)}
                   busy={kycBusy === 'idInHandUrl'}
                   onFile={file => void uploadKyc('idInHandUrl', file)}
                 />
-                <KycFile
+                <ImagePickField
                   label="Your face"
                   ready={Boolean(kycUrls.faceUrl)}
                   busy={kycBusy === 'faceUrl'}
@@ -640,9 +641,10 @@ export default function DigitalServiceView({
 
             {product.payoutKind === 'usdt' ? (
               <div style={{ marginBottom: 14 }}>
-                <div style={{ ...label, marginBottom: 8 }}>USDT destination</div>
+                <div style={{ ...label, marginBottom: 8 }}>USDT payout details</div>
                 <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
-                  Enter your Binance ID or USDT address. You can also upload your Binance code.
+                  Same as Yuan: take a photo or upload your Binance code, your ID held in your
+                  hands, and a photo of your face. Also enter your Binance ID or USDT address.
                 </p>
                 <input
                   style={{ ...input, marginBottom: 8 }}
@@ -656,11 +658,23 @@ export default function DigitalServiceView({
                   value={binanceAddress}
                   onChange={e => setBinanceAddress(e.target.value)}
                 />
-                <KycFile
-                  label="Binance code (optional)"
+                <ImagePickField
+                  label="Binance code"
                   ready={Boolean(kycUrls.binanceCodeUrl)}
                   busy={kycBusy === 'binanceCodeUrl'}
                   onFile={file => void uploadKyc('binanceCodeUrl', file)}
+                />
+                <ImagePickField
+                  label="ID held in your hands"
+                  ready={Boolean(kycUrls.idInHandUrl)}
+                  busy={kycBusy === 'idInHandUrl'}
+                  onFile={file => void uploadKyc('idInHandUrl', file)}
+                />
+                <ImagePickField
+                  label="Your face"
+                  ready={Boolean(kycUrls.faceUrl)}
+                  busy={kycBusy === 'faceUrl'}
+                  onFile={file => void uploadKyc('faceUrl', file)}
                 />
               </div>
             ) : null}
@@ -704,8 +718,8 @@ export default function DigitalServiceView({
                 </p>
                 {!bankOrder ? (
                   <div style={{ marginTop: 12 }}>
-                    <KycFile
-                      label="Upload transfer slip / proof of payment"
+                    <ImagePickField
+                      label="Transfer slip / proof of payment"
                       ready={Boolean(kycUrls.bankProofUrl)}
                       busy={kycBusy === 'bankProofUrl'}
                       onFile={file => void uploadKyc('bankProofUrl', file)}
@@ -842,40 +856,3 @@ function BankLine({ label, value }: { label: string; value: string }) {
   )
 }
 
-function KycFile({
-  label,
-  ready,
-  busy,
-  onFile,
-}: {
-  label: string
-  ready: boolean
-  busy: boolean
-  onFile: (file: File | undefined) => void
-}) {
-  return (
-    <label
-      style={{
-        display: 'block',
-        marginBottom: 8,
-        padding: '10px 12px',
-        borderRadius: 12,
-        border: `1px solid ${ready ? '#F97316' : 'var(--border)'}`,
-        background: ready ? '#FFF7ED' : '#fff',
-        cursor: 'pointer',
-        fontSize: 13,
-        fontWeight: 700,
-      }}
-    >
-      {busy ? `${label} · uploading…` : ready ? `${label} · attached` : label}
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: 'none' }}
-        disabled={busy}
-        onChange={e => onFile(e.target.files?.[0])}
-      />
-    </label>
-  )
-}

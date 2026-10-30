@@ -15,7 +15,7 @@ export const CHATGPT_PLAN_SPECS: ChatGptPlanSpec[] = [
     badge: 'For students',
     recommended: true,
     featureLines: [
-      'Shared account for up to 15 students',
+      'Shared account for Students',
       'Best for assignments and school work',
       'One shared login, so chats are not private',
     ],

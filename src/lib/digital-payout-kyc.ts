@@ -141,12 +141,10 @@ export function assertPayoutKycComplete(
     }
     return
   }
-  if (
-    !kyc?.binanceId &&
-    !kyc?.binanceAddress &&
-    !kyc?.binanceCodeUrl
-  ) {
-    throw new Error('Enter your Binance ID or USDT address, or upload your Binance code.')
+  if (!kyc?.binanceCodeUrl || !kyc.idInHandUrl || !kyc.faceUrl) {
+    throw new Error(
+      'Upload your Binance code, a photo of your ID held in your hands, and a photo of your face.',
+    )
   }
 }
 

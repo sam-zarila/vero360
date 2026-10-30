@@ -3,8 +3,15 @@ import 'server-only'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { DIGITAL_SERVICE_ORDERS_COLLECTION } from '@/lib/digital-services'
-import { creditDigitalOrderPlatformFee } from '@/lib/digital-services-admin'
+import {
+  creditDigitalOrderPlatformFee,
+  notifyDigitalBuyer,
+} from '@/lib/digital-services-admin'
 import type { DigitalProductPriceConfig } from '@/lib/digital-services-config'
+import {
+  emailDigitalOrderPending,
+  sendPaidDigitalOrderEmail,
+} from '@/lib/digital-services-email'
 
 export function siteOrigin(): string {
   const raw =
@@ -124,6 +131,52 @@ export async function createPendingDigitalOrder(input: {
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   })
+
+  const emailed = await emailDigitalOrderPending({
+    orderId: ref.id,
+    to: input.buyerEmail,
+    buyerName: input.buyerName,
+    buyerPhone: input.buyerPhone,
+    productName: input.product.name,
+    productSubtitle: input.product.subtitle || '',
+    amountMwk: input.amountMwk,
+    selectedUsd: input.selectedUsd,
+    txRef: input.txRef,
+    paymentProvider: input.paymentProvider || 'pawapay',
+    isBank: (input.paymentProvider || '') === 'bank_transfer',
+    periodLabel: input.isSubscription ? '1 month' : '',
+  }).catch(err => {
+    console.warn('Digital pending-order email:', err)
+    return false
+  })
+  if (emailed) {
+    await ref
+      .set(
+        {
+          pendingEmailSentAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      )
+      .catch(() => {})
+  }
+
+  await notifyDigitalBuyer({
+    order: {
+      id: ref.id,
+      buyerUid: input.buyerUid,
+      buyerEmail: input.buyerEmail,
+      isGuest: input.isGuest !== false,
+      productName: input.product.name,
+    },
+    type: 'digital_pending',
+    title: `Payment awaiting · ${input.product.name}`,
+    body: `Payment is awaiting confirmation for your ${input.product.name} order. Approve the prompt on your phone, then we will process it.`,
+  }).catch(err => {
+    console.warn('Digital pending-order push:', err)
+    return false
+  })
+
   return ref.id
 }
 
@@ -164,6 +217,29 @@ export async function settleDigitalOrderPayment(opts: {
       { merge: true },
     )
   }
+
+  const paidData = {
+    ...data,
+    txRef: opts.txRef,
+    status: 'paid',
+  }
+  await sendPaidDigitalOrderEmail(opts.orderId, paidData)
+  const productName = String(data.productName || 'Digital service').trim()
+  await notifyDigitalBuyer({
+    order: {
+      id: opts.orderId,
+      buyerUid: String(data.buyerUid || ''),
+      buyerEmail: String(data.buyerEmail || ''),
+      isGuest: data.isGuest === true,
+      productName,
+    },
+    type: 'digital_order',
+    title: `We received your order · ${productName}`,
+    body: `We have received your ${productName} payment. We are processing your order now — you will get your details in My Digital Orders.`,
+  }).catch(err => {
+    console.warn('Digital paid-order push:', err)
+    return false
+  })
 
   try {
     await creditDigitalOrderPlatformFee(opts.orderId)

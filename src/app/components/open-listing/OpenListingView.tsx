@@ -1,14 +1,18 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import Logo from '@/app/components/landing/Logo'
 import { PLAY_STORE_URL, APP_STORE_URL, appStoreLinks } from '@/app/components/landing/veroServices'
 import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import OpenAppBridge from '@/app/components/open-listing/OpenAppBridge'
 import ShareListingButton from '@/app/components/open-listing/ShareListingButton'
+import GuestBuyForm, {
+  guestFieldInput,
+  guestFieldLabel,
+} from '@/app/components/open-listing/GuestBuyForm'
 import type { ListingModel } from '@/lib/open-listing-types'
-import { listingPriceLabel } from '@/lib/open-listing-utils'
+import { listingAmountMwk, listingPriceLabel } from '@/lib/open-listing-utils'
 
 const page: CSSProperties = {
   minHeight: '100vh',
@@ -65,6 +69,12 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
   } = listing
   const showImage = /^https?:\/\//i.test(image) || image.startsWith('/api/media')
   const priceLabel = listingPriceLabel(listing)
+  const nightly = listingAmountMwk(listing)
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const [checkInDate, setCheckInDate] = useState(today)
+  const [nights, setNights] = useState(1)
+  const stayTotal = nightly * Math.max(1, nights)
+  const canBookStay = kind === 'accommodation' && nightly > 0
   const shareKindLabel =
     kind === 'shop' ? 'shop' : kind === 'marketplace' ? 'product' : 'stay'
   const webUrl =
@@ -240,41 +250,103 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
         ) : null}
 
         <div style={card}>
-          <a
-            href={appHref}
-            style={{ ...btn, background: 'var(--primary-dark)', color: '#fff' }}
-          >
-            Open in Vero360 app
-          </a>
-          {appStoreLinks.android || PLAY_STORE_URL ? (
-            <a
-              href={appStoreLinks.android || PLAY_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
-            >
-              Get on Google Play
-            </a>
-          ) : null}
-          {appStoreLinks.ios || APP_STORE_URL ? (
-            <IosStoreCta
-              style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
-            >
-              Get on the App Store
-            </IosStoreCta>
-          ) : null}
-          <p
-            style={{
-              fontSize: 13,
-              color: 'var(--text-3)',
-              marginTop: 12,
-              lineHeight: 1.45,
-            }}
-          >
-            Have Vero360? This{' '}
-            {kind === 'shop' ? 'shop' : kind === 'marketplace' ? 'product' : 'stay'}{' '}
-            opens in the app. If you don’t, get it on Google Play or the App Store.
-          </p>
+          {canBookStay ? (
+            <>
+              <h2
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  marginBottom: 12,
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
+                Book as guest
+              </h2>
+              <GuestBuyForm
+                checkoutUrl="/api/public/stays/checkout"
+                amountMwk={stayTotal}
+                submitLabel="Pay and book"
+                successMessage="Payment received. We will confirm this stay with the host."
+                payload={{
+                  listingId: id,
+                  checkInDate,
+                  nights,
+                }}
+                extraFields={
+                  <>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={guestFieldLabel} htmlFor="stay-in">
+                        Check-in
+                      </label>
+                      <input
+                        id="stay-in"
+                        style={guestFieldInput}
+                        type="date"
+                        min={today}
+                        required
+                        value={checkInDate}
+                        onChange={e => setCheckInDate(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={guestFieldLabel} htmlFor="stay-nights">
+                        Nights
+                      </label>
+                      <input
+                        id="stay-nights"
+                        style={guestFieldInput}
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={nights}
+                        onChange={e => setNights(Math.max(1, Number(e.target.value) || 1))}
+                      />
+                    </div>
+                  </>
+                }
+              />
+              <a href={appHref} style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}>
+                Or open in the Vero360 app
+              </a>
+            </>
+          ) : (
+            <>
+              <a
+                href={appHref}
+                style={{ ...btn, background: 'var(--primary-dark)', color: '#fff' }}
+              >
+                Open in Vero360 app
+              </a>
+              {appStoreLinks.android || PLAY_STORE_URL ? (
+                <a
+                  href={appStoreLinks.android || PLAY_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
+                >
+                  Get on Google Play
+                </a>
+              ) : null}
+              {appStoreLinks.ios || APP_STORE_URL ? (
+                <IosStoreCta
+                  style={{ ...btn, background: 'var(--primary-light)', color: 'var(--text)' }}
+                >
+                  Get on the App Store
+                </IosStoreCta>
+              ) : null}
+              <p
+                style={{
+                  fontSize: 13,
+                  color: 'var(--text-3)',
+                  marginTop: 12,
+                  lineHeight: 1.45,
+                }}
+              >
+                Have Vero360? This {kind === 'shop' ? 'shop' : 'stay'} opens in the app. If you
+                don&apos;t, get it on Google Play or the App Store.
+              </p>
+            </>
+          )}
         </div>
       </section>
     </main>
