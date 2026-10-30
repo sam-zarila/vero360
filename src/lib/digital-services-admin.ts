@@ -18,6 +18,7 @@ import {
   isAppBuyerUid,
   parsePayoutKyc,
 } from '@/lib/digital-payout-kyc'
+import { kickDigitalOrderAutoFulfill } from '@/lib/digital-services-fulfill'
 import { sendFcmToUid } from '@/lib/courier-push'
 import { sendPaidDigitalOrderEmail } from '@/lib/digital-services-email'
 
@@ -141,6 +142,11 @@ export function parseDigitalServiceOrder(
     platformFeeTxId: str(data.platformFeeTxId) || null,
     isGuest: data.isGuest === true || !isAppBuyerUid(str(data.buyerUid || data.userId), data.isGuest === true),
     payoutKyc: parsePayoutKyc(data.payoutKyc),
+    fulfillmentMode: str(data.fulfillmentMode) || null,
+    fulfillmentProvider: str(data.fulfillmentProvider) || null,
+    fulfillmentError: str(data.fulfillmentError) || null,
+    prepaidForgeSku: str(data.prepaidForgeSku) || null,
+    prepaidForgeRegion: str(data.prepaidForgeRegion) || null,
     fulfillment: (() => {
       const raw = data.fulfillment
       const map =
@@ -365,6 +371,9 @@ export async function updateDigitalServiceOrderStatus(
       paymentProvider: parsed.paymentProvider,
       periodLabel: parsed.periodLabel,
     } as Record<string, unknown>)
+  }
+  if (nextStatus === 'paid') {
+    kickDigitalOrderAutoFulfill(id, existingData)
   }
   return parsed
 }

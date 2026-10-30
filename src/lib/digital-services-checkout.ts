@@ -12,6 +12,8 @@ import {
   emailDigitalOrderPending,
   sendPaidDigitalOrderEmail,
 } from '@/lib/digital-services-email'
+import { kickDigitalOrderAutoFulfill } from '@/lib/digital-services-fulfill'
+import { resolvePrepaidForgeAutoStamp } from '@/lib/digital-services-prepaidforge'
 
 export function siteOrigin(): string {
   const raw =
@@ -120,6 +122,13 @@ export async function createPendingDigitalOrder(input: {
     buyerPhone: input.buyerPhone,
     platformFeeCredited: false,
     source: input.source || 'web',
+    ...(() => {
+      const stamp = resolvePrepaidForgeAutoStamp({
+        prepaidForge: input.product.prepaidForge,
+        selectedUsd: input.selectedUsd,
+      })
+      return stamp || {}
+    })(),
     ...(input.payoutKyc
       ? {
           payoutKyc: {
@@ -246,6 +255,8 @@ export async function settleDigitalOrderPayment(opts: {
   } catch {
     // Admin can backfill; payment is still marked paid.
   }
+
+  kickDigitalOrderAutoFulfill(opts.orderId, data)
 
   return { alreadyPaid }
 }
