@@ -127,17 +127,18 @@ export function parseListingPolicies(value: unknown): ListingPolicies {
     .map(item => String(item).toUpperCase())
     .filter((item): item is RentalMode => item === 'SELF_DRIVE' || item === 'WITH_DRIVER')
   const travel = String(row.travelAreaMode || 'NATIONWIDE').toUpperCase() as TravelAreaMode
-  const chips = Array.isArray(row.chips)
+  const chips: PolicyChip[] = Array.isArray(row.chips)
     ? row.chips
         .map(item => {
           const chip = asRecord(item)
           if (!chip) return null
-          return {
+          const parsed: PolicyChip = {
             id: String(chip.id || ''),
             label: String(chip.label || ''),
             allowed: typeof chip.allowed === 'boolean' ? chip.allowed : null,
-            value: chip.value == null ? null : String(chip.value),
           }
+          if (chip.value != null) parsed.value = String(chip.value)
+          return parsed
         })
         .filter((item): item is PolicyChip => !!item && !!item.label)
     : []

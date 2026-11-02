@@ -24,6 +24,11 @@ type Draft = {
   defaultListingPolicies: ListingPolicies
 }
 
+/** Draft fields rendered as plain text inputs (everything except the policy editor). */
+type StringFieldKey = {
+  [K in keyof Draft]: Draft[K] extends string ? K : never
+}[keyof Draft]
+
 function draftFrom(operator: OperatorSummary): Draft {
   return {
     displayName: operator.displayName,
@@ -66,7 +71,7 @@ export default function CompanyProfileForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const set = (key: Exclude<keyof Draft, 'instantBook'>) => (value: string) =>
+  const set = (key: StringFieldKey) => (value: string) =>
     setDraft(previous => ({ ...previous, [key]: value }))
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -119,7 +124,7 @@ export default function CompanyProfileForm({
   }
 
   const field = (
-    key: Exclude<keyof Draft, 'instantBook'>,
+    key: StringFieldKey,
     label: string,
     props: { placeholder?: string; inputMode?: 'numeric' | 'decimal' | 'tel' } = {},
   ) => (

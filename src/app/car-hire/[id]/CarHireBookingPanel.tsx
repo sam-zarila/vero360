@@ -215,7 +215,7 @@ export default function CarHireBookingPanel({
         }}
       >
         Open App Deep Link directly
-      </button>
+      </a>
 
       <p style={{ margin: '10px 0 0', fontSize: 11, lineHeight: 1.6, color: 'var(--text-3)' }}>
         Web checkout is not available yet. Your selected dates are passed to the Vero360 app, where
