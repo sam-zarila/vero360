@@ -32,6 +32,16 @@ const documents = [
     subtitle: 'Subscription and payment terms',
     href: '/legal/Vero360_Subscription_Payment_Policy_v2.pdf',
   },
+  {
+    title: 'Car Hire Service Policy',
+    subtitle: 'How vehicle rental works on Vero360',
+    href: '/legal/Vero360_Car_Hire_Service_Policy.pdf',
+  },
+  {
+    title: 'Car Hire Service Policy summary',
+    subtitle: 'Key points renters and partners accept at booking',
+    href: '/legal/car-hire',
+  },
 ]
 
 export default function LegalDocumentsPage() {
@@ -88,8 +98,8 @@ export default function LegalDocumentsPage() {
               <a
                 key={doc.href}
                 href={doc.href}
-                target="_blank"
-                rel="noopener noreferrer"
+                target={doc.href.endsWith('.pdf') ? '_blank' : undefined}
+                rel={doc.href.endsWith('.pdf') ? 'noopener noreferrer' : undefined}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -114,7 +124,7 @@ export default function LegalDocumentsPage() {
                   fontWeight: 800,
                   fontSize: 12,
                 }}>
-                  PDF
+                  {doc.href.endsWith('.pdf') ? 'PDF' : 'WEB'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{

@@ -15,6 +15,7 @@ import {
   type CarListing,
 } from '@/lib/car-hire'
 import { formatMwk, resolveVeroMediaUrl } from '@/lib/vero-api'
+import { CAR_HIRE_POLICY_KEY_POINTS, CAR_HIRE_POLICY_PDF } from '@/lib/car-hire-policy'
 import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import CarHireBookingPanel from './CarHireBookingPanel'
 
@@ -326,6 +327,60 @@ export default async function CarHireDetailPage({ params, searchParams }: Props)
               />
             </div>
           </section>
+
+          {car.listingPolicies ? (
+            <section style={{ ...cardStyle, padding: 22, marginTop: 18 }}>
+              <h2 style={sectionTitle}>Vero360 rental rules</h2>
+              <p style={{ margin: '8px 0 12px', fontSize: 14, lineHeight: 1.7, color: 'var(--text-2)' }}>
+                These are the policies Vero uses on every car hire, plus the rules this listing has ticked.
+              </p>
+              <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+                {CAR_HIRE_POLICY_KEY_POINTS.map(point => (
+                  <div key={point.topic}>
+                    <strong style={{ fontSize: 13 }}>{point.topic}</strong>
+                    <p style={{ margin: '2px 0 0', fontSize: 13, lineHeight: 1.5, color: 'var(--text-2)' }}>
+                      {point.summary}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {(car.listingPolicies.chips.length
+                  ? car.listingPolicies.chips
+                  : [
+                      { id: 'self', label: car.listingPolicies.rentalModes.includes('SELF_DRIVE') ? 'Self-drive' : 'No self-drive', allowed: car.listingPolicies.rentalModes.includes('SELF_DRIVE') },
+                      { id: 'driver', label: car.listingPolicies.rentalModes.includes('WITH_DRIVER') ? 'With driver' : 'No provided driver', allowed: car.listingPolicies.rentalModes.includes('WITH_DRIVER') },
+                    ]
+                ).map(chip => (
+                  <span
+                    key={chip.id}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: '5px 9px',
+                      borderRadius: 999,
+                      background: chip.allowed === false ? '#F8FAFC' : '#FFF7ED',
+                      color: chip.allowed === false ? '#475569' : '#9A3412',
+                    }}
+                  >
+                    {chip.label}
+                  </span>
+                ))}
+              </div>
+              {car.listingPolicies.houseNotes ? (
+                <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.6 }}>{car.listingPolicies.houseNotes}</p>
+              ) : null}
+              <p style={{ margin: '12px 0 0' }}>
+                <Link href="/legal/car-hire" style={{ color: '#EA580C', fontWeight: 700, fontSize: 13 }}>
+                  Read the Vero360 Car Hire Service Policy
+                </Link>
+                {' · '}
+                <a href={CAR_HIRE_POLICY_PDF} style={{ color: '#EA580C', fontWeight: 700, fontSize: 13 }}>
+                  PDF
+                </a>
+              </p>
+            </section>
+          ) : null}
 
           <section style={{ ...cardStyle, padding: 22, marginTop: 18 }}>
             <h2 style={sectionTitle}>Trust &amp; compliance</h2>

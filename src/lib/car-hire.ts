@@ -7,6 +7,10 @@
  */
 
 import { formatMwk, resolveVeroMediaUrl, unwrapList } from '@/lib/vero-api'
+import {
+  parseListingPolicies,
+  type ListingPolicies,
+} from '@/lib/car-hire-policy'
 
 /** Re-exported so provider views can resolve relative media paths from the car-hire module. */
 export { resolveVeroMediaUrl }
@@ -50,6 +54,7 @@ export type CarListing = {
   location: Branch | null
   /** False when the company accepts requests before the renter pays. */
   instantBook: boolean
+  listingPolicies: ListingPolicies | null
 }
 
 /** The company or individual host a listing is provided by. */
@@ -159,6 +164,9 @@ export type CarHireBooking = {
   renterName: string | null
   renterPhone: string | null
   renterEmail: string | null
+  rentalMode: string | null
+  assignedDriverId: string | null
+  acceptedListingPolicies: ListingPolicies | null
 }
 
 export type ProviderFleetStats = {
@@ -358,6 +366,7 @@ export function parseCar(value: unknown): CarListing | null {
     availableUnits: asOptionalNumber(row.availableUnits),
     location: parseBranch(row.location),
     instantBook: row.instantBook !== false,
+    listingPolicies: row.listingPolicies ? parseListingPolicies(row.listingPolicies) : null,
   }
 }
 
@@ -410,6 +419,7 @@ export type VehicleInput = {
   isAvailable?: boolean
   locationId?: string | null
   nextServiceDueAt?: string | null
+  listingPolicies?: Record<string, unknown>
 }
 
 /**
@@ -590,6 +600,11 @@ export function parseCarHireBooking(value: unknown): CarHireBooking | null {
     renterName: renter.name,
     renterPhone: renter.phone,
     renterEmail: renter.email,
+    rentalMode: str(row.rentalMode) || null,
+    assignedDriverId: str(row.assignedDriverId) || null,
+    acceptedListingPolicies: row.acceptedListingPolicies
+      ? parseListingPolicies(row.acceptedListingPolicies)
+      : car?.listingPolicies ?? null,
   }
 }
 
@@ -1298,6 +1313,7 @@ export type OperatorSummary = {
   turnaroundMinutes: number
   reviewerNote: string | null
   membership: OperatorMembership | null
+  defaultListingPolicies: ListingPolicies | null
 }
 
 export type OperatorProfileInput = {
@@ -1310,6 +1326,7 @@ export type OperatorProfileInput = {
   defaultMaxRentalDays?: number | null
   instantBook?: boolean
   turnaroundMinutes?: number
+  defaultListingPolicies?: Record<string, unknown>
 }
 
 /** A company branch where renters pick up and return vehicles. */
@@ -1445,6 +1462,9 @@ export function parseOperator(value: unknown): OperatorSummary | null {
     turnaroundMinutes: Math.max(0, Math.round(asNumber(row.turnaroundMinutes))),
     reviewerNote: str(row.reviewerNote) || null,
     membership,
+    defaultListingPolicies: row.defaultListingPolicies
+      ? parseListingPolicies(row.defaultListingPolicies)
+      : null,
   }
 }
 

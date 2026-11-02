@@ -13,6 +13,7 @@ import {
   resolveVeroMediaUrl,
   type Branch,
   type MaintenanceCategory,
+  type OperatorSummary,
   type OwnerVehicle,
   type VehicleInput,
 } from '@/lib/car-hire'
@@ -27,6 +28,12 @@ import {
   uploadVehiclePhoto,
 } from '@/lib/car-hire-owner-api'
 import { formatMwk } from '@/lib/vero-api'
+import {
+  DEFAULT_LISTING_POLICIES,
+  listingPoliciesPayload,
+  type ListingPolicies,
+} from '@/lib/car-hire-policy'
+import ListingPoliciesEditor from '../components/ListingPoliciesEditor'
 import { useProviderAuth } from '../components/ProviderShell'
 import FleetUnitsPanel from './FleetUnitsPanel'
 import FleetPricingPanel from './FleetPricingPanel'
@@ -85,13 +92,14 @@ type VehicleForm = {
   operatorId: string | null
   locationId: string
   nextServiceDueAt: string
+  listingPolicies: ListingPolicies
 }
 
 const MAX_VEHICLE_PHOTOS = 8
 
 const CURRENT_YEAR = new Date().getFullYear()
 
-function emptyVehicleForm(): VehicleForm {
+function emptyVehicleForm(defaults?: ListingPolicies | null): VehicleForm {
   return {
     mode: 'create',
     carId: null,
@@ -115,6 +123,7 @@ function emptyVehicleForm(): VehicleForm {
     operatorId: null,
     locationId: '',
     nextServiceDueAt: '',
+    listingPolicies: { ...(defaults ?? DEFAULT_LISTING_POLICIES) },
   }
 }
 
@@ -142,6 +151,9 @@ function vehicleFormFrom(car: OwnerVehicle): VehicleForm {
     operatorId: car.operatorId,
     locationId: car.locationId ?? '',
     nextServiceDueAt: car.nextServiceDueAt ?? '',
+    listingPolicies: car.listingPolicies
+      ? { ...car.listingPolicies }
+      : { ...DEFAULT_LISTING_POLICIES },
   }
 }
 
@@ -206,6 +218,7 @@ function vehiclePayload(form: VehicleForm): VehicleInput {
     minRentalDays: Number(form.minRentalDays || 1),
     maxRentalDays: form.maxRentalDays.trim() ? Number(form.maxRentalDays) : null,
     isAvailable: form.isAvailable,
+    listingPolicies: listingPoliciesPayload(form.listingPolicies),
     ...(form.transmission ? { transmission: form.transmission } : {}),
     ...(form.fuelType ? { fuelType: form.fuelType } : {}),
     ...(form.bodyType ? { bodyType: form.bodyType } : {}),
@@ -254,6 +267,7 @@ export default function ProviderFleetPage() {
   const [unitsOpenKey, setUnitsOpenKey] = useState<string | null>(null)
   const [pricingOpenKey, setPricingOpenKey] = useState<string | null>(null)
   const [branchesByOperator, setBranchesByOperator] = useState<Record<string, Branch[]>>({})
+  const [operators, setOperators] = useState<OperatorSummary[]>([])
   const [defaultOperatorId, setDefaultOperatorId] = useState<string | null>(null)
   const [block, setBlock] = useState<BlockForm | null>(null)
   const [blockBusy, setBlockBusy] = useState(false)
@@ -273,6 +287,7 @@ export default function ProviderFleetPage() {
         getMyOperators().catch(() => []),
       ])
       setFleet(cars)
+      setOperators(operators)
       const lists = await Promise.all(
         operators.map(operator =>
           getBranches(operator.id)
@@ -376,7 +391,8 @@ export default function ProviderFleetPage() {
   }
 
   function openCreateForm() {
-    setVehicleForm(emptyVehicleForm())
+    const operator = operators.find(row => row.id === defaultOperatorId) ?? operators[0]
+    setVehicleForm(emptyVehicleForm(operator?.defaultListingPolicies))
     setVehicleError('')
     setNotice('')
     setBlock(null)
@@ -1459,6 +1475,14 @@ function VehicleEditor({
               {uploadError}
             </p>
           ) : null}
+        </VehicleSection>
+
+        <VehicleSection title="Rental rules">
+          <ListingPoliciesEditor
+            value={form.listingPolicies}
+            onChange={listingPolicies => set({ listingPolicies })}
+            disabled={busy}
+          />
         </VehicleSection>
 
         <VehicleSection title="Description">

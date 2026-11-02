@@ -197,7 +197,24 @@ export default function CarHireBookingPanel({
       ) : null}
 
       <button type="submit" disabled={opening} style={{ ...primaryButtonStyle, marginTop: 15 }}>
-        {opening ? 'Opening the app…' : 'Continue in the app'}
+        {opening ? 'Opening the app…' : 'Book in Vero360 App ↗'}
+      </button>
+      <a
+        href={appHref}
+        style={{
+          display: 'block',
+          textAlign: 'center',
+          marginTop: 8,
+          padding: '10px 14px',
+          borderRadius: 12,
+          border: '1.5px solid var(--primary)',
+          color: 'var(--primary)',
+          fontSize: 13,
+          fontWeight: 700,
+          textDecoration: 'none',
+        }}
+      >
+        Open App Deep Link directly
       </button>
 
       <p style={{ margin: '10px 0 0', fontSize: 11, lineHeight: 1.6, color: 'var(--text-3)' }}>

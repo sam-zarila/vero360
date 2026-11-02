@@ -401,6 +401,21 @@ export async function assignBookingUnit(
   return parseCarHireBookingResponse(body)
 }
 
+export async function sendEngineCommand(
+  bookingId: number | string,
+  input: {
+    command: 'ENGINE_STOP' | 'ENGINE_RESUME'
+    reason: 'GEOFENCE_BREACH' | 'THEFT' | 'SAFETY'
+    note?: string
+    confirm?: string
+  },
+): Promise<unknown> {
+  return providerFetch(`bookings/${encodeURIComponent(String(bookingId))}/immobilize`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 /** Update one of the signed-in provider's own listings. */
 export async function updateVehicle(
   carId: number | string,

@@ -4,6 +4,12 @@ import { useState, type FormEvent } from 'react'
 import type { OperatorSummary } from '@/lib/car-hire'
 import { ProviderApiError, updateOperatorProfile } from '@/lib/car-hire-owner-api'
 import { inputStyle, labelStyle, primaryButton } from '../components/ProviderUI'
+import {
+  DEFAULT_LISTING_POLICIES,
+  listingPoliciesPayload,
+  type ListingPolicies,
+} from '@/lib/car-hire-policy'
+import ListingPoliciesEditor from '../components/ListingPoliciesEditor'
 
 type Draft = {
   displayName: string
@@ -15,6 +21,7 @@ type Draft = {
   defaultMaxRentalDays: string
   turnaroundMinutes: string
   instantBook: boolean
+  defaultListingPolicies: ListingPolicies
 }
 
 function draftFrom(operator: OperatorSummary): Draft {
@@ -31,6 +38,9 @@ function draftFrom(operator: OperatorSummary): Draft {
       operator.defaultMaxRentalDays != null ? String(operator.defaultMaxRentalDays) : '',
     turnaroundMinutes: String(operator.turnaroundMinutes || 0),
     instantBook: operator.instantBook,
+    defaultListingPolicies: operator.defaultListingPolicies
+      ? { ...operator.defaultListingPolicies }
+      : { ...DEFAULT_LISTING_POLICIES },
   }
 }
 
@@ -92,6 +102,7 @@ export default function CompanyProfileForm({
         defaultMaxRentalDays: max,
         turnaroundMinutes: turnaround,
         instantBook: draft.instantBook,
+        defaultListingPolicies: listingPoliciesPayload(draft.defaultListingPolicies),
       })
       onSaved(`${draft.displayName.trim()} profile saved.`)
     } catch (err) {
@@ -178,6 +189,19 @@ export default function CompanyProfileForm({
             </span>
           </label>
         </div>
+      </div>
+      <div>
+        <h3 style={subTitle}>Default listing rules</h3>
+        <p style={smallMeta}>
+          Copied onto new vehicles. Each listing can still override them.
+        </p>
+        <ListingPoliciesEditor
+          value={draft.defaultListingPolicies}
+          onChange={defaultListingPolicies =>
+            setDraft(previous => ({ ...previous, defaultListingPolicies }))
+          }
+          disabled={busy}
+        />
       </div>
       {error ? (
         <p role="alert" style={{ ...smallMeta, color: '#B91C1C', fontWeight: 700 }}>

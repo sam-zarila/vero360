@@ -43,6 +43,7 @@ import {
   ProviderApiError,
   reportIncident,
   resolveIncident,
+  sendEngineCommand,
   submitInspection,
 } from '@/lib/car-hire-owner-api'
 import { formatDateTime, formatMwk, resolveVeroMediaUrl } from '@/lib/vero-api'
@@ -777,6 +778,32 @@ export default function BookingDetailClient({ bookingId }: { bookingId: string }
         <div style={{ marginBottom: 14 }} role="alert">
           <ProviderNotice tone="error">{actionError}</ProviderNotice>
         </div>
+      ) : null}
+
+      {booking.acceptedListingPolicies?.chips?.length ? (
+        <ProviderCard>
+          <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800 }}>Listing rules accepted</h3>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-3)' }}>
+            {booking.rentalMode === 'WITH_DRIVER' ? 'With driver' : 'Self-drive'}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {booking.acceptedListingPolicies.chips.map(chip => (
+              <span key={chip.id} style={{ fontSize: 12, fontWeight: 700, padding: '4px 8px', borderRadius: 999, background: '#FFF7ED' }}>
+                {chip.label}
+              </span>
+            ))}
+          </div>
+        </ProviderCard>
+      ) : null}
+
+      {booking.status === 'ACTIVE' && booking.acceptedListingPolicies?.immobilizeAvailable ? (
+        <EngineCommandCard
+          bookingId={booking.id}
+          onDone={message => {
+            setNotice(message)
+            void load()
+          }}
+        />
       ) : null}
 
       <ProviderCard>
@@ -1753,6 +1780,70 @@ const legend = {
   fontWeight: 900,
   color: 'var(--text-3)',
 } as const
+
+function EngineCommandCard({
+  bookingId,
+  onDone,
+}: {
+  bookingId: number
+  onDone: (message: string) => void
+}) {
+  const [reason, setReason] = useState<'GEOFENCE_BREACH' | 'THEFT' | 'SAFETY'>('GEOFENCE_BREACH')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function send(command: 'ENGINE_STOP' | 'ENGINE_RESUME') {
+    setBusy(true)
+    setError('')
+    try {
+      await sendEngineCommand(bookingId, {
+        command,
+        reason,
+        confirm: command === 'ENGINE_STOP' ? confirm : undefined,
+      })
+      setConfirm('')
+      onDone(command === 'ENGINE_STOP' ? 'Engine-off command sent.' : 'Engine restore command sent.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The command could not be sent.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <ProviderCard>
+      <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 800 }}>Remote engine-off</h3>
+      <p style={{ margin: '0 0 10px', fontSize: 12, lineHeight: 1.55, color: 'var(--text-3)' }}>
+        Only after a confirmed breach, theft or safety incident, and only when the car is almost stopped.
+        Type IMMOBILIZE to cut the engine.
+      </p>
+      <label style={{ display: 'grid', gap: 4, marginBottom: 8 }}>
+        <span style={labelStyle}>Reason</span>
+        <select value={reason} onChange={event => setReason(event.target.value as typeof reason)} style={inputStyle}>
+          <option value="GEOFENCE_BREACH">Left the allowed travel area</option>
+          <option value="THEFT">Reported theft</option>
+          <option value="SAFETY">Safety incident</option>
+        </select>
+      </label>
+      <input
+        value={confirm}
+        onChange={event => setConfirm(event.target.value)}
+        placeholder="Type IMMOBILIZE to confirm"
+        style={{ ...inputStyle, marginBottom: 8 }}
+      />
+      {error ? <ProviderNotice tone="error">{error}</ProviderNotice> : null}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button type="button" disabled={busy} onClick={() => void send('ENGINE_STOP')} style={dangerButton}>
+          Cut engine
+        </button>
+        <button type="button" disabled={busy} onClick={() => void send('ENGINE_RESUME')} style={ghostButton}>
+          Restore engine
+        </button>
+      </div>
+    </ProviderCard>
+  )
+}
 
 const chip = {
   display: 'inline-flex',
