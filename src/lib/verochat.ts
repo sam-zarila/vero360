@@ -17,6 +17,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { randomId, safeGetItem, safeSetItem } from './random-id'
 
 export const VEROCHAT_COLLECTION = 'verochat_sessions'
 export const SESSION_STORAGE_KEY = 'verochat_session_id'
@@ -89,10 +90,11 @@ export function messagePreview(msg: Pick<VeroChatMessage, 'kind' | 'text' | 'ima
 
 export function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return ''
-  let id = sessionStorage.getItem(SESSION_STORAGE_KEY)
+  const storage = window.sessionStorage
+  let id = safeGetItem(storage, SESSION_STORAGE_KEY)
   if (!id) {
-    id = crypto.randomUUID()
-    sessionStorage.setItem(SESSION_STORAGE_KEY, id)
+    id = randomId()
+    safeSetItem(storage, SESSION_STORAGE_KEY, id)
   }
   return id
 }

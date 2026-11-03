@@ -24,11 +24,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Running on pm2
 
-The app builds with `output: 'standalone'`, so `.next/standalone/server.js` is the
-entry point pm2 should run. `npm run build` finishes by copying `public/`,
-`.next/static/` and the local `.env*` files into `.next/standalone`; without that
-step the pages render but every CSS/JS request 404s and React never hydrates.
-
 ```bash
 npm ci
 npm run build
@@ -36,13 +31,30 @@ pm2 start ecosystem.config.js
 pm2 save
 ```
 
+The ecosystem runs Next's own CLI (`next start`) from this folder, so it serves
+`.next/` + `public/` directly. If `output: 'standalone'` is enabled in
+`next.config.ts` again, `npm run build` copies `public/`, `.next/static/` and the
+local `.env*` files into `.next/standalone` (without that the standalone server
+renders HTML but 404s every asset, so React never hydrates).
+
 Useful commands: `pm2 logs vero360web`, `pm2 reload ecosystem.config.js --update-env`,
 `npm run deploy` (build + reload).
 
 ### Ports
 
-`vero-backend` already owns port **3000**, so the web app defaults to **3001**.
-Override with `WEB_PORT` (and `WEB_HOST`, default `0.0.0.0`) in `.env`.
+`vero-backend` already owns port **3000**, so the web app binds **3001**.
+Set `WEB_PORT` in `.env` to change it (`WEB_HOST`, default `0.0.0.0`, controls the
+interface). Never start the web app on 3000 — it fails with `EADDRINUSE` and pm2
+restarts it forever.
+
+### Always serve over HTTPS
+
+`crypto.randomUUID`, `navigator.clipboard`, `navigator.share` and
+`navigator.geolocation` only exist in a **secure context** (HTTPS or `localhost`).
+Served over plain HTTP — for example while testing by IP — any unguarded call to
+them throws and takes the whole page down with Next's "This page couldn't load"
+screen. Client code must use `randomId()` from `@/lib/random-id` instead of
+`crypto.randomUUID()`. Terminate TLS in nginx and proxy to the app.
 
 ### Hosts
 
