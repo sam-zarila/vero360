@@ -11,6 +11,8 @@ const team = [
   { name: 'Peter Kasambala', role: 'Marketing Team', photo: '/team/peter-kasambala.jpg' },
   { name: 'Chatonda Gondwe', role: 'Marketing Team', photo: '/team/chatonda-gondwe.jpg' },
   { name: 'Nongi Mwalwanda', role: 'Front Desk & Administrator', photo: '/team/nongi.jpeg' },
+  { name: 'Eliaya Nguludi', role: 'Cyber Security Expert', photo: '/team/eliaya-nguludi.jpg' },
+  
 ]
 
 const missionVisionValues = [
