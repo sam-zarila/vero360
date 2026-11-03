@@ -40,16 +40,36 @@ export function getPublicOrigin(): string {
 
 /**
  * Admin origin for emails and absolute panel links.
- * If ADMIN_URL is still pointed at the public site, use the admin subdomain.
+ *
+ * When no dedicated admin host is configured, the panel lives on the same
+ * origin as the public site. That is the normal single-server (pm2) setup, so
+ * never invent an `admin.` subdomain the operator has not pointed at this app.
  */
 export function getAdminOrigin(): string {
   const fromEnv = process.env.NEXT_PUBLIC_ADMIN_URL?.trim()
-  const origin = trimOrigin(fromEnv || DEFAULT_ADMIN_ORIGIN)
-  const host = hostnameFromUrl(origin)
-  if (host === 'vero360.app' || host === 'www.vero360.app') {
-    return DEFAULT_ADMIN_ORIGIN
-  }
-  return origin
+  if (fromEnv) return trimOrigin(fromEnv)
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  if (site) return trimOrigin(site)
+  return DEFAULT_ADMIN_ORIGIN
+}
+
+/**
+ * True when the panel and the public site share one origin (IP address, single
+ * domain, or a loopback admin URL). Redirecting between "surfaces" would then
+ * bounce visitors to an unreachable host, so paths decide the surface instead.
+ */
+export function isSingleHostDeployment(): boolean {
+  const adminFromEnv = process.env.NEXT_PUBLIC_ADMIN_URL?.trim()
+  // No dedicated admin host configured: keep the panel where the site is served.
+  if (!adminFromEnv) return true
+  const adminHost = hostnameFromUrl(adminFromEnv)
+  const publicHost = hostnameFromUrl(
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || DEFAULT_PUBLIC_ORIGIN,
+  )
+  if (!adminHost || !publicHost) return true
+  // A loopback admin origin only exists on the machine running `next dev`.
+  if (isLocalHost(adminHost)) return true
+  return adminHost === publicHost
 }
 
 export function getAdminPanelUrl(path = '/dashboard'): string {
@@ -67,9 +87,10 @@ export function getPublicHosts(): string[] {
 }
 
 export function getAdminHosts(): string[] {
+  const adminHost = hostnameFromUrl(getAdminOrigin())
   return uniqueHosts([
     ...DEFAULT_ADMIN_HOSTS,
-    hostnameFromUrl(getAdminOrigin()),
+    isSingleHostDeployment() ? null : adminHost,
     ...parseHostList(process.env.NEXT_PUBLIC_ADMIN_HOSTS),
     ...parseHostList(process.env.ADMIN_HOSTS),
   ])
@@ -191,6 +212,7 @@ export function adminContentSecurityPolicy(): string {
     "'self'",
     'https://*.googleapis.com',
     'https://*.gstatic.com',
+    'https://*.google-analytics.com',
     'https://*.firebaseio.com',
     'https://*.firebasedatabase.app',
     'https://*.firebaseapp.com',
@@ -210,7 +232,11 @@ export function adminContentSecurityPolicy(): string {
     "frame-ancestors 'none'",
     "object-src 'none'",
     "form-action 'self'",
-    "script-src 'self'",
+    // The panel pages are statically prerendered React shells, so a per-request
+    // nonce can never be baked into their inline hydration scripts. Blocking
+    // inline scripts here silently left the panel stuck on "Checking admin
+    // access…" because React never hydrated.
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",

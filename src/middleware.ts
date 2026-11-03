@@ -5,11 +5,13 @@ import {
   getAdminOrigin,
   getPublicOrigin,
   isAdminApiPath,
+  isAdminSurfacePath,
   isAllowedOnAdminHost,
   isCronPath,
   isDashboardPath,
   isDevPassthroughHost,
   isKnownAdminHost,
+  isSingleHostDeployment,
   isStaticAssetPath,
   requestHost,
   surfaceForRequest,
@@ -67,11 +69,21 @@ function notFoundJson(): NextResponse {
 export function middleware(request: NextRequest) {
   const host = requestHost(request)
   const { pathname } = request.nextUrl
-  const surface = surfaceForRequest(host, pathname)
 
   if (isDevPassthroughHost(host)) {
+    return withSurface(request, surfaceForRequest(host, pathname))
+  }
+
+  // Single-origin deployments (IP address, one domain, or the pm2/VPS setup)
+  // serve the public site and the admin panel from the same host. Redirecting
+  // /dashboard to another host would send visitors to an unreachable address,
+  // so the path decides the surface instead.
+  if (isSingleHostDeployment()) {
+    const surface: VeroSurface = isAdminSurfacePath(pathname) ? 'admin' : 'public'
     return withSurface(request, surface)
   }
+
+  const surface = surfaceForRequest(host, pathname)
 
   if (isKnownAdminHost(host)) {
     if (isAllowedOnAdminHost(pathname)) {
@@ -88,7 +100,7 @@ export function middleware(request: NextRequest) {
     return redirectTo(getAdminOrigin(), request)
   }
 
-  return withSurface(request, 'public')
+  return withSurface(request, surface)
 }
 
 export const config = {
