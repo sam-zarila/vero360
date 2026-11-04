@@ -1,4 +1,5 @@
 import type { DigitalProductPriceConfig } from '@/lib/digital-services-config'
+import { formatHubPlanProductName } from '@/lib/subscription-hubs'
 
 export type ChatGptPlanSpec = {
   key: string
@@ -11,8 +12,8 @@ export type ChatGptPlanSpec = {
 export const CHATGPT_PLAN_SPECS: ChatGptPlanSpec[] = [
   {
     key: 'chatgpt_basic',
-    title: 'Basic ChatGPT Plus',
-    badge: 'For students',
+    title: 'Student',
+    badge: 'Student',
     recommended: true,
     featureLines: [
       'Shared account for Students',
@@ -22,7 +23,7 @@ export const CHATGPT_PLAN_SPECS: ChatGptPlanSpec[] = [
   },
   {
     key: 'chatgpt_plus',
-    title: 'ChatGPT Plus',
+    title: 'Private',
     badge: 'Private',
     recommended: false,
     featureLines: [
@@ -67,7 +68,7 @@ export function buildPublicChatGptPlans(
     out.push({
       spec,
       productKey: spec.key,
-      name: p?.name || spec.title,
+      name: formatHubPlanProductName('ChatGPT', p?.planBadge || spec.title),
       priceMwk: price > 0 ? price : fallback,
       href: `/digital-services/${encodeURIComponent(spec.key)}`,
     })

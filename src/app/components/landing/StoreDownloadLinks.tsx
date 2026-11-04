@@ -62,11 +62,7 @@ export default function StoreDownloadLinks({
         <div style={{ textAlign: 'left', flex: 1 }}>
           <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{topLabel}</div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{storeLabel}</div>
-          {key === 'ios' ? (
-            <div style={{ fontSize: 11, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>
-              Under Apple review
-            </div>
-          ) : downloadsLocked ? (
+          {downloadsLocked ? (
             <div style={{ fontSize: 11, color: '#C2410C', fontWeight: 600, marginTop: 2 }}>
               {APP_LAUNCH_HEADLINE}
             </div>
@@ -79,6 +75,7 @@ export default function StoreDownloadLinks({
       return (
         <IosStoreCta
           key={key}
+          href={href}
           className="store-download-link"
           style={{
             ...linkStyle,

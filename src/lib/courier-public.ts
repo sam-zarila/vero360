@@ -116,6 +116,9 @@ export async function fulfillCourierGuestOrder(opts: {
     }
   }
 
+  const weightKg = Number(opts.data.weightKg)
+  const weightNote =
+    Number.isFinite(weightKg) && weightKg > 0 ? `Weight: ${weightKg} kg` : ''
   const created = await createNestCourierDelivery({
     phone: str(opts.data.buyerPhone),
     email: str(opts.data.buyerEmail),
@@ -123,7 +126,7 @@ export async function fulfillCourierGuestOrder(opts: {
     dropoff: str(opts.data.dropoffLocation),
     goodsType: str(opts.data.goodsType) || 'Other',
     description: str(opts.data.description),
-    notes: str(opts.data.notes),
+    notes: [str(opts.data.notes), weightNote].filter(Boolean).join(' | '),
     amountMwk: Number(opts.data.amountMwk) || 0,
     txRef: str(opts.data.txRef),
   })

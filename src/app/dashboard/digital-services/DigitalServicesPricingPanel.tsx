@@ -4,6 +4,7 @@ import { adminFetch } from '@/lib/panel-client-auth'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useConfirmDelete } from '../ConfirmDialog'
 import type { PrepaidForgeProductConfig } from '@/lib/digital-services-prepaidforge'
+import { formatHubPlanProductName } from '@/lib/subscription-hubs'
 
 type DigitalProductPriceConfig = {
   key: string
@@ -120,9 +121,9 @@ function fromDraft(p: DraftProduct): DigitalProductPriceConfig {
 function chatGptPlanHint(key: string): string {
   switch (key) {
     case 'chatgpt_basic':
-      return 'For students · shared login for up to 15 · school work · chats are not private · MWK 10,000'
+      return 'For students · shared login · school work · chats are not private · Monthly price'
     case 'chatgpt_plus':
-      return 'Private · one account · work and personal use · MWK 65,000'
+      return 'Private · one account · work and personal use · Monthly price'
     default:
       return ''
   }
@@ -192,16 +193,17 @@ export function DigitalServicesPricingPanel() {
   const [subImageUrl, setSubImageUrl] = useState('')
   const [subAsHub, setSubAsHub] = useState(true)
   const [subSimplePrice, setSubSimplePrice] = useState(15000)
-  const [subStudentName, setSubStudentName] = useState('Student plan')
+  const [subStudentName, setSubStudentName] = useState('Student')
   const [subStudentPrice, setSubStudentPrice] = useState(10000)
   const [subStudentFeatures, setSubStudentFeatures] = useState(
     'Shared account for students\nBest for school work\nChats are not private',
   )
-  const [subPrivateName, setSubPrivateName] = useState('Private plan')
+  const [subPrivateName, setSubPrivateName] = useState('Private')
   const [subPrivatePrice, setSubPrivatePrice] = useState(65000)
   const [subPrivateFeatures, setSubPrivateFeatures] = useState(
     'Your own account. Not shared with anyone\nBest for work and personal use\nYour chats stay private',
   )
+  const [subAlsoCrypto, setSubAlsoCrypto] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -505,7 +507,6 @@ export function DigitalServicesPricingPanel() {
     const hubKey = uniqueKey(name)
     const imageUrl = subImageUrl.trim() || undefined
     const next: DraftProduct[] = [...products]
-
     if (subAsHub) {
       const studentPrice = Math.round(Number(subStudentPrice) || 0)
       const privatePrice = Math.round(Number(subPrivatePrice) || 0)
@@ -513,10 +514,11 @@ export function DigitalServicesPricingPanel() {
         setError('Set at least one plan price in MWK.')
         return
       }
+      // One brand card in the catalog. Plans are chosen after opening it.
       next.push({
         key: hubKey,
         name,
-        subtitle: 'Choose a plan',
+        subtitle: 'Choose Student or Private',
         category: 'streaming',
         brandTag: name,
         imageUrl,
@@ -527,15 +529,17 @@ export function DigitalServicesPricingPanel() {
         active: true,
       })
       if (studentPrice >= 1) {
-        const studentName = subStudentName.trim() || 'Student plan'
+        const planLabel = subStudentName.trim() || 'Student'
+        const fullName = formatHubPlanProductName(name, planLabel)
         next.push({
           key: uniqueKey(`${hubKey}_student`),
-          name: studentName,
-          subtitle: linesFromText(subStudentFeatures).join(' · ') || studentName,
+          name: fullName,
+          subtitle: linesFromText(subStudentFeatures).join(' · ') || fullName,
           category: 'streaming',
-          brandTag: 'Students',
+          brandTag: name,
+          imageUrl,
           hubKey,
-          planBadge: 'For students',
+          planBadge: planLabel,
           featureLines: linesFromText(subStudentFeatures),
           recommended: true,
           fixedMwkPrice: studentPrice,
@@ -545,15 +549,17 @@ export function DigitalServicesPricingPanel() {
         })
       }
       if (privatePrice >= 1) {
-        const privateName = subPrivateName.trim() || 'Private plan'
+        const planLabel = subPrivateName.trim() || 'Private'
+        const fullName = formatHubPlanProductName(name, planLabel)
         next.push({
           key: uniqueKey(`${hubKey}_private`),
-          name: privateName,
-          subtitle: linesFromText(subPrivateFeatures).join(' · ') || privateName,
+          name: fullName,
+          subtitle: linesFromText(subPrivateFeatures).join(' · ') || fullName,
           category: 'streaming',
-          brandTag: 'Private',
+          brandTag: name,
+          imageUrl,
           hubKey,
-          planBadge: 'Private',
+          planBadge: planLabel,
           featureLines: linesFromText(subPrivateFeatures),
           recommended: false,
           fixedMwkPrice: privatePrice,
@@ -583,15 +589,37 @@ export function DigitalServicesPricingPanel() {
       })
     }
 
+    if (subAlsoCrypto) {
+      const cryptoKey = uniqueKey(`${name}_fx`)
+      next.push({
+        key: cryptoKey,
+        name,
+        subtitle: `${name} digital / FX card`,
+        category: 'crypto',
+        brandTag: name,
+        unitLabel: name,
+        mwkPerUnit: Math.round(Number(rate) || 4700),
+        maxOtherAmount: 1000,
+        usdAmounts: [10, 50, 100],
+        usdAmountsText: '10, 50, 100',
+        imageUrl,
+        fixedMwkPrice: null,
+        active: true,
+      })
+    }
+
     const ok = await save(next)
     if (ok) {
       setSubName('')
       setSubImageUrl('')
       setSubSimplePrice(15000)
+      setSubAlsoCrypto(false)
       setNotice(
         subAsHub
-          ? `${name} is live. App users tap it, then pick Student or Private — like ChatGPT.`
-          : `${name} is live in the app.`,
+          ? `${name} subscription card is live.${
+              subAlsoCrypto ? ` Also created under Crypto / FX.` : ''
+            }`
+          : `${name} is live in the app.${subAlsoCrypto ? ' Also created under Crypto / FX.' : ''}`,
       )
     }
   }
@@ -735,8 +763,8 @@ export function DigitalServicesPricingPanel() {
 
           <h3 style={sectionTitle}>Create subscription</h3>
           <p style={{ margin: '0 0 12px', color: 'var(--muted)', fontSize: 13 }}>
-            Same as a gift card, but for apps like Claude or Canva. Turn on plan
-            picker to add a student plan and a private plan — the same steps as ChatGPT.
+            Add one brand (e.g. Claude) with its photo. Users open that card and choose
+            Student or Private — not two separate products in the list.
           </p>
           <article style={{ ...cardStyle, borderColor: '#FDBA74', background: '#FFF7ED' }}>
             <div style={rowStyle}>
@@ -755,7 +783,7 @@ export function DigitalServicesPricingPanel() {
                   checked={subAsHub}
                   onChange={(e) => setSubAsHub(e.target.checked)}
                 />
-                Plan picker (student / private)
+                One card + Student / Private plans
               </label>
             </div>
             <div style={rowStyle}>
@@ -802,10 +830,11 @@ export function DigitalServicesPricingPanel() {
               <>
                 <div style={rowStyle}>
                   <label style={fieldLabel}>
-                    Student plan name
+                    Student plan label
                     <input
                       value={subStudentName}
                       onChange={(e) => setSubStudentName(e.target.value)}
+                      placeholder="Student"
                       style={inputStyle}
                     />
                   </label>
@@ -831,10 +860,11 @@ export function DigitalServicesPricingPanel() {
                 </label>
                 <div style={rowStyle}>
                   <label style={fieldLabel}>
-                    Private plan name
+                    Private plan label
                     <input
                       value={subPrivateName}
                       onChange={(e) => setSubPrivateName(e.target.value)}
+                      placeholder="Private"
                       style={inputStyle}
                     />
                   </label>
@@ -871,6 +901,14 @@ export function DigitalServicesPricingPanel() {
                 />
               </label>
             )}
+            <label style={{ ...checkLabel, marginTop: 12 }}>
+              <input
+                type="checkbox"
+                checked={subAlsoCrypto}
+                onChange={(e) => setSubAlsoCrypto(e.target.checked)}
+              />
+              Also create the same name & photo under Crypto / FX
+            </label>
             <button
               type="button"
               onClick={() => void createSubscription()}

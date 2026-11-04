@@ -37,9 +37,12 @@ function applySecurityHeaders(
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-DNS-Prefetch-Control', 'off')
+  // Public site may use GPS for Vero Courier pickup; admin keeps geolocation off.
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=()',
+    surface === 'admin'
+      ? 'camera=(), microphone=(), geolocation=(), payment=()'
+      : 'camera=(), microphone=(), geolocation=(self), payment=()',
   )
   if (surface === 'admin') {
     response.headers.set('Referrer-Policy', 'same-origin')

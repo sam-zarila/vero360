@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import ChatGptPlanPickerView from '@/app/components/open-listing/ChatGptPlanPickerView'
 import DigitalServiceView from '@/app/components/open-listing/DigitalServiceView'
 import NetflixPlanPickerView from '@/app/components/open-listing/NetflixPlanPickerView'
+import SubscriptionPlanPickerView from '@/app/components/open-listing/SubscriptionPlanPickerView'
 import {
   DEFAULT_DIGITAL_SERVICES_CONFIG,
   getDigitalServicesConfig,
@@ -23,6 +24,10 @@ import {
   isNetflixHubKey,
   isNetflixPlanKey,
 } from '@/lib/netflix-plans'
+import {
+  buildPublicHubPlans,
+  isSubscriptionHubProduct,
+} from '@/lib/subscription-hubs'
 
 type Props = { params: Promise<{ key: string }> }
 
@@ -105,6 +110,19 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
     )
   }
 
+  const hubProduct = config.products.find(p => p.key === key && p.active !== false)
+  if (hubProduct && isSubscriptionHubProduct(hubProduct) && !isNetflixHubKey(key) && !isChatGptHubKey(key)) {
+    const plans = buildPublicHubPlans(key, config.products)
+    if (!plans.length) notFound()
+    return (
+      <SubscriptionPlanPickerView
+        hubName={hubProduct.name}
+        brandImage={digitalBrandImage(hubProduct.key, hubProduct.imageUrl)}
+        plans={plans}
+      />
+    )
+  }
+
   const product = config.products.find(p => p.key === key && p.active !== false)
   if (!product) notFound()
 
@@ -146,13 +164,15 @@ export default async function DigitalServiceDetailPage({ params }: Props) {
         payoutKind: detectDigitalPayoutKycKind(product),
         prepaidForgeRegion: product.prepaidForge?.region || null,
         prepaidForgeLocksCustomAmount: locksCustomUsdAmount(product.prepaidForge),
-        backHref: isNetflixPlanKey(product.key)
-          ? '/digital-services/netflix'
-          : isChatGptPlanKey(product.key)
-            ? '/digital-services/chatgpt'
-            : '/browse/digital-services',
+        backHref: product.hubKey
+          ? `/digital-services/${encodeURIComponent(product.hubKey)}`
+          : isNetflixPlanKey(product.key)
+            ? '/digital-services/netflix'
+            : isChatGptPlanKey(product.key)
+              ? '/digital-services/chatgpt'
+              : '/browse/digital-services',
         backLabel:
-          isNetflixPlanKey(product.key) || isChatGptPlanKey(product.key)
+          product.hubKey || isNetflixPlanKey(product.key) || isChatGptPlanKey(product.key)
             ? 'Choose your plan'
             : 'All digital',
       }}

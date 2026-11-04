@@ -113,6 +113,10 @@ export function parseDigitalServiceOrder(
     productName: str(data.productName) || 'Digital product',
     productSubtitle: str(data.productSubtitle),
     brandTag: str(data.brandTag),
+    hubKey: str(data.hubKey) || null,
+    hubName: str(data.hubName) || null,
+    planBadge: str(data.planBadge) || null,
+    unitLabel: str(data.unitLabel) || null,
     category: str(data.category),
     kind,
     period,
@@ -171,6 +175,54 @@ export function parseDigitalServiceOrder(
       }
     })(),
   }
+}
+
+/** Fill brand/plan titles for older orders that only stored “Student”. */
+export async function enrichDigitalOrderDisplayNames(
+  items: DigitalServiceOrder[],
+): Promise<DigitalServiceOrder[]> {
+  const { getDigitalServicesConfig } = await import('@/lib/digital-services-config')
+  const { digitalOrderDisplayName, formatHubPlanProductName, planLabelFromProductName } =
+    await import('@/lib/subscription-hubs')
+  let products: Awaited<ReturnType<typeof getDigitalServicesConfig>>['products'] = []
+  try {
+    products = (await getDigitalServicesConfig()).products
+  } catch {
+    products = []
+  }
+  const byKey = new Map(products.map(p => [p.key, p]))
+
+  return items.map(order => {
+    const product = byKey.get(order.productKey)
+    const hubKey = order.hubKey || product?.hubKey || null
+    const hub =
+      (hubKey && products.find(p => p.key === hubKey)) ||
+      null
+    const hubName = order.hubName || hub?.name || null
+    const planBadge =
+      order.planBadge ||
+      product?.planBadge ||
+      planLabelFromProductName(order.productName, hubName) ||
+      null
+    const productName =
+      hubName
+        ? formatHubPlanProductName(hubName, planBadge || order.productName)
+        : digitalOrderDisplayName({
+            ...order,
+            hubName,
+            planBadge,
+            unitLabel: order.unitLabel || product?.unitLabel || null,
+          })
+    return {
+      ...order,
+      hubKey,
+      hubName,
+      planBadge,
+      unitLabel: order.unitLabel || product?.unitLabel || null,
+      productName,
+      brandTag: order.brandTag || hubName || product?.brandTag || order.brandTag,
+    }
+  })
 }
 
 export function buildDigitalOrderCounts(

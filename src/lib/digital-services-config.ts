@@ -136,14 +136,14 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
     },
     {
       key: 'chatgpt_basic',
-      name: 'Basic ChatGPT Plus',
+      name: 'ChatGPT · Student',
       subtitle: 'Shared account for up to 15 students · school work · chats are not private',
       category: 'streaming',
-      brandTag: 'Students',
+      brandTag: 'ChatGPT',
       hubKey: 'chatgpt',
-      planBadge: 'For students',
+      planBadge: 'Student',
       featureLines: [
-        'Shared account for up to 15 students',
+        'Shared account for students',
         'Best for assignments and school work',
         'One shared login, so chats are not private',
       ],
@@ -153,10 +153,10 @@ export const DEFAULT_DIGITAL_SERVICES_CONFIG: DigitalServicesConfig = {
     },
     {
       key: 'chatgpt_plus',
-      name: 'ChatGPT Plus',
+      name: 'ChatGPT · Private',
       subtitle: 'Your own account · work and personal use · chats stay private',
       category: 'streaming',
-      brandTag: 'Private',
+      brandTag: 'ChatGPT',
       hubKey: 'chatgpt',
       planBadge: 'Private',
       featureLines: [
@@ -435,17 +435,29 @@ function mergeWithDefaults(saved: Partial<DigitalServicesConfig> | null): Digita
       prepaidForge: p.prepaidForge || prev?.prepaidForge || null,
     })
   }
-  // Older configs sold one ChatGPT Plus at MWK 35,000. Show the two plans.
+  // Older configs sold one ChatGPT Plus at MWK 35,000. Keep two plans under the ChatGPT hub.
   const plus = byKey.get('chatgpt_plus')
   if (plus && (plus.fixedMwkPrice == null || plus.fixedMwkPrice === 35000)) {
     plus.fixedMwkPrice = 65000
-    plus.name = 'ChatGPT Plus'
+    plus.name = 'ChatGPT · Private'
     plus.subtitle = 'Your own account · work and personal use · chats stay private'
-    plus.brandTag = 'Private'
+    plus.brandTag = 'ChatGPT'
+    plus.planBadge = 'Private'
+    plus.hubKey = 'chatgpt'
   }
   if (plus && (plus.subtitle || '') === '1-month subscription') {
     plus.subtitle = 'Your own account · work and personal use · chats stay private'
-    plus.brandTag = plus.brandTag === 'GPT' ? 'Private' : plus.brandTag
+    plus.name = plus.name.includes('·') ? plus.name : 'ChatGPT · Private'
+    plus.brandTag = 'ChatGPT'
+    plus.planBadge = plus.planBadge || 'Private'
+    plus.hubKey = plus.hubKey || 'chatgpt'
+  }
+  const basic = byKey.get('chatgpt_basic')
+  if (basic) {
+    basic.hubKey = basic.hubKey || 'chatgpt'
+    basic.brandTag = 'ChatGPT'
+    basic.planBadge = basic.planBadge || 'Student'
+    if (!basic.name.includes('·')) basic.name = 'ChatGPT · Student'
   }
   return {
     usdToMwkRate: rate,

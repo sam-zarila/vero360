@@ -90,15 +90,11 @@ export async function POST(request: Request) {
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
-    if (product.key === 'netflix') {
+    if (product.isHub === true || product.key === 'netflix' || product.key === 'chatgpt') {
       return NextResponse.json(
-        { error: 'Choose a Netflix plan first (Mobile, Basic, Standard, or Premium).' },
-        { status: 400 },
-      )
-    }
-    if (product.key === 'chatgpt') {
-      return NextResponse.json(
-        { error: 'Choose a ChatGPT plan first (Basic ChatGPT Plus or ChatGPT Plus).' },
+        {
+          error: `Choose a ${product.name} plan first (for example Student or Private).`,
+        },
         { status: 400 },
       )
     }
@@ -219,7 +215,9 @@ export async function POST(request: Request) {
           buyerEmail,
           buyerPhone,
           source: 'digital',
-          title: product.name,
+          title: product.hubKey
+            ? `${product.brandTag || product.hubKey} · ${product.planBadge || product.name}`
+            : product.name,
           digitalOrderId: orderId,
           status: 'pending_review',
           paymentProvider: 'bank_transfer',

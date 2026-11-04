@@ -3,6 +3,7 @@ import { denyUnlessPanelAdmin } from '@/lib/admin-auth'
 import {
   buildDigitalOrderCounts,
   creditPendingDigitalOrderPlatformFees,
+  enrichDigitalOrderDisplayNames,
   listDigitalServiceOrders,
 } from '@/lib/digital-services-admin'
 
@@ -13,7 +14,8 @@ export async function GET(request: Request) {
   if (denied) return denied
 
   try {
-    const items = await listDigitalServiceOrders({ limit: 500 })
+    const raw = await listDigitalServiceOrders({ limit: 500 })
+    const items = await enrichDigitalOrderDisplayNames(raw)
     const counts = buildDigitalOrderCounts(items)
     return NextResponse.json({ success: true, items, counts })
   } catch (err) {

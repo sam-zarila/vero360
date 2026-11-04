@@ -127,12 +127,12 @@ export default function ChatGptPlanPickerView({
                   lineHeight: 1.15,
                 }}
               >
-                Choose your plan
+                ChatGPT
               </h1>
             </div>
           </div>
           <p style={{ margin: '0 0 16px', color: 'var(--text-3)', fontSize: 14, lineHeight: 1.45 }}>
-            ChatGPT. Pick the plan that fits you.
+            One ChatGPT product — choose Student or Private.
           </p>
 
           <div style={{ display: 'grid', gap: 12 }}>

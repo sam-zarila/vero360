@@ -34,6 +34,7 @@ export type DashboardSectionId =
   | 'rewards'
   | 'verochat'
   | 'get-started'
+  | 'analytics'
   | 'settings'
   | 'audit'
 
@@ -139,10 +140,18 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'marketing',
     title: 'Marketing',
-    desc: 'Marketing tasks and marketer KPIs',
+    desc: 'Tasks, KPIs, app users, services, and website performance',
     icon: 'megaphone',
     color: '#C2410C',
     bg: '#FFF7ED',
+  },
+  {
+    id: 'analytics',
+    title: 'Website & app performance',
+    desc: 'Users, services doing well, and website traffic — plain words for marketing + admin',
+    icon: 'layers',
+    color: '#0369A1',
+    bg: '#F0F9FF',
   },
   {
     id: 'latest-arrivals',
@@ -364,7 +373,15 @@ export type DashboardNavGroup = {
 export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
   {
     title: 'Overview',
-    items: [{ href: '/dashboard', label: 'Dashboard', icon: 'grid' }],
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
+      {
+        href: '/dashboard/marketing/website',
+        label: 'Website & app performance',
+        icon: 'layers',
+        marketerAllowed: true,
+      },
+    ],
   },
   {
     title: 'Services',

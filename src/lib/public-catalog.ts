@@ -361,16 +361,19 @@ export async function listPublicDigitalServices(
     const config = await getDigitalServicesConfig()
     const rate = Math.max(1, config.usdToMwkRate || 4700)
 
+    const { isSubscriptionHubProduct, isSubscriptionPlanProduct } = await import(
+      '@/lib/subscription-hubs'
+    )
+
     return config.products
       .filter(p => p.active !== false)
-      // Plans are chosen on the Netflix and ChatGPT pages, not as separate cards.
-      .filter(p => !String(p.key || '').startsWith('netflix_'))
-      .filter(p => p.key !== 'chatgpt_basic' && p.key !== 'chatgpt_plus')
+      // Plan children are chosen after opening the brand hub (Claude, ChatGPT, Netflix…).
+      .filter(p => !isSubscriptionPlanProduct(p))
       .slice(0, take)
       .map(p => {
         const isSub =
           p.category === 'streaming' || p.category === 'subscription'
-        const isPlanHub = p.key === 'netflix' || p.key === 'chatgpt'
+        const isPlanHub = isSubscriptionHubProduct(p)
         const unitRate =
           typeof p.mwkPerUnit === 'number' && p.mwkPerUnit > 0
             ? p.mwkPerUnit

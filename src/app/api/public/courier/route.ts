@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server'
 import {
+  assertCourierWeight,
   COURIER_CITY,
   estimateCourierPrice,
   isLilongweCity,
+  parseCourierWeightKg,
 } from '@/lib/courier-pricing'
+import {
+  parseOptionalCoord,
+  resolveCourierPoint,
+  roadDistanceKm,
+} from '@/lib/courier-geocode'
 import { fulfillCourierGuestOrder } from '@/lib/courier-public'
 import {
   createGuestOrder,
@@ -16,31 +23,84 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-function quoteFromBody(body: Record<string, unknown>) {
+async function quoteFromBody(body: Record<string, unknown>) {
   const pickup = String(body.pickupLocation || body.pickup || '').trim()
   const dropoff = String(body.dropoffLocation || body.dropoff || '').trim()
   const goodsType = String(body.goodsType || body.TypeOfGoods || 'Other').trim() || 'Other'
   const description = String(body.description || body.DescriptionOfGoods || '').trim()
   const notes = String(body.notes || '').trim()
   const city = String(body.city || body.CourierCity || COURIER_CITY).trim() || COURIER_CITY
-  const distanceKm = Number(body.distanceKm)
   if (!isLilongweCity(city)) {
     throw new Error('Vero Courier is currently Lilongwe only.')
   }
   if (pickup.length < 4) throw new Error('Enter a pickup location in Lilongwe.')
   if (dropoff.length < 4) throw new Error('Enter a drop-off location in Lilongwe.')
+
+  const weightKg = assertCourierWeight({
+    goodsType,
+    weightKg: parseCourierWeightKg(body.weightKg ?? body.weight),
+  })
+
+  let distanceKm = Number(body.distanceKm)
+  let pickupLat = parseOptionalCoord(body.pickupLat)
+  let pickupLng = parseOptionalCoord(body.pickupLng)
+  let dropoffLat = parseOptionalCoord(body.dropoffLat)
+  let dropoffLng = parseOptionalCoord(body.dropoffLng)
+
+  try {
+    const [from, to] = await Promise.all([
+      resolveCourierPoint({
+        label: pickup,
+        lat: pickupLat,
+        lng: pickupLng,
+      }),
+      resolveCourierPoint({
+        label: dropoff,
+        lat: dropoffLat,
+        lng: dropoffLng,
+      }),
+    ])
+    pickupLat = from.lat
+    pickupLng = from.lng
+    dropoffLat = to.lat
+    dropoffLng = to.lng
+    distanceKm = roadDistanceKm(from, to)
+    if (distanceKm < 0.05) {
+      throw new Error('Pickup and drop-off look like the same place.')
+    }
+  } catch (err) {
+    if (!(Number.isFinite(distanceKm) && distanceKm > 0)) throw err
+  }
+
+  if (!(Number.isFinite(distanceKm) && distanceKm > 0)) distanceKm = 6
+
   const quote = estimateCourierPrice({
-    distanceKm: Number.isFinite(distanceKm) && distanceKm > 0 ? distanceKm : 3,
+    distanceKm,
     goodsType,
     description: [description, notes].filter(Boolean).join(' '),
+    weightKg,
   })
-  return { pickup, dropoff, goodsType, description, notes, city, quote }
+
+  return {
+    pickup,
+    dropoff,
+    goodsType,
+    description,
+    notes,
+    city,
+    quote,
+    weightKg,
+    pickupLat,
+    pickupLng,
+    dropoffLat,
+    dropoffLng,
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
-    const details = quoteFromBody(body)
+    const details = await quoteFromBody(body)
     const buyer = await parseGuestBuyer(body)
     const amountMwk = details.quote.amountMwk
 
@@ -65,6 +125,11 @@ export async function POST(request: Request) {
         city: COURIER_CITY,
         distanceKm: details.quote.distanceKm,
         etaMinutes: details.quote.etaMinutes,
+        weightKg: details.weightKg,
+        pickupLat: details.pickupLat,
+        pickupLng: details.pickupLng,
+        dropoffLat: details.dropoffLat,
+        dropoffLng: details.dropoffLng,
       },
     })
 

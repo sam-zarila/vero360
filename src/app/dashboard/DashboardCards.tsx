@@ -52,7 +52,7 @@ export default function DashboardCards() {
       }}
     >
       {DASHBOARD_SECTIONS.filter(card => {
-        if (isMarketer) return card.id === 'marketing'
+        if (isMarketer) return card.id === 'marketing' || card.id === 'analytics'
         if (isAgent) return card.id === 'agents'
         return !card.superAdminOnly || isSuperAdmin
       }).map(card => {
@@ -185,7 +185,11 @@ export default function DashboardCards() {
             href={
               isAgent && card.id === 'agents'
                 ? '/dashboard/agent'
-                : `/dashboard/${card.id}`
+                : card.id === 'analytics' || card.id === 'marketing'
+                  ? card.id === 'analytics'
+                    ? '/dashboard/marketing/website'
+                    : '/dashboard/marketing/tasks'
+                  : `/dashboard/${card.id}`
             }
             className={`dashboard-card${showBadge ? ' dashboard-card-alert' : ''}`}
             style={{

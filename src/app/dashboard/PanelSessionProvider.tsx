@@ -119,10 +119,12 @@ export const MARKETER_HOME = '/dashboard/marketing/tasks'
 
 export const MARKETER_ALLOWED_PATHS = [
   '/dashboard/marketing',
+  '/dashboard/marketing/website',
   '/dashboard/marketing/tasks',
   '/dashboard/marketing/progress',
   '/dashboard/marketing/kpi',
   '/dashboard/marketing-tasks',
+  '/dashboard/analytics',
   '/dashboard/settings',
 ] as const
 

@@ -16,13 +16,21 @@ export const ANDROID_PACKAGE_ID = 'com.vero265.app'
 export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_ID}`
 
 /**
+ * iOS install / open link while App Store listing is pending.
+ * Opens the hosted web app so users can install from Safari / Add to Home Screen.
+ */
+export const IOS_WEB_APP_URL =
+  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_IOS_WEB_APP_URL?.trim()) ||
+  'https://vero360app-ca423.web.app/app/'
+
+/**
  * App Store download link.
  * Prefer NEXT_PUBLIC_APP_STORE_URL when the live listing id is known.
- * Falls back to Apple search (same as Flutter AppUpdateChecker) until then.
+ * Until then iOS CTAs open the hosted web app install page.
  */
 export const APP_STORE_URL =
   (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_APP_STORE_URL?.trim()) ||
-  'https://apps.apple.com/search?term=Vero360'
+  IOS_WEB_APP_URL
 
 export const appStoreLinks = {
   ios: isAppStoreLaunched() ? APP_STORE_URL : '',

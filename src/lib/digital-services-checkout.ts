@@ -91,12 +91,38 @@ export async function createPendingDigitalOrder(input: {
     : input.isSubscription
       ? 'subscription'
       : 'gift_card'
+  const { formatHubPlanProductName, planLabelFromProductName } = await import(
+    '@/lib/subscription-hubs'
+  )
+  const { getDigitalServicesConfig } = await import('@/lib/digital-services-config')
+  let hubName = ''
+  const hubKey = String(input.product.hubKey || '').trim()
+  if (hubKey) {
+    try {
+      const config = await getDigitalServicesConfig()
+      hubName = config.products.find(p => p.key === hubKey)?.name?.trim() || hubKey
+    } catch {
+      hubName = hubKey
+    }
+  }
+  const planBadge =
+    String(input.product.planBadge || '').trim() ||
+    planLabelFromProductName(input.product.name, hubName || input.product.brandTag)
+  const productName = hubName
+    ? formatHubPlanProductName(hubName, planBadge || input.product.name)
+    : input.product.name
+  const brandTag = hubName || input.product.brandTag || ''
+
   const ref = getAdminDb().collection(DIGITAL_SERVICE_ORDERS_COLLECTION).doc()
   await ref.set({
     productKey: input.product.key,
-    productName: input.product.name,
+    productName,
     productSubtitle: input.product.subtitle || '',
-    brandTag: input.product.brandTag || '',
+    brandTag,
+    hubKey: hubKey || null,
+    hubName: hubName || null,
+    planBadge: planBadge || null,
+    unitLabel: input.product.unitLabel || null,
     category: input.product.category,
     kind,
     period: input.isSubscription ? 'monthly' : null,
@@ -146,7 +172,7 @@ export async function createPendingDigitalOrder(input: {
     to: input.buyerEmail,
     buyerName: input.buyerName,
     buyerPhone: input.buyerPhone,
-    productName: input.product.name,
+    productName,
     productSubtitle: input.product.subtitle || '',
     amountMwk: input.amountMwk,
     selectedUsd: input.selectedUsd,

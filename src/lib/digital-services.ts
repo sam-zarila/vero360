@@ -11,6 +11,11 @@ export type DigitalServiceOrder = {
   productName: string
   productSubtitle: string
   brandTag: string
+  /** Parent subscription brand when this order is a plan (e.g. Claude). */
+  hubKey: string | null
+  hubName: string | null
+  planBadge: string | null
+  unitLabel: string | null
   category: string
   kind: DigitalOrderKind
   /** e.g. monthly */
