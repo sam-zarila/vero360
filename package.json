@@ -9,7 +9,7 @@
     "create-admin:firebase-admin": "node --dns-result-order=ipv4first scripts/create-panel-admin.cjs",
     "build": "next build --webpack && node scripts/copy-standalone-assets.cjs",
     "start": "next start",
-    "start:prod": "node .next/standalone/server.js",
+    "start:prod": "next start",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:reload": "pm2 reload ecosystem.config.js --update-env",
     "pm2:stop": "pm2 stop vero360web",

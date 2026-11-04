@@ -21,7 +21,7 @@ function log(message) {
 }
 
 if (!fs.existsSync(path.join(standalone, 'server.js'))) {
-  log('no standalone server found (skipping asset copy)')
+  log('output is not "standalone" (pm2 runs `next start`); nothing to copy')
   process.exit(0)
 }
 

@@ -32,7 +32,15 @@ export default function VeroChat() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setSessionId(getOrCreateSessionId())
+    try {
+      // Session is only available in the browser, so this cannot be a lazy
+      // useState initializer without breaking hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSessionId(getOrCreateSessionId())
+    } catch {
+      // The chat widget must never take the page down with it.
+      setSessionId('')
+    }
   }, [])
 
   useEffect(() => {
