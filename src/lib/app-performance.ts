@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { getAdminDb } from '@/lib/firebase-admin'
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import {
   buildDigitalOrderCounts,
   listDigitalServiceOrders,
@@ -25,7 +25,7 @@ export type AppUserBreakdown = {
   drivers: number
   other: number
   newLast7Days: number
-  newLast28Days: number
+  newLast30Days: number
 }
 
 export type ServicePerformance = {
@@ -51,7 +51,13 @@ export type AppPerformanceOverview = {
 }
 
 function asIso(value: unknown): string | null {
-  if (!value) return null
+  if (value == null || value === '') return null
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const ms = value > 1e12 ? value : value > 1e9 ? value * 1000 : NaN
+    if (!Number.isFinite(ms)) return null
+    const d = new Date(ms)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  }
   if (typeof value === 'string') {
     const d = new Date(value)
     return Number.isNaN(d.getTime()) ? null : d.toISOString()
@@ -86,11 +92,43 @@ function fmt(n: number): string {
   return Math.round(n).toLocaleString('en-MW')
 }
 
+function signupMillis(value: unknown): number | null {
+  const iso = asIso(value)
+  if (!iso) return null
+  const t = new Date(iso).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
+/** Firebase Auth creation time is the account join date. Firestore createdAt is only a fallback. */
+async function loadAuthJoinedAt(): Promise<Map<string, number>> {
+  const auth = getAdminAuth()
+  const joined = new Map<string, number>()
+  let pageToken: string | undefined
+  do {
+    const page = await auth.listUsers(1000, pageToken)
+    for (const user of page.users) {
+      const t = signupMillis(user.metadata.creationTime)
+      if (t != null) joined.set(user.uid, t)
+    }
+    pageToken = page.pageToken
+  } while (pageToken)
+  return joined
+}
+
 async function loadUsers(): Promise<AppUserBreakdown> {
-  const snap = await getAdminDb().collection(USERS_COLLECTION).select('role', 'createdAt').get()
+  const snap = await getAdminDb()
+    .collection(USERS_COLLECTION)
+    .select('role', 'createdAt', 'registeredAt', 'joinedAt')
+    .get()
+  let authJoined = new Map<string, number>()
+  try {
+    authJoined = await loadAuthJoinedAt()
+  } catch (err) {
+    console.warn('Auth join dates unavailable, using Firestore dates:', err)
+  }
   const now = Date.now()
   const week = now - 7 * 86400000
-  const month = now - 28 * 86400000
+  const month = now - 30 * 86400000
   const users: AppUserBreakdown = {
     total: 0,
     customers: 0,
@@ -98,7 +136,7 @@ async function loadUsers(): Promise<AppUserBreakdown> {
     drivers: 0,
     other: 0,
     newLast7Days: 0,
-    newLast28Days: 0,
+    newLast30Days: 0,
   }
 
   for (const doc of snap.docs) {
@@ -110,11 +148,14 @@ async function loadUsers(): Promise<AppUserBreakdown> {
     else if (role === 'driver') users.drivers += 1
     else users.other += 1
 
-    const created = asIso(data.createdAt)
-    if (created) {
-      const t = new Date(created).getTime()
-      if (t >= week) users.newLast7Days += 1
-      if (t >= month) users.newLast28Days += 1
+    const joined =
+      authJoined.get(doc.id) ??
+      signupMillis(data.createdAt) ??
+      signupMillis(data.registeredAt) ??
+      signupMillis(data.joinedAt)
+    if (joined != null && joined <= now + 60_000) {
+      if (joined >= week) users.newLast7Days += 1
+      if (joined >= month) users.newLast30Days += 1
     }
   }
   return users
@@ -139,7 +180,7 @@ async function loadRides(request?: Request): Promise<ServicePerformance> {
     return {
       id: 'vero-ride',
       name: 'Vero Ride',
-      plain: 'People booking cars and getting rides.',
+      plain: 'Ride bookings',
       activity,
       completed,
       pending,
@@ -151,7 +192,7 @@ async function loadRides(request?: Request): Promise<ServicePerformance> {
     return {
       id: 'vero-ride',
       name: 'Vero Ride',
-      plain: 'People booking cars and getting rides.',
+      plain: 'Ride bookings',
       activity: 0,
       completed: 0,
       pending: 0,
@@ -178,7 +219,7 @@ async function loadCourier(): Promise<ServicePerformance> {
     return {
       id: 'courier',
       name: 'Vero Courier',
-      plain: 'Parcels and same-day deliveries in Lilongwe.',
+      plain: 'Courier deliveries',
       activity: items.length,
       completed,
       pending,
@@ -190,7 +231,7 @@ async function loadCourier(): Promise<ServicePerformance> {
     return {
       id: 'courier',
       name: 'Vero Courier',
-      plain: 'Parcels and same-day deliveries in Lilongwe.',
+      plain: 'Courier deliveries',
       activity: 0,
       completed: 0,
       pending: 0,
@@ -223,7 +264,7 @@ async function loadFood(): Promise<ServicePerformance> {
     return {
       id: 'food',
       name: 'Food',
-      plain: 'Restaurant and meal orders from the app.',
+      plain: 'Food orders',
       activity: items.length,
       completed,
       pending,
@@ -235,7 +276,7 @@ async function loadFood(): Promise<ServicePerformance> {
     return {
       id: 'food',
       name: 'Food',
-      plain: 'Restaurant and meal orders from the app.',
+      plain: 'Food orders',
       activity: 0,
       completed: 0,
       pending: 0,
@@ -268,7 +309,7 @@ async function loadMarketplace(): Promise<ServicePerformance> {
     return {
       id: 'marketplace',
       name: 'Marketplace',
-      plain: 'People buying and selling products.',
+      plain: 'Marketplace orders',
       activity: items.length,
       completed,
       pending,
@@ -280,7 +321,7 @@ async function loadMarketplace(): Promise<ServicePerformance> {
     return {
       id: 'marketplace',
       name: 'Marketplace',
-      plain: 'People buying and selling products.',
+      plain: 'Marketplace orders',
       activity: 0,
       completed: 0,
       pending: 0,
@@ -298,7 +339,7 @@ async function loadDigital(): Promise<ServicePerformance> {
     return {
       id: 'digital-services',
       name: 'Digital Services',
-      plain: 'Subscriptions, gift cards, and digital top-ups.',
+      plain: 'Subscriptions, gift cards, and top-ups',
       activity: counts.all,
       completed: counts.paid,
       pending: counts.pending,
@@ -310,7 +351,7 @@ async function loadDigital(): Promise<ServicePerformance> {
     return {
       id: 'digital-services',
       name: 'Digital Services',
-      plain: 'Subscriptions, gift cards, and digital top-ups.',
+      plain: 'Subscriptions, gift cards, and top-ups',
       activity: 0,
       completed: 0,
       pending: 0,
@@ -356,16 +397,16 @@ export async function fetchAppPerformanceOverview(opts?: {
   const quiet = services.filter(s => s.health === 'quiet').map(s => s.name)
 
   const rankingNote = top && top.activity > 0
-    ? `${top.name} is currently the busiest service (${fmt(top.activity)} recent activities).`
-    : 'Service activity is still low across the board — a good time to push installs and campaigns.'
+    ? `${top.name} leads recent activity (${fmt(top.activity)}).`
+    : 'No recent service activity.'
 
-  const activityNote = `The app has ${fmt(users.total)} accounts: ${fmt(users.customers)} customers, ${fmt(users.merchants)} merchants, and ${fmt(users.drivers)} drivers. ${fmt(users.newLast7Days)} joined in the last 7 days.`
+  const activityNote = `${fmt(users.total)} accounts — ${fmt(users.customers)} customers, ${fmt(users.merchants)} merchants, ${fmt(users.drivers)} drivers. ${fmt(users.newLast7Days)} new in the last 7 days, ${fmt(users.newLast30Days)} in the last 30 days.`
 
   const moneyTotal = services.reduce((s, x) => s + x.moneyMwk, 0)
   const financeNote =
     moneyTotal > 0
-      ? `Across tracked paid activity we can see about MWK ${fmt(moneyTotal)} moving through rides, food, marketplace, and digital services (sample of recent records).`
-      : 'Paid activity totals will show here as more completed orders come through.'
+      ? `Paid volume: MWK ${fmt(moneyTotal)} across rides, food, marketplace, and digital services.`
+      : 'No paid volume in the current sample.'
 
   if (quiet.length) {
     // keep rankingNote focused; quiet services mentioned in UI

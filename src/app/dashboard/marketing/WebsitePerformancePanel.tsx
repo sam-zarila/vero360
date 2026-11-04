@@ -18,33 +18,6 @@ type Overview = {
   fetchedAt: string
 }
 
-const METRIC_HELP: Record<string, { title: string; plain: string }> = {
-  activeUsers: {
-    title: 'People who visited',
-    plain: 'How many different people opened the Vero360 website in this period.',
-  },
-  newUsers: {
-    title: 'First-time visitors',
-    plain: 'People seeing the site for the first time. Useful to judge if ads and posts are bringing new traffic.',
-  },
-  sessions: {
-    title: 'Visits',
-    plain: 'Total visits. One person can visit more than once, so this can be higher than “people who visited”.',
-  },
-  pageViews: {
-    title: 'Pages opened',
-    plain: 'How many times any page was opened. More pages usually means people are exploring.',
-  },
-  bounceRate: {
-    title: 'Left after one page',
-    plain: 'Share of visits where someone opened only one page and left. Lower usually means the site held their attention.',
-  },
-  avgDuration: {
-    title: 'Time spent',
-    plain: 'How long a typical visit lasts. Longer visits often mean people are reading or browsing more.',
-  },
-}
-
 const card: CSSProperties = {
   background: '#fff',
   border: '1px solid var(--border)',
@@ -53,16 +26,7 @@ const card: CSSProperties = {
   boxShadow: 'var(--shadow-sm)',
 }
 
-function metricHelp(key: string) {
-  return (
-    METRIC_HELP[key] || {
-      title: key,
-      plain: 'A website performance number from Google Analytics.',
-    }
-  )
-}
-
-function buildPlainSummary(overview: Overview): string {
+function buildSummary(overview: Overview): string {
   const get = (key: string) => overview.metrics.find(m => m.key === key)
   const people = get('activeUsers')
   const visits = get('sessions')
@@ -72,24 +36,19 @@ function buildPlainSummary(overview: Overview): string {
   const topPage = overview.topPages[0]
   const topCountry = overview.topCountries[0]
 
-  const parts = [
-    `In the ${overview.rangeLabel.toLowerCase()}, about ${people?.value || '—'} people visited the website across ${visits?.value || '—'} visits.`,
-    `They opened about ${pages?.value || '—'} pages in total`,
+  const bits = [
+    `${overview.rangeLabel}: ${people?.value || '—'} active users, ${visits?.value || '—'} sessions, ${pages?.value || '—'} page views.`,
   ]
-
-  if (time) parts.push(`and stayed around ${time.value} per visit`)
-  let sentence = `${parts.join(' ')}.`
-
-  if (bounce) {
-    sentence += ` About ${bounce.value} of visits ended after only one page.`
+  if (time || bounce) {
+    const extra = [
+      time ? `Average session ${time.value}` : '',
+      bounce ? `Bounce rate ${bounce.value}` : '',
+    ].filter(Boolean)
+    bits.push(`${extra.join('. ')}.`)
   }
-  if (topPage) {
-    sentence += ` The most opened page was “${topPage.label}” (${topPage.value} opens).`
-  }
-  if (topCountry) {
-    sentence += ` Most visitors came from ${topCountry.label}.`
-  }
-  return sentence
+  if (topPage) bits.push(`Top page: ${topPage.label} (${topPage.value}).`)
+  if (topCountry) bits.push(`Top country: ${topCountry.label}.`)
+  return bits.join(' ')
 }
 
 export default function WebsitePerformancePanel() {
@@ -132,13 +91,9 @@ export default function WebsitePerformancePanel() {
   }, [load])
 
   const summary = useMemo(
-    () => (overview ? buildPlainSummary(overview) : ''),
+    () => (overview ? buildSummary(overview) : ''),
     [overview],
   )
-
-  const audienceLine = isMarketer
-    ? 'This shows how the Vero360 website is doing so you can see if your posts, ads, and campaigns are bringing people in.'
-    : 'This shows how the Vero360 website is doing for the whole team — traffic, interest, and which pages people open most.'
 
   return (
     <div>
@@ -160,7 +115,7 @@ export default function WebsitePerformancePanel() {
             color: '#C2410C',
           }}
         >
-          {isMarketer ? 'Marketing portal' : 'Admin + marketing'}
+          Website
         </p>
         <h2
           style={{
@@ -171,11 +126,10 @@ export default function WebsitePerformancePanel() {
             letterSpacing: '-0.3px',
           }}
         >
-          How our website is performing
+          Website performance
         </h2>
         <p style={{ margin: 0, color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6 }}>
-          {audienceLine} Numbers come from Google Analytics and are written in plain words below —
-          you do not need to know analytics jargon.
+          Traffic and page activity from Google Analytics.
         </p>
       </div>
 
@@ -205,7 +159,7 @@ export default function WebsitePerformancePanel() {
           <option value={90}>Last 90 days</option>
         </select>
         <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
-        {(isFullAdmin || isMarketer) && (
+        {isFullAdmin ? (
           <a
             href={consoleUrl}
             target="_blank"
@@ -224,7 +178,7 @@ export default function WebsitePerformancePanel() {
           >
             Open full Google Analytics
           </a>
-        )}
+        ) : null}
       </div>
 
       {loading && !overview ? (
@@ -241,28 +195,31 @@ export default function WebsitePerformancePanel() {
             color: '#991B1B',
           }}
         >
-          <p style={{ margin: 0, fontWeight: 700 }}>We could not pull the live numbers yet.</p>
+          <p style={{ margin: 0, fontWeight: 700 }}>
+            {isMarketer ? 'Website numbers are not available yet.' : 'Website numbers are unavailable.'}
+          </p>
           <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.55 }}>
-            {error}
+            {isMarketer ? 'Google Analytics is still being connected. Account and service figures above are current.' : error}
           </p>
           {setupHint && isFullAdmin ? (
             <p style={{ margin: '10px 0 0', fontSize: 13, lineHeight: 1.55, color: '#7F1D1D' }}>
               Admin setup: {setupHint}
             </p>
           ) : null}
-          <p style={{ margin: '12px 0 0', fontSize: 14 }}>
-            You can still open the live Google report:{' '}
-            <a href={consoleUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 700 }}>
-              Website performance in Google Analytics
-            </a>
-          </p>
+          {isFullAdmin ? (
+            <p style={{ margin: '12px 0 0', fontSize: 14 }}>
+              <a href={consoleUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 700 }}>
+                Open Google Analytics
+              </a>
+            </p>
+          ) : null}
         </div>
       ) : null}
 
       {overview ? (
         <>
           <div style={{ ...card, marginBottom: 16, background: '#F8FAFC' }}>
-            <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800 }}>In plain words</h3>
+            <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800 }}>Summary</h3>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: 'var(--text-2)' }}>
               {summary}
             </p>
@@ -282,12 +239,10 @@ export default function WebsitePerformancePanel() {
               marginBottom: 16,
             }}
           >
-            {overview.metrics.map(metric => {
-              const help = metricHelp(metric.key)
-              return (
+            {overview.metrics.map(metric => (
                 <div key={metric.key} style={card}>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>
-                    {help.title}
+                    {metric.label}
                   </div>
                   <div
                     style={{
@@ -300,19 +255,8 @@ export default function WebsitePerformancePanel() {
                   >
                     {metric.value}
                   </div>
-                  <p
-                    style={{
-                      margin: '10px 0 0',
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                      color: 'var(--text-3)',
-                    }}
-                  >
-                    {help.plain}
-                  </p>
                 </div>
-              )
-            })}
+              ))}
           </div>
 
           <div
@@ -323,13 +267,9 @@ export default function WebsitePerformancePanel() {
             }}
           >
             <div style={card}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 800 }}>
-                Pages people open most
+              <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800 }}>
+                Top pages
               </h3>
-              <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-3)', lineHeight: 1.5 }}>
-                These are the website pages getting the most attention. Promote what works, and fix
-                pages that should be popular but are not.
-              </p>
               {overview.topPages.length === 0 ? (
                 <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 14 }}>No page data yet.</p>
               ) : (
@@ -355,13 +295,9 @@ export default function WebsitePerformancePanel() {
             </div>
 
             <div style={card}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 800 }}>
-                Where visitors come from
+              <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800 }}>
+                Top countries
               </h3>
-              <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-3)', lineHeight: 1.5 }}>
-                Countries with the most visitors. Helpful when you plan local campaigns in Malawi
-                or reach people abroad.
-              </p>
               {overview.topCountries.length === 0 ? (
                 <p style={{ margin: 0, color: 'var(--text-3)', fontSize: 14 }}>No country data yet.</p>
               ) : (

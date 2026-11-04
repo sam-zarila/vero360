@@ -19,10 +19,25 @@ export async function GET(request: Request) {
       includePlatformBalance: actor.admin.role === 'super_admin',
     })
 
+    const forMarketer = isMarketerRole(actor.admin.role)
+    const safe = forMarketer
+      ? {
+          ...overview,
+          financeNote: '',
+          platformBalanceMwk: null,
+          services: overview.services.map(service => ({
+            ...service,
+            moneyMwk: 0,
+            detail: service.detail.replace(/\s*·\s*MWK\s[\d,]+\s+paid so far/gi, ''),
+          })),
+        }
+      : overview
+
     return NextResponse.json({
       success: true,
-      overview,
+      overview: safe,
       viewerRole: actor.admin.role,
+      hideMoney: forMarketer,
     })
   } catch (err) {
     const auth = authErrorResponse(err)

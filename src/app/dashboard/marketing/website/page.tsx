@@ -29,7 +29,7 @@ export default function MarketingWebsitePerformancePage() {
       <DashboardPageHeader
         sectionId="marketing"
         title="Website & app performance"
-        description="How the website and app are doing — users, services, and traffic — in plain words for marketing and admin."
+        description="Account totals, service activity, and website traffic."
       />
       <MarketingSubNav />
       <AppActivityPanel />

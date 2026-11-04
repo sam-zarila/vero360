@@ -148,7 +148,7 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'analytics',
     title: 'Website & app performance',
-    desc: 'Users, services doing well, and website traffic — plain words for marketing + admin',
+    desc: 'Account totals, service activity, and website traffic',
     icon: 'layers',
     color: '#0369A1',
     bg: '#F0F9FF',

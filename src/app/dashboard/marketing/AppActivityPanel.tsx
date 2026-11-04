@@ -12,7 +12,7 @@ type UserBreakdown = {
   drivers: number
   other: number
   newLast7Days: number
-  newLast28Days: number
+  newLast30Days: number
 }
 
 type ServiceRow = {
@@ -50,13 +50,13 @@ function fmt(n: number): string {
 }
 
 function healthLabel(health: ServiceRow['health']): { text: string; color: string; bg: string } {
-  if (health === 'strong') return { text: 'Doing well', color: '#047857', bg: '#ECFDF5' }
+  if (health === 'strong') return { text: 'High', color: '#047857', bg: '#ECFDF5' }
   if (health === 'steady') return { text: 'Steady', color: '#B45309', bg: '#FFFBEB' }
-  return { text: 'Needs a push', color: '#6B7280', bg: '#F3F4F6' }
+  return { text: 'Low', color: '#6B7280', bg: '#F3F4F6' }
 }
 
 export default function AppActivityPanel() {
-  const { isMarketer, isFullAdmin, isSuperAdmin } = usePanelSession()
+  const { isMarketer, isSuperAdmin } = usePanelSession()
   const [overview, setOverview] = useState<Overview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -110,7 +110,7 @@ export default function AppActivityPanel() {
                 color: '#1D4ED8',
               }}
             >
-              {isMarketer ? 'App health for marketing' : 'App health for admin + marketing'}
+              App
             </p>
             <h2
               style={{
@@ -121,13 +121,10 @@ export default function AppActivityPanel() {
                 letterSpacing: '-0.3px',
               }}
             >
-              How the Vero360 app is doing
+              App performance
             </h2>
             <p style={{ margin: 0, color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6 }}>
-              See how many people use the app, how customers / merchants / drivers break down, and
-              which services are busy — Vero Ride, Courier, Food, Marketplace, and Digital Services —
-              explained in plain words
-              {isFullAdmin ? ' (same view admins use for a quick pulse check).' : '.'}
+              Accounts by role and recent activity for Vero Ride, Courier, Food, Marketplace, and Digital Services.
             </p>
           </div>
           <DashboardRefreshButton onClick={() => void load()} disabled={loading} />
@@ -156,19 +153,21 @@ export default function AppActivityPanel() {
       {overview ? (
         <>
           <div style={{ ...card, marginBottom: 16, background: '#F8FAFC' }}>
-            <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800 }}>In plain words</h3>
+            <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 800 }}>Summary</h3>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: 'var(--text-2)' }}>
               {overview.activityNote}
             </p>
             <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.65, color: 'var(--text-2)' }}>
               {overview.rankingNote}
             </p>
-            <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.65, color: 'var(--text-2)' }}>
-              {overview.financeNote}
-            </p>
-            {isSuperAdmin && overview.platformBalanceMwk != null ? (
+            {!isMarketer && overview.financeNote ? (
+              <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.65, color: 'var(--text-2)' }}>
+                {overview.financeNote}
+              </p>
+            ) : null}
+            {!isMarketer && isSuperAdmin && overview.platformBalanceMwk != null ? (
               <p style={{ margin: '10px 0 0', fontSize: 14, color: 'var(--text-3)' }}>
-                Platform wallet (super admin): MWK {fmt(overview.platformBalanceMwk)}
+                Platform wallet: MWK {fmt(overview.platformBalanceMwk)}
               </p>
             ) : null}
             <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
@@ -176,7 +175,7 @@ export default function AppActivityPanel() {
             </p>
           </div>
 
-          <h3 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 800 }}>People on the app</h3>
+          <h3 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 800 }}>Accounts</h3>
           <div
             style={{
               display: 'grid',
@@ -186,36 +185,12 @@ export default function AppActivityPanel() {
             }}
           >
             {[
-              {
-                label: 'All users',
-                value: overview.users.total,
-                hint: 'Everyone with a Vero360 account',
-              },
-              {
-                label: 'Customers',
-                value: overview.users.customers,
-                hint: 'People buying and booking',
-              },
-              {
-                label: 'Merchants',
-                value: overview.users.merchants,
-                hint: 'Shops and sellers',
-              },
-              {
-                label: 'Drivers',
-                value: overview.users.drivers,
-                hint: 'Ride and delivery drivers',
-              },
-              {
-                label: 'Joined last 7 days',
-                value: overview.users.newLast7Days,
-                hint: 'New sign-ups this week',
-              },
-              {
-                label: 'Joined last 28 days',
-                value: overview.users.newLast28Days,
-                hint: 'New sign-ups this month',
-              },
+              { label: 'Total', value: overview.users.total },
+              { label: 'Customers', value: overview.users.customers },
+              { label: 'Merchants', value: overview.users.merchants },
+              { label: 'Drivers', value: overview.users.drivers },
+              { label: 'New (7 days)', value: overview.users.newLast7Days },
+              { label: 'New (30 days)', value: overview.users.newLast30Days },
             ].map(item => (
               <div key={item.label} style={card}>
                 <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>
@@ -232,19 +207,13 @@ export default function AppActivityPanel() {
                 >
                   {fmt(item.value)}
                 </div>
-                <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.4 }}>
-                  {item.hint}
-                </p>
               </div>
             ))}
           </div>
 
-          <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800 }}>
-            Which services are doing well
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800 }}>
+            Services
           </h3>
-          <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-3)', lineHeight: 1.5 }}>
-            Ranked by recent activity. Use this when deciding what to promote this week.
-          </p>
           <div
             style={{
               display: 'grid',
@@ -310,9 +279,9 @@ export default function AppActivityPanel() {
                       <div style={{ fontWeight: 800, fontSize: 18 }}>{fmt(service.pending)}</div>
                     </div>
                   </div>
-                  {service.moneyMwk > 0 ? (
+                  {!isMarketer && service.moneyMwk > 0 ? (
                     <p style={{ margin: '12px 0 0', fontSize: 13, fontWeight: 700, color: '#0F766E' }}>
-                      About MWK {fmt(service.moneyMwk)} in paid activity
+                      Paid: MWK {fmt(service.moneyMwk)}
                     </p>
                   ) : null}
                   <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.45 }}>
