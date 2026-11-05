@@ -187,7 +187,7 @@ export default function DashboardCards() {
                 ? '/dashboard/agent'
                 : card.id === 'analytics' || card.id === 'marketing'
                   ? card.id === 'analytics'
-                    ? '/dashboard/marketing/website'
+                    ? '/dashboard/analytics'
                     : '/dashboard/marketing/tasks'
                   : `/dashboard/${card.id}`
             }

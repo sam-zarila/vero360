@@ -140,14 +140,14 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   {
     id: 'marketing',
     title: 'Marketing',
-    desc: 'Tasks, KPIs, app users, services, and website performance',
+    desc: 'Tasks, KPIs, and campaign progress',
     icon: 'megaphone',
     color: '#C2410C',
     bg: '#FFF7ED',
   },
   {
     id: 'analytics',
-    title: 'Website & app performance',
+    title: 'App and website performance',
     desc: 'Account totals, service activity, and website traffic',
     icon: 'layers',
     color: '#0369A1',
@@ -376,8 +376,8 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
       {
-        href: '/dashboard/marketing/website',
-        label: 'Website & app performance',
+        href: '/dashboard/analytics',
+        label: 'App and website performance',
         icon: 'layers',
         marketerAllowed: true,
       },
