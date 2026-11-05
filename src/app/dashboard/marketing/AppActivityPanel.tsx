@@ -12,7 +12,7 @@ type UserBreakdown = {
   drivers: number
   other: number
   newLast7Days: number
-  newLast30Days: number
+  newThisMonth: number
 }
 
 type ServiceRow = {
@@ -150,8 +150,8 @@ export default function AppActivityPanel() {
           >
             {[
               { label: 'Accounts', value: fmt(users.total), accent: '#0F172A' },
-              { label: 'New · 7 days', value: fmt(users.newLast7Days), accent: '#2563EB' },
-              { label: 'New · 30 days', value: fmt(users.newLast30Days), accent: '#7C3AED' },
+              { label: 'New users in 7 days', value: fmt(users.newLast7Days), accent: '#2563EB' },
+              { label: 'New users this month', value: fmt(users.newThisMonth), accent: '#7C3AED' },
               ...(!isMarketer
                 ? [{
                     label: 'Paid volume',

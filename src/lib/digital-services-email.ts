@@ -190,6 +190,78 @@ async function sendDigitalBuyerEmail(opts: {
   return true
 }
 
+export async function sendSubscriptionEndingEmail(opts: {
+  to: string
+  buyerName: string
+  productName: string
+  endDateLabel: string
+  daysLeft: number
+}): Promise<boolean> {
+  const to = opts.to.trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return false
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) {
+    console.warn('Subscription reminder email skipped: RESEND_API_KEY is not set')
+    return false
+  }
+  const from = process.env.RESEND_FROM_EMAIL || 'Vero360 <onboarding@resend.dev>'
+  const support = process.env.CONTACT_TO_EMAIL || 'info@vero360.app'
+  const name = opts.buyerName.trim() || 'there'
+  const product = opts.productName.trim() || 'your subscription'
+  const when =
+    opts.daysLeft <= 0
+      ? 'today'
+      : opts.daysLeft === 1
+        ? 'tomorrow'
+        : `in ${opts.daysLeft} days`
+  const subject = `${product} ends ${when}`
+  const intro = `Your ${product} subscription ends ${when} (${opts.endDateLabel}). Renew it before then so it does not stop.`
+  const text = [
+    `Hi ${name},`,
+    '',
+    intro,
+    '',
+    'Open Vero360 Digital Services and renew the same plan.',
+    '',
+    `Questions? Write ${support}.`,
+    '',
+    '— Vero360',
+  ].join('\n')
+  const html = `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:24px;background:#F8FAFC;font-family:Arial,sans-serif;color:#111827;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:24px;">
+    <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#EA580C;">Vero360 Digital Services</p>
+    <h1 style="margin:0 0 12px;font-size:22px;">${escapeHtml(subject)}</h1>
+    <p style="margin:0 0 16px;line-height:1.55;">Hi ${escapeHtml(name)}, ${escapeHtml(intro)}</p>
+    <p style="margin:0;font-size:14px;line-height:1.55;">Open Vero360 Digital Services and renew the same plan.</p>
+    <p style="margin:16px 0 0;font-size:13px;color:#6B7280;">Questions? Write ${escapeHtml(support)}.</p>
+    <p style="margin:16px 0 0;font-weight:700;">— Vero360</p>
+  </div>
+</body>
+</html>`
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      reply_to: support,
+      subject,
+      text,
+      html,
+    }),
+  })
+  if (!res.ok) {
+    console.error('Subscription reminder email error:', await res.text())
+    return false
+  }
+  return true
+}
+
 export async function emailDigitalOrderPending(
   opts: DigitalOrderEmailFields,
 ): Promise<boolean> {

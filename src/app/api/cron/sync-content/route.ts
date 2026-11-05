@@ -3,6 +3,7 @@ import { denyUnlessCronAuthorized } from '@/lib/cron-auth'
 import { syncExternalJobs } from '@/lib/sync-jobs-external'
 import { syncMalawiJobs } from '@/lib/sync-jobs-malawi'
 import { syncMalawiTenders } from '@/lib/sync-tenders-malawi'
+import { sendDueSubscriptionReminders } from '@/lib/digital-subscription-reminders'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 180
@@ -26,6 +27,14 @@ export async function GET(request: Request) {
   } catch (err) {
     out.jobsMalawiError = err instanceof Error ? err.message : 'Malawi jobs sync failed'
     console.error('Cron combined Malawi jobs sync:', out.jobsMalawiError)
+  }
+
+  try {
+    out.subscriptionReminders = await sendDueSubscriptionReminders()
+  } catch (err) {
+    out.subscriptionRemindersError =
+      err instanceof Error ? err.message : 'Subscription reminders failed'
+    console.error('Cron subscription reminders:', out.subscriptionRemindersError)
   }
 
   try {

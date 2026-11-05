@@ -28,7 +28,7 @@ export type AppUserBreakdown = {
   drivers: number
   other: number
   newLast7Days: number
-  newLast30Days: number
+  newThisMonth: number
 }
 
 export type ServicePerformance = {
@@ -95,6 +95,18 @@ function fmt(n: number): string {
   return Math.round(n).toLocaleString('en-MW')
 }
 
+/** Midnight on the 1st of the current month in Malawi (UTC+2). */
+function startOfThisMonthMs(now: number): number {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Blantyre',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(new Date(now))
+  const year = Number(parts.find(part => part.type === 'year')?.value)
+  const month = Number(parts.find(part => part.type === 'month')?.value)
+  return Date.UTC(year, month - 1, 1) - 2 * 60 * 60 * 1000
+}
+
 function signupMillis(value: unknown): number | null {
   const iso = asIso(value)
   if (!iso) return null
@@ -131,7 +143,7 @@ async function loadUsers(): Promise<AppUserBreakdown> {
   }
   const now = Date.now()
   const week = now - 7 * 86400000
-  const month = now - 30 * 86400000
+  const month = startOfThisMonthMs(now)
   const users: AppUserBreakdown = {
     total: 0,
     customers: 0,
@@ -139,7 +151,7 @@ async function loadUsers(): Promise<AppUserBreakdown> {
     drivers: 0,
     other: 0,
     newLast7Days: 0,
-    newLast30Days: 0,
+    newThisMonth: 0,
   }
 
   for (const doc of snap.docs) {
@@ -158,7 +170,7 @@ async function loadUsers(): Promise<AppUserBreakdown> {
       signupMillis(data.joinedAt)
     if (joined != null && joined <= now + 60_000) {
       if (joined >= week) users.newLast7Days += 1
-      if (joined >= month) users.newLast30Days += 1
+      if (joined >= month) users.newThisMonth += 1
     }
   }
   return users
@@ -526,7 +538,7 @@ export async function fetchAppPerformanceOverview(opts?: {
     ? `${top.name} leads recent activity (${fmt(top.activity)}).`
     : 'No recent service activity.'
 
-  const activityNote = `${fmt(users.total)} accounts — ${fmt(users.customers)} customers, ${fmt(users.merchants)} merchants, ${fmt(users.drivers)} drivers. ${fmt(users.newLast7Days)} new in the last 7 days, ${fmt(users.newLast30Days)} in the last 30 days.`
+  const activityNote = `${fmt(users.total)} accounts — ${fmt(users.customers)} customers, ${fmt(users.merchants)} merchants, ${fmt(users.drivers)} drivers. ${fmt(users.newLast7Days)} new users in 7 days, ${fmt(users.newThisMonth)} new users this month.`
 
   const moneyTotal = services.reduce((s, x) => s + x.moneyMwk, 0)
   const financeNote =
