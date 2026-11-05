@@ -124,7 +124,7 @@ export default function AppActivityPanel() {
               App performance
             </h2>
             <p style={{ margin: 0, color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6 }}>
-              Accounts by role and recent activity for Vero Ride, Courier, Food, Marketplace, and Digital Services.
+              Accounts by role and recent activity for Vero Ride, Vero Bike, Courier, Food, Marketplace, Stays, and Digital Services.
             </p>
           </div>
           <DashboardRefreshButton onClick={() => void load()} disabled={loading} />

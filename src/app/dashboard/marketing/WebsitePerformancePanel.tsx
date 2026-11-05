@@ -52,12 +52,11 @@ function buildSummary(overview: Overview): string {
 }
 
 export default function WebsitePerformancePanel() {
-  const { isMarketer, isFullAdmin } = usePanelSession()
+  const { isFullAdmin } = usePanelSession()
   const [days, setDays] = useState(28)
   const [overview, setOverview] = useState<Overview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [setupHint, setSetupHint] = useState('')
   const [consoleUrl, setConsoleUrl] = useState(
     'https://analytics.google.com/analytics/web/#/a273004667p509919249/reports/intelligenthome',
   )
@@ -65,7 +64,6 @@ export default function WebsitePerformancePanel() {
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
-    setSetupHint('')
     try {
       const res = await adminFetch(`/api/admin/analytics/overview?days=${days}`, {
         cache: 'no-store',
@@ -74,7 +72,6 @@ export default function WebsitePerformancePanel() {
       if (data.consoleUrl) setConsoleUrl(String(data.consoleUrl))
       if (!res.ok) {
         setOverview(null)
-        setSetupHint(typeof data.setupHint === 'string' ? data.setupHint : '')
         throw new Error(data.error || 'Could not load website performance')
       }
       setOverview(data.overview as Overview)
@@ -195,15 +192,18 @@ export default function WebsitePerformancePanel() {
             color: '#991B1B',
           }}
         >
-          <p style={{ margin: 0, fontWeight: 700 }}>
-            {isMarketer ? 'Website numbers are not available yet.' : 'Website numbers are unavailable.'}
-          </p>
-          <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.55 }}>
-            {isMarketer ? 'Google Analytics is still being connected. Account and service figures above are current.' : error}
-          </p>
-          {setupHint && isFullAdmin ? (
-            <p style={{ margin: '10px 0 0', fontSize: 13, lineHeight: 1.55, color: '#7F1D1D' }}>
-              Admin setup: {setupHint}
+          <p style={{ margin: 0, fontWeight: 700 }}>Website traffic unavailable.</p>
+          {isFullAdmin ? (
+            <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.55 }}>
+              The Google Analytics Data API is turned off on project 1010595167807. Enable it, then add the Firebase service account as a Viewer on the GA4 property.{' '}
+              <a
+                href="https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=1010595167807"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontWeight: 700 }}
+              >
+                Enable the Data API
+              </a>
             </p>
           ) : null}
           {isFullAdmin ? (

@@ -9,7 +9,9 @@ import { parseFoodAdminOrder } from '@/lib/food-orders-admin'
 import { nestAdminFetch } from '@/lib/nest-admin'
 import { parseCourierDeliveries } from '@/lib/courier'
 import { parseMarketplaceOrders } from '@/lib/orders'
-import { parseAdminRidesResponse } from '@/lib/rides'
+import { parseAdminRidesResponse, type AdminRide } from '@/lib/rides'
+import { guestOrderToStayBooking, listGuestOrders } from '@/lib/guest-checkout'
+import { parseStayBookings } from '@/lib/stay'
 import { normalizeRole, USERS_COLLECTION } from '@/lib/users'
 import {
   PLATFORM_WALLET_USER_ID,
@@ -161,45 +163,72 @@ async function loadUsers(): Promise<AppUserBreakdown> {
   return users
 }
 
-async function loadRides(request?: Request): Promise<ServicePerformance> {
+const ACTIVE_RIDE = new Set(['REQUESTED', 'ACCEPTED', 'DRIVER_ARRIVED', 'IN_PROGRESS'])
+
+function isBikeRide(ride: AdminRide): boolean {
+  return ride.preferredVehicleClass.toUpperCase() === 'BIKE'
+}
+
+function ridesToService(
+  id: string,
+  name: string,
+  rides: AdminRide[],
+): ServicePerformance {
+  const completed = rides.filter(ride => ride.status === 'COMPLETED')
+  const pending = rides.filter(ride => ACTIVE_RIDE.has(ride.status)).length
+  const moneyMwk = completed.reduce((sum, ride) => {
+    const fare = ride.actualFare ?? ride.estimatedFare
+    return sum + money(fare)
+  }, 0)
+  return {
+    id,
+    name,
+    plain: name === 'Vero Bike' ? 'Bike rides' : 'Car rides',
+    activity: rides.length,
+    completed: completed.length,
+    pending,
+    moneyMwk,
+    health: healthFromActivity(rides.length, completed.length),
+    detail: `${fmt(completed.length)} completed · ${fmt(pending)} active`,
+  }
+}
+
+function emptyRideService(id: string, name: string): ServicePerformance {
+  return {
+    id,
+    name,
+    plain: name === 'Vero Bike' ? 'Bike rides' : 'Car rides',
+    activity: 0,
+    completed: 0,
+    pending: 0,
+    moneyMwk: 0,
+    health: 'quiet',
+    detail: 'Ride numbers could not be loaded right now.',
+  }
+}
+
+async function loadRideServices(
+  request?: Request,
+): Promise<[ServicePerformance, ServicePerformance]> {
   try {
     const { res, body, error } = await nestAdminFetch(
-      ['admin', 'rides?take=300'],
+      ['admin', 'rides?take=500'],
       undefined,
       request,
     )
     if (!res.ok) throw new Error(error || 'Rides unavailable')
     const parsed = parseAdminRidesResponse(body)
-    const completed = parsed.counts.completed
-    const pending = parsed.counts.active + parsed.counts.requested + parsed.counts.inProgress
-    const moneyMwk = parsed.rides.reduce((sum, ride) => {
-      const fare = ride.actualFare ?? ride.estimatedFare
-      return sum + (ride.status === 'COMPLETED' ? money(fare) : 0)
-    }, 0)
-    const activity = parsed.counts.all || parsed.total || parsed.rides.length
-    return {
-      id: 'vero-ride',
-      name: 'Vero Ride',
-      plain: 'Ride bookings',
-      activity,
-      completed,
-      pending,
-      moneyMwk,
-      health: healthFromActivity(activity, completed),
-      detail: `${fmt(completed)} completed rides · ${fmt(pending)} still active`,
-    }
+    const bikes = parsed.rides.filter(isBikeRide)
+    const cars = parsed.rides.filter(ride => !isBikeRide(ride))
+    return [
+      ridesToService('vero-ride', 'Vero Ride', cars),
+      ridesToService('vero-bike', 'Vero Bike', bikes),
+    ]
   } catch {
-    return {
-      id: 'vero-ride',
-      name: 'Vero Ride',
-      plain: 'Ride bookings',
-      activity: 0,
-      completed: 0,
-      pending: 0,
-      moneyMwk: 0,
-      health: 'quiet',
-      detail: 'Ride numbers could not be loaded right now.',
-    }
+    return [
+      emptyRideService('vero-ride', 'Vero Ride'),
+      emptyRideService('vero-bike', 'Vero Bike'),
+    ]
   }
 }
 
@@ -332,6 +361,58 @@ async function loadMarketplace(): Promise<ServicePerformance> {
   }
 }
 
+async function loadStays(): Promise<ServicePerformance> {
+  try {
+    const res = await fetch(veroEndpoint('bookings', 'admin', 'all'), {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    })
+    const body = await readJsonSafe(res)
+    let items = res.ok ? parseStayBookings(body) : []
+    try {
+      const guests = (await listGuestOrders('stay')).map(guestOrderToStayBooking)
+      const seen = new Set(items.map(item => item.bookingNumber))
+      items = [...items, ...guests.filter(item => !seen.has(item.bookingNumber))]
+    } catch {
+      // Guest stay rows are optional.
+    }
+    if (!res.ok && items.length === 0) {
+      throw new Error(apiErrorMessage(body, 'Stays unavailable'))
+    }
+    const completed = items.filter(item => {
+      const status = item.bookingStatus.toLowerCase()
+      return status === 'completed' || status === 'confirmed'
+    }).length
+    const pending = items.filter(item => item.bookingStatus.toLowerCase() === 'pending').length
+    const moneyMwk = items
+      .filter(item => item.paid || item.paymentStatus.toUpperCase() === 'PAID')
+      .reduce((sum, item) => sum + money(item.price), 0)
+    return {
+      id: 'stays',
+      name: 'Stays',
+      plain: 'Accommodation bookings',
+      activity: items.length,
+      completed,
+      pending,
+      moneyMwk,
+      health: healthFromActivity(items.length, completed),
+      detail: `${fmt(completed)} confirmed or completed · ${fmt(pending)} pending`,
+    }
+  } catch {
+    return {
+      id: 'stays',
+      name: 'Stays',
+      plain: 'Accommodation bookings',
+      activity: 0,
+      completed: 0,
+      pending: 0,
+      moneyMwk: 0,
+      health: 'quiet',
+      detail: 'Stay numbers could not be loaded right now.',
+    }
+  }
+}
+
 async function loadDigital(): Promise<ServicePerformance> {
   try {
     const items = await listDigitalServiceOrders({ limit: 500 })
@@ -377,18 +458,20 @@ export async function fetchAppPerformanceOverview(opts?: {
   request?: Request
   includePlatformBalance?: boolean
 }): Promise<AppPerformanceOverview> {
-  const [users, ride, courier, food, marketplace, digital, platformBalanceMwk] =
+  const [users, ridePair, courier, food, marketplace, stays, digital, platformBalanceMwk] =
     await Promise.all([
       loadUsers(),
-      loadRides(opts?.request),
+      loadRideServices(opts?.request),
       loadCourier(),
       loadFood(),
       loadMarketplace(),
+      loadStays(),
       loadDigital(),
       loadPlatformBalance(Boolean(opts?.includePlatformBalance)),
     ])
+  const [ride, bike] = ridePair
 
-  const services = [ride, courier, food, marketplace, digital].sort((a, b) => {
+  const services = [ride, bike, courier, food, marketplace, stays, digital].sort((a, b) => {
     if (b.activity !== a.activity) return b.activity - a.activity
     return b.moneyMwk - a.moneyMwk
   })
@@ -405,7 +488,7 @@ export async function fetchAppPerformanceOverview(opts?: {
   const moneyTotal = services.reduce((s, x) => s + x.moneyMwk, 0)
   const financeNote =
     moneyTotal > 0
-      ? `Paid volume: MWK ${fmt(moneyTotal)} across rides, food, marketplace, and digital services.`
+      ? `Paid volume: MWK ${fmt(moneyTotal)} across tracked services.`
       : 'No paid volume in the current sample.'
 
   if (quiet.length) {
