@@ -7,6 +7,7 @@ import {
 } from '@/lib/digital-services-admin'
 import { parseFoodAdminOrder } from '@/lib/food-orders-admin'
 import { nestAdminFetch } from '@/lib/nest-admin'
+import { nestOpsFetch } from '@/lib/nest-ops'
 import { parseCourierDeliveries } from '@/lib/courier'
 import { parseMarketplaceOrders } from '@/lib/orders'
 import { parseAdminRidesResponse, type AdminRide } from '@/lib/rides'
@@ -361,6 +362,47 @@ async function loadMarketplace(): Promise<ServicePerformance> {
   }
 }
 
+async function loadCarHire(request?: Request): Promise<ServicePerformance> {
+  const empty = (detail: string): ServicePerformance => ({
+    id: 'car-hire',
+    name: 'Car Hire',
+    plain: 'Vehicle rentals',
+    activity: 0,
+    completed: 0,
+    pending: 0,
+    moneyMwk: 0,
+    health: 'quiet',
+    detail,
+  })
+  if (!request) return empty('Car hire numbers could not be loaded right now.')
+  try {
+    const { res, body, error } = await nestOpsFetch(
+      ['car-rental', 'bookings', 'ops', 'summary'],
+      undefined,
+      request,
+    )
+    if (!res.ok) throw new Error(error || 'Car hire unavailable')
+    const row = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+    const activity = Number(row.activity) || 0
+    const completed = Number(row.completed) || 0
+    const pending = Number(row.pending) || 0
+    const moneyMwk = Number(row.moneyMwk) || 0
+    return {
+      id: 'car-hire',
+      name: 'Car Hire',
+      plain: 'Vehicle rentals',
+      activity,
+      completed,
+      pending,
+      moneyMwk,
+      health: healthFromActivity(activity, completed),
+      detail: `${fmt(completed)} completed · ${fmt(pending)} open`,
+    }
+  } catch {
+    return empty('Car hire numbers could not be loaded right now.')
+  }
+}
+
 async function loadStays(): Promise<ServicePerformance> {
   try {
     const res = await fetch(veroEndpoint('bookings', 'admin', 'all'), {
@@ -458,7 +500,7 @@ export async function fetchAppPerformanceOverview(opts?: {
   request?: Request
   includePlatformBalance?: boolean
 }): Promise<AppPerformanceOverview> {
-  const [users, ridePair, courier, food, marketplace, stays, digital, platformBalanceMwk] =
+  const [users, ridePair, courier, food, marketplace, stays, carHire, digital, platformBalanceMwk] =
     await Promise.all([
       loadUsers(),
       loadRideServices(opts?.request),
@@ -466,12 +508,13 @@ export async function fetchAppPerformanceOverview(opts?: {
       loadFood(),
       loadMarketplace(),
       loadStays(),
+      loadCarHire(opts?.request),
       loadDigital(),
       loadPlatformBalance(Boolean(opts?.includePlatformBalance)),
     ])
   const [ride, bike] = ridePair
 
-  const services = [ride, bike, courier, food, marketplace, stays, digital].sort((a, b) => {
+  const services = [ride, bike, courier, food, marketplace, stays, carHire, digital].sort((a, b) => {
     if (b.activity !== a.activity) return b.activity - a.activity
     return b.moneyMwk - a.moneyMwk
   })
