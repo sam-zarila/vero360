@@ -90,7 +90,8 @@ function orderStamp(o: DigitalServiceOrder) {
 }
 
 function isTodayOrder(o: DigitalServiceOrder) {
-  const stamp = orderStamp(o)
+  if (!isDigitalOrderPaid(o)) return false
+  const stamp = o.paidAt || o.createdAt || ''
   if (!stamp) return false
   return blantyreDay(stamp) === blantyreDay(new Date().toISOString())
 }
@@ -151,18 +152,16 @@ export default function DigitalServicesAdminPage() {
     if (tab === 'today') {
       list = items.filter(o => isTodayOrder(o))
     } else if (tab === 'subscriptions') {
-      list = items.filter(o => isDigitalSubscription(o))
+      list = items.filter(o => isDigitalSubscription(o) && isDigitalOrderPaid(o))
     } else if (tab === 'active_subs') {
       list = items.filter(o => {
-        if (!isDigitalSubscription(o)) return false
-        if (o.status === 'cancelled' || isDigitalOrderPending(o)) return false
+        if (!isDigitalSubscription(o) || !isDigitalOrderPaid(o)) return false
         const timing = getSubscriptionTiming(o)
         return !timing.isExpired
       })
     } else if (tab === 'expired_subs') {
       list = items.filter(o => {
-        if (!isDigitalSubscription(o)) return false
-        if (o.status === 'cancelled' || isDigitalOrderPending(o)) return false
+        if (!isDigitalSubscription(o) || !isDigitalOrderPaid(o)) return false
         const timing = getSubscriptionTiming(o)
         return timing.isExpired
       })
@@ -170,9 +169,11 @@ export default function DigitalServicesAdminPage() {
       // Paid / fulfilled gift cards only — pending ones live under Pending.
       list = items.filter(o => isDigitalGiftCard(o) && isDigitalOrderPaid(o))
     } else if (tab === 'crypto') {
-      list = items.filter(o => isDigitalCrypto(o))
+      list = items.filter(o => isDigitalCrypto(o) && isDigitalOrderPaid(o))
     } else if (tab === 'pending') {
       list = items.filter(o => isDigitalOrderPending(o))
+    } else if (tab === 'all') {
+      list = items.filter(o => isDigitalOrderPaid(o))
     }
 
     const query = q.trim().toLowerCase()
@@ -387,16 +388,24 @@ export default function DigitalServicesAdminPage() {
   }
 
   const todayCount = useMemo(() => items.filter(o => isTodayOrder(o)).length, [items])
+  const paidSubCount = useMemo(
+    () => items.filter(o => isDigitalSubscription(o) && isDigitalOrderPaid(o)).length,
+    [items],
+  )
+  const paidCryptoCount = useMemo(
+    () => items.filter(o => isDigitalCrypto(o) && isDigitalOrderPaid(o)).length,
+    [items],
+  )
 
   const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'today', label: `Today (${todayCount})` },
-    { id: 'subscriptions', label: `Subscriptions (${counts.subscriptions})` },
+    { id: 'today', label: `Today paid (${todayCount})` },
+    { id: 'all', label: `All paid (${counts.paid})` },
+    { id: 'subscriptions', label: `Subscriptions paid (${paidSubCount})` },
     { id: 'active_subs', label: `Active (${counts.activeSubscriptions})` },
     { id: 'expired_subs', label: `Expired (${counts.expiredSubscriptions})` },
     { id: 'gift_cards', label: `Gift cards paid (${counts.giftCardsPaid})` },
-    { id: 'crypto', label: `Crypto / FX (${counts.crypto})` },
+    { id: 'crypto', label: `Crypto / FX paid (${paidCryptoCount})` },
     { id: 'pending', label: `Pending (${counts.pending})` },
-    { id: 'all', label: `All (${counts.all})` },
   ]
 
   return (
@@ -532,11 +541,13 @@ export default function DigitalServicesAdminPage() {
           <DashboardEmptyState
             icon={SECTION.icon}
             color={SECTION.color}
-            title={tab === 'today' ? 'No orders today' : 'No orders in this view'}
+            title={tab === 'today' ? 'No paid orders today' : tab === 'pending' ? 'No pending orders' : 'No paid orders in this view'}
             hint={
               tab === 'today'
-                ? 'Orders placed or paid today in Malawi time show here. Older orders are on the other tabs.'
-                : 'Paid Spotify, Netflix, gift-card, and crypto purchases appear here.'
+                ? 'Only orders paid today, Malawi time, show here. Unpaid orders stay on Pending.'
+                : tab === 'pending'
+                  ? 'Orders still waiting for payment show here.'
+                  : 'These lists show paid orders. Unpaid orders stay on Pending.'
             }
           />
         ) : (
