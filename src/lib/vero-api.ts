@@ -39,10 +39,79 @@ function mediaFileName(absolute: string) {
   }
 }
 
+/**
+ * Some marketplace rows store the file bytes themselves (a base64 JPEG starts
+ * with `/9j/`) instead of a URL. Treat that as an image, not a path on the API.
+ * Slashes inside the payload are normal base64; only a failed alphabet check
+ * means this is a real path.
+ */
+function inlineImageDataUrl(value: string): string | null {
+  let payload = value.trim()
+  if (payload.startsWith('http://') || payload.startsWith('https://')) {
+    try {
+      payload = new URL(payload).pathname
+    } catch {
+      return null
+    }
+  }
+  try {
+    payload = decodeURIComponent(payload)
+  } catch {
+    // Pathname is already decoded, or contains a stray percent sign.
+  }
+  payload = payload.replace(/\s+/g, '')
+  while (payload.startsWith('/')) payload = payload.slice(1)
+  if (payload.length < 80) return null
+
+  const mime = payload.startsWith('9j/')
+    ? 'image/jpeg'
+    : payload.startsWith('iVBORw0KGgo')
+      ? 'image/png'
+      : payload.startsWith('R0lGOD')
+        ? 'image/gif'
+        : payload.startsWith('UklGR')
+          ? 'image/webp'
+          : null
+  if (!mime) return null
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(payload)) return null
+  return `data:${mime};base64,${payload}`
+}
+
+/** Hosts that already serve the same upload over TLS. Avoid the media proxy. */
+function hostServesHttps(hostname: string) {
+  const host = hostname.trim().toLowerCase()
+  return host === 'vero360.app' || host.endsWith('.vero360.app')
+}
+
+function upgradeSecureMediaUrl(absolute: string) {
+  try {
+    const parsed = new URL(absolute)
+    if (parsed.protocol === 'http:' && hostServesHttps(parsed.hostname)) {
+      parsed.protocol = 'https:'
+      return parsed.toString()
+    }
+  } catch {
+    // keep the original string
+  }
+  return absolute
+}
+
+export function isRenderableMediaUrl(src: string) {
+  return (
+    src.startsWith('https://') ||
+    src.startsWith('http://') ||
+    src.startsWith('/api/media') ||
+    src.startsWith('data:') ||
+    src.startsWith('blob:')
+  )
+}
+
 export function resolveVeroMediaUrl(image?: string | null) {
   const raw = image?.trim()
   if (!raw) return null
   if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw
+  const inline = inlineImageDataUrl(raw)
+  if (inline) return inline
   // Already same-origin proxied — do not wrap again (that made every photo collide).
   if (raw.startsWith('/api/media')) return raw
 
@@ -62,6 +131,10 @@ export function resolveVeroMediaUrl(image?: string | null) {
   } catch {
     return absolute
   }
+
+  absolute = upgradeSecureMediaUrl(absolute)
+  const inlinedAbsolute = inlineImageDataUrl(absolute)
+  if (inlinedAbsolute) return inlinedAbsolute
 
   // HTTPS pages (vero360.app) block plain HTTP images. Serve them same-origin.
   // Put the filename in the path so CDNs cannot reuse one cached /api/media response.
@@ -97,6 +170,7 @@ export function isAllowedMediaHost(hostname: string) {
   if (allowed.has(host)) return true
   if (host.endsWith('.firebasestorage.app')) return true
   if (host.endsWith('.googleapis.com')) return true
+  if (host === 'vero360.app' || host.endsWith('.vero360.app')) return true
   return false
 }
 

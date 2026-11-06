@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { carTitle, fuelTypeLabel, transmissionLabel, type OwnerVehicle } from '@/lib/car-hire'
+import {
+  carTitle,
+  fuelTypeLabel,
+  resolveCarImage,
+  transmissionLabel,
+  type OwnerVehicle,
+} from '@/lib/car-hire'
 import {
   LuArrowUpRight,
   LuCalendarClock,
@@ -127,6 +133,7 @@ export function FleetReadinessBoard({
             {visible.map(car => {
               const state = listingStateOf(car)
               const selected = selectedId === car.id
+              const photo = resolveCarImage(car)
               return (
                 <button
                   key={car.id}
@@ -140,9 +147,9 @@ export function FleetReadinessBoard({
                   }`}
                 >
                   <span className="flex w-full items-center gap-2.5">
-                    {car.imageUrl ? (
+                    {photo ? (
                       <img
-                        src={car.imageUrl}
+                        src={photo}
                         alt=""
                         className="h-10 w-10 shrink-0 rounded-lg object-cover"
                         loading="lazy"
@@ -243,6 +250,7 @@ export function FocusUnitPanel({
   }
 
   const state = listingStateOf(car)
+  const photo = resolveCarImage(car)
   const dueTs = car.nextServiceDueAt ? Date.parse(car.nextServiceDueAt) : null
   const serviceKnown = dueTs != null && Number.isFinite(dueTs) && now != null
   const serviceOverdue = serviceKnown && dueTs < (now as number)
@@ -272,8 +280,8 @@ export function FocusUnitPanel({
         </div>
 
         <div className="relative my-4 h-36 overflow-hidden rounded-xl bg-surface-container-low">
-          {car.imageUrl ? (
-            <img src={car.imageUrl} alt="" className="h-full w-full object-cover" />
+          {photo ? (
+            <img src={photo} alt="" className="h-full w-full object-cover" />
           ) : (
             <div className="grid h-full w-full place-items-center bg-[linear-gradient(135deg,#001f3f_0%,#000613_100%)]">
               <LuCarFront className="text-[42px] text-secondary-container/80" aria-hidden />

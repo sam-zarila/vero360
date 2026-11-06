@@ -13,6 +13,7 @@ import GuestBuyForm, {
 } from '@/app/components/open-listing/GuestBuyForm'
 import type { ListingModel } from '@/lib/open-listing-types'
 import { listingAmountMwk, listingPriceLabel } from '@/lib/open-listing-utils'
+import { isRenderableMediaUrl } from '@/lib/vero-api'
 
 const page: CSSProperties = {
   minHeight: '100vh',
@@ -67,7 +68,7 @@ export default function OpenListingView({ listing }: { listing: ListingModel }) 
     hostName,
     appHref,
   } = listing
-  const showImage = /^https?:\/\//i.test(image) || image.startsWith('/api/media')
+  const showImage = isRenderableMediaUrl(image)
   const priceLabel = listingPriceLabel(listing)
   const nightly = listingAmountMwk(listing)
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])

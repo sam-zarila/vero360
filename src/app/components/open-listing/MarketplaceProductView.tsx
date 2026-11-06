@@ -12,6 +12,7 @@ import GuestBuyForm, {
 } from '@/app/components/open-listing/GuestBuyForm'
 import type { ListingModel } from '@/lib/open-listing-types'
 import { listingAmountMwk, listingPriceLabel } from '@/lib/open-listing-utils'
+import { isRenderableMediaUrl } from '@/lib/vero-api'
 
 const page: CSSProperties = {
   minHeight: '100vh',
@@ -72,7 +73,7 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
     const seen = new Set<string>()
     for (const src of [image, ...gallery]) {
       if (!src || seen.has(src)) continue
-      if (!src.startsWith('http') && !src.startsWith('/api/media')) continue
+      if (!isRenderableMediaUrl(src)) continue
       seen.add(src)
       out.push(src)
     }
@@ -81,7 +82,7 @@ export default function MarketplaceProductView({ listing }: { listing: ListingMo
 
   const sellerAvatar =
     sellerImage &&
-    (sellerImage.startsWith('http') || sellerImage.startsWith('/api/media'))
+    isRenderableMediaUrl(sellerImage)
   const webUrl = listing.webUrl || `https://vero360.app/marketplace/${id}`
 
   return (
