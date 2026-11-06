@@ -139,16 +139,16 @@ export default function WebsitePerformancePanel() {
           <p style={{ margin: 0, fontWeight: 700 }}>Website traffic unavailable.</p>
           {isFullAdmin ? (
             <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.55 }}>
-              The Google Analytics Data API is turned off on project 1010595167807.{' '}
+              The Data API is on. Add{' '}
+              <strong>firebase-adminsdk-fbsvc@vero360app-ca423.iam.gserviceaccount.com</strong> as a Viewer on the GA4 property, then refresh.{' '}
               <a
-                href="https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=1010595167807"
+                href="https://analytics.google.com/analytics/web/#/a273004667p509919249/admin/property/access-management"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ fontWeight: 700 }}
               >
-                Enable the Data API
+                Open property access
               </a>
-              , then add the Firebase service account as a Viewer on the GA4 property.
             </p>
           ) : null}
         </div>
