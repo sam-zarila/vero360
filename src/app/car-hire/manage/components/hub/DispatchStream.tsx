@@ -7,6 +7,7 @@ import {
   bookingStatusTone,
   carTitle,
   paymentStatusLabel,
+  resolveCarImage,
   type DispatchBoard,
   type DispatchBooking,
 } from '@/lib/car-hire'
@@ -227,14 +228,15 @@ function Row({
   const slotIso = isReturn ? booking.endAt : booking.startAt
   const rel = relativeLabel(slotIso, now)
   const deposit = booking.car?.depositAmount ?? 0
+  const photo = booking.car ? resolveCarImage(booking.car) : null
 
   return (
     <tr className="transition-colors hover:bg-surface-container-low/60">
       <td className="px-5 py-3">
         <div className="flex items-center gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-container-high text-[11px] font-bold text-primary">
-            {booking.car?.imageUrl ? (
-              <img src={booking.car.imageUrl} alt="" className="h-full w-full object-cover" />
+            {photo ? (
+              <img src={photo} alt="" className="h-full w-full object-cover" />
             ) : (
               (booking.car?.make || 'V').slice(0, 1).toUpperCase()
             )}
