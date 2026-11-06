@@ -30,7 +30,7 @@ function parseIdList(raw: string | null): number[] {
 
 function readIds(): number[] {
   try {
-    return parseIdList(sessionStorage.getItem(STORAGE_KEY))
+    return parseIdList(localStorage.getItem(STORAGE_KEY))
   } catch {
     return []
   }
@@ -38,7 +38,7 @@ function readIds(): number[] {
 
 function writeIds(ids: number[]) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 200)))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 200)))
   } catch {
     // ignore
   }
@@ -113,16 +113,18 @@ export function useRideAlerts(enabled = true): RideAlertState {
           : []
         setRecentIds(recent)
 
-        if (!primed.current) {
+        const knownBefore = readIds()
+        if (!primed.current && knownBefore.length === 0) {
           primed.current = true
           lastCount.current = count
-          writeIds(recent.length ? recent : readIds())
+          writeIds(recent)
           if (!readIdsFrom(localStorage, SEEN_KEY).length && recent.length) {
             writeIdsTo(localStorage, SEEN_KEY, recent)
             setSeenIds(recent)
           }
           return
         }
+        primed.current = true
 
         const known = readIds()
         const knownSet = new Set(known)

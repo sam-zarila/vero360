@@ -77,12 +77,13 @@ export function useStayAlerts(enabled = true): StayAlertState {
           : pending
         setPendingIds(pending)
 
-        const known = readIds(sessionStorage, STORAGE_KEY)
-        if (!primed.current) {
-          writeIds(sessionStorage, STORAGE_KEY, recent.length ? recent : known)
+        const known = readIds(localStorage, STORAGE_KEY)
+        if (!primed.current && known.length === 0) {
+          writeIds(localStorage, STORAGE_KEY, recent)
           primed.current = true
           return
         }
+        primed.current = true
 
         const knownSet = new Set(known)
         const fresh = recent.filter(id => !knownSet.has(id))
@@ -96,9 +97,9 @@ export function useStayAlerts(enabled = true): StayAlertState {
               : `${fresh.length} new stay bookings`
           setToast(message)
           notifyBrowser('New stay booking', message, 'vero-stay')
-          writeIds(sessionStorage, STORAGE_KEY, [...new Set([...known, ...recent])])
+          writeIds(localStorage, STORAGE_KEY, [...new Set([...known, ...recent])])
         } else {
-          writeIds(sessionStorage, STORAGE_KEY, recent)
+          writeIds(localStorage, STORAGE_KEY, recent)
         }
       } catch {
         // keep last known

@@ -21,7 +21,7 @@ export type UserAlertState = {
 
 function readIds(key: string): string[] {
   try {
-    const raw = sessionStorage.getItem(key)
+    const raw = localStorage.getItem(key)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []
@@ -32,7 +32,7 @@ function readIds(key: string): string[] {
 
 function writeIds(key: string, ids: string[]) {
   try {
-    sessionStorage.setItem(key, JSON.stringify(ids.slice(0, 2000)))
+    localStorage.setItem(key, JSON.stringify(ids.slice(0, 2000)))
   } catch {
     // ignore
   }
@@ -81,12 +81,14 @@ export function useUserAlerts(enabled = true): UserAlertState {
     const notified = readIds(NOTIFIED_KEY)
 
     if (!primed.current) {
+      const hadHistory = notified.length > 0
       if (!seen.length) writeIds(SEEN_KEY, ids)
       if (!notified.length) writeIds(NOTIFIED_KEY, ids)
       primed.current = true
-      const unseen = ids.filter(id => !new Set(readIds(SEEN_KEY)).has(id))
-      setNewCount(unseen.length)
-      return
+      if (!hadHistory) {
+        setNewCount(0)
+        return
+      }
     }
 
     const seenSet = new Set(readIds(SEEN_KEY))

@@ -16,7 +16,7 @@ export type DriverAlertState = {
 
 function readKnownKeys(): string[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed)
@@ -29,7 +29,7 @@ function readKnownKeys(): string[] {
 
 function writeKnownKeys(keys: string[]) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(keys.slice(0, 400)))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys.slice(0, 400)))
   } catch {
     // ignore quota / private mode
   }
@@ -127,11 +127,12 @@ export function useDriverAlerts(enabled = true): DriverAlertState {
         )
 
         const known = readKnownKeys()
-        if (!primed.current) {
-          writeKnownKeys(itemKeys.length ? itemKeys : known)
+        if (!primed.current && known.length === 0) {
+          writeKnownKeys(itemKeys)
           primed.current = true
           return
         }
+        primed.current = true
 
         const knownSet = new Set(known)
         const freshKeys = itemKeys.filter(k => !knownSet.has(k))

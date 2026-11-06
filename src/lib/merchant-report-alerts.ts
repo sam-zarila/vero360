@@ -14,7 +14,7 @@ export type MerchantReportAlertState = {
 
 function readKnownIds(): string[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed)
@@ -27,7 +27,7 @@ function readKnownIds(): string[] {
 
 function writeKnownIds(ids: string[]) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 200)))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 200)))
   } catch {
     // ignore quota / private mode
   }
@@ -86,11 +86,12 @@ export function useMerchantReportAlerts(enabled = true): MerchantReportAlertStat
         setOpen(count)
 
         const known = readKnownIds()
-        if (!primed.current) {
-          writeKnownIds(openIds.length ? openIds : known)
+        if (!primed.current && known.length === 0) {
+          writeKnownIds(openIds)
           primed.current = true
           return
         }
+        primed.current = true
 
         const knownSet = new Set(known)
         const fresh = openIds.filter(id => !knownSet.has(id))

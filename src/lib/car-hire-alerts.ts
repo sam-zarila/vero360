@@ -5,6 +5,34 @@ import { adminFetch } from '@/lib/panel-client-auth'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const POLL_MS = 15_000
+const COUNTS_KEY = 'vero_carhire_alert_counts'
+
+function readCounts(): { companies: number; listings: number; leads: number } | null {
+  try {
+    const raw = localStorage.getItem(COUNTS_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as {
+      companies?: number
+      listings?: number
+      leads?: number
+    }
+    return {
+      companies: Number(parsed.companies) || 0,
+      listings: Number(parsed.listings) || 0,
+      leads: Number(parsed.leads) || 0,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeCounts(counts: { companies: number; listings: number; leads: number }) {
+  try {
+    localStorage.setItem(COUNTS_KEY, JSON.stringify(counts))
+  } catch {
+    // ignore
+  }
+}
 
 export type CarHireAlertState = {
   companies: number
@@ -48,12 +76,16 @@ export function useCarHireAlerts(enabled = true): CarHireAlertState {
 
         if (!primed.current) {
           primed.current = true
-          last.current = {
+          const stored = readCounts()
+          last.current = stored || {
             companies: nextCompanies,
             listings: nextListings,
             leads: nextLeads,
           }
-          return
+          if (!stored) {
+            writeCounts(last.current)
+            return
+          }
         }
 
         const parts: string[] = []
@@ -78,6 +110,7 @@ export function useCarHireAlerts(enabled = true): CarHireAlertState {
           listings: nextListings,
           leads: nextLeads,
         }
+        writeCounts(last.current)
         if (!parts.length) return
         const message = parts.join('. ')
         setToast(message)
