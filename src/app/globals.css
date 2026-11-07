@@ -77,11 +77,15 @@
 
 /* Car hire management uses the same navy surfaces as the overview dashboard.
    Scoped so the public site keeps its own orange tokens. */
-.manage-workspace {
+.manage-workspace,
+.admin-workspace {
   --primary: #001f3f;
   --primary-dark: #000613;
   --primary-light: #f6f3f2;
   --primary-50: #f6f3f2;
+  --accent: #ff851b;
+  --accent-dark: #964900;
+  --accent-light: #ffdcc7;
   --text: #1c1b1b;
   --text-2: #1c1b1b;
   --text-3: #43474e;
@@ -91,6 +95,27 @@
   --surface: #f6f3f2;
   --surface-2: #f0eded;
   --shadow-sm: 0 2px 10px rgba(0, 31, 63, 0.06);
+  --shadow: 0 4px 16px rgba(0, 31, 63, 0.1);
+}
+
+/* Admin ops shell: soft cards + nav chrome aligned with car-hire manage. */
+.admin-workspace .dashboard-shell-card {
+  background: #fff;
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.admin-workspace .dashboard-nav-link.is-active {
+  background: #001f3f !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px rgba(0, 31, 63, 0.18);
+}
+.admin-workspace .dashboard-nav-link.is-active:hover {
+  background: #001f3f !important;
+}
+.admin-workspace .dashboard-nav-link:hover:not(.is-active) {
+  background: #f6f3f2 !important;
 }
 
 /* Base resets live in Tailwind's `base` layer so utility classes (bg-*, p-*,

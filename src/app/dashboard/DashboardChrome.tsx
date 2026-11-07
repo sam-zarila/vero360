@@ -2,11 +2,7 @@
 
 import Link from 'next/link'
 import type { CSSProperties, ReactNode } from 'react'
-import {
-  IconBadge,
-  VeroIcon,
-  type VeroIconName,
-} from '@/app/components/landing/icons'
+import { VeroIcon, type VeroIconName } from '@/app/components/landing/icons'
 import {
   getDashboardSection,
   type DashboardSectionId,
@@ -20,10 +16,11 @@ export function DashboardBackLink({ label = 'Dashboard' }: { label?: string }) {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 6,
-        fontSize: 13,
-        fontWeight: 600,
+        fontSize: 12,
+        fontWeight: 700,
         color: 'var(--text-3)',
-        marginBottom: 18,
+        marginBottom: 14,
+        letterSpacing: '0.02em',
       }}
     >
       ← {label}
@@ -62,20 +59,57 @@ export function DashboardPageHeader({
       }}
     >
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', minWidth: 0 }}>
-        <IconBadge name={section.icon} size={26} bg={section.bg} color={section.color} />
+        <span
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: 'var(--primary)',
+            color: 'var(--accent)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(0, 31, 63, 0.18)',
+          }}
+        >
+          <VeroIcon name={section.icon} size={22} color="currentColor" strokeWidth={2.35} />
+        </span>
         <div style={{ minWidth: 0 }}>
-          <h1
+          <p
             style={{
               margin: 0,
-              fontSize: 28,
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--text-3)',
+            }}
+          >
+            {section.title}
+          </p>
+          <h1
+            style={{
+              margin: '4px 0 0',
+              fontSize: 26,
               fontWeight: 800,
               fontFamily: 'var(--font-display)',
-              letterSpacing: '-0.3px',
+              letterSpacing: '-0.4px',
+              color: 'var(--primary-dark)',
+              lineHeight: 1.1,
             }}
           >
             {title ?? section.title}
           </h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-3)', fontSize: 14, lineHeight: 1.5 }}>
+          <p
+            style={{
+              margin: '8px 0 0',
+              color: 'var(--text-3)',
+              fontSize: 13,
+              lineHeight: 1.55,
+              maxWidth: 720,
+            }}
+          >
             {description ?? section.desc}
           </p>
         </div>
@@ -107,7 +141,7 @@ export function DashboardRefreshButton({
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
-        padding: '10px 14px',
+        padding: '9px 14px',
         borderRadius: 12,
         border: '1px solid var(--border)',
         background: '#fff',
@@ -116,6 +150,7 @@ export function DashboardRefreshButton({
         color: 'var(--text-2)',
         cursor: disabled ? 'wait' : 'pointer',
         opacity: disabled ? 0.7 : 1,
+        boxShadow: 'var(--shadow-sm)',
       }}
     >
       <VeroIcon name="refresh" size={16} strokeWidth={2.35} />
@@ -244,11 +279,31 @@ export function DashboardEmptyState({
         color: 'var(--text-3)',
         textAlign: 'center',
         padding: 24,
+        borderRadius: 16,
+        background: '#fff',
+        boxShadow: 'var(--shadow-sm)',
       }}
     >
-      <VeroIcon name={icon} size={40} strokeWidth={2.35} color={color} />
-      <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-2)', fontSize: 15 }}>{title}</p>
-      {hint ? <p style={{ margin: 0, fontSize: 13, maxWidth: 360 }}>{hint}</p> : null}
+      <span
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 14,
+          background: 'var(--primary)',
+          color: 'var(--accent)',
+          display: 'grid',
+          placeItems: 'center',
+          marginBottom: 4,
+        }}
+      >
+        <VeroIcon name={icon} size={26} strokeWidth={2.35} color={color || 'currentColor'} />
+      </span>
+      <p style={{ margin: 0, fontWeight: 800, color: 'var(--primary-dark)', fontSize: 15 }}>
+        {title}
+      </p>
+      {hint ? (
+        <p style={{ margin: 0, fontSize: 13, maxWidth: 360, lineHeight: 1.5 }}>{hint}</p>
+      ) : null}
     </div>
   )
 }

@@ -42,10 +42,10 @@ type RoleKey = 'customers' | 'merchants' | 'drivers' | 'other'
 
 const card: CSSProperties = {
   background: '#fff',
-  border: '1px solid var(--border)',
+  border: 'none',
   borderRadius: 16,
-  padding: 16,
-  boxShadow: 'var(--shadow-sm)',
+  padding: 18,
+  boxShadow: '0 2px 12px rgba(0,31,63,0.06)',
 }
 
 const ROLE_COLOR: Record<RoleKey, string> = {

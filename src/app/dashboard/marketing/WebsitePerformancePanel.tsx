@@ -20,10 +20,10 @@ type Overview = {
 
 const card: CSSProperties = {
   background: '#fff',
-  border: '1px solid var(--border)',
+  border: 'none',
   borderRadius: 16,
-  padding: 16,
-  boxShadow: 'var(--shadow-sm)',
+  padding: 18,
+  boxShadow: '0 2px 12px rgba(0,31,63,0.06)',
 }
 
 const RANGES = [
@@ -84,15 +84,18 @@ export default function WebsitePerformancePanel() {
                 aria-pressed={active}
                 onClick={() => setDays(range.days)}
                 style={{
-                  border: active ? '1px solid #C2410C' : '1px solid var(--border)',
-                  background: active ? '#FFF7ED' : '#fff',
-                  color: active ? '#C2410C' : 'var(--text-2)',
-                  borderRadius: 999,
-                  padding: '6px 12px',
+                  border: 'none',
+                  background: active ? 'var(--primary)' : '#fff',
+                  color: active ? '#fff' : 'var(--text-2)',
+                  borderRadius: 10,
+                  padding: '7px 12px',
                   font: 'inherit',
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: 'pointer',
+                  boxShadow: active
+                    ? '0 2px 8px rgba(0,31,63,0.18)'
+                    : '0 1px 4px rgba(0,31,63,0.06)',
                 }}
               >
                 {range.label}

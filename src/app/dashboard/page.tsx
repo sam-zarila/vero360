@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { IconBadge } from '@/app/components/landing/icons'
+import { LuActivity, LuArrowUpRight, LuDownload, LuGlobe, LuUsers } from 'react-icons/lu'
 import { adminFetch } from '@/lib/panel-client-auth'
 import DashboardCards from './DashboardCards'
 import { MARKETER_HOME, usePanelSession } from './PanelSessionProvider'
@@ -68,143 +68,90 @@ export default function DashboardPage() {
   if (!loading && isAgent) {
     return (
       <div>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 28 }}>
-          <IconBadge name="briefcase" size={28} bg="#EFF6FF" color="#2563EB" />
-          <div>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 'clamp(26px, 3vw, 34px)',
-                fontWeight: 900,
-                letterSpacing: '-0.5px',
-                fontFamily: 'var(--font-display)',
-              }}
-            >
-              Agent home
-            </h1>
-            <p style={{ fontSize: 16, color: 'var(--text-3)', maxWidth: 560, margin: '8px 0 0' }}>
-              Open the agent portal to onboard users and verify drivers.
-            </p>
-          </div>
+        <div className="mb-6">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+            Agent portal
+          </p>
+          <h1 className="font-heading text-[26px] font-extrabold leading-none tracking-tight text-primary">
+            Agent home
+          </h1>
+          <p className="mt-2 max-w-[560px] text-[13px] leading-relaxed text-on-surface-variant">
+            Open the agent portal to onboard users and verify drivers.
+          </p>
         </div>
         <DashboardCards />
       </div>
     )
   }
 
+  const metrics = [
+    { label: 'MAU', value: fmt(strip?.mau), Icon: LuUsers, hint: 'Active last 30d' },
+    { label: 'New users', value: fmt(strip?.newUsers7d), Icon: LuActivity, hint: 'Last 7 days' },
+    { label: 'Site sessions', value: fmt(strip?.sessions), Icon: LuGlobe, hint: 'Last 28 days' },
+    { label: 'Installs', value: fmt(strip?.installs), Icon: LuDownload, hint: 'Play / tracked' },
+  ]
+
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          gap: 14,
-          alignItems: 'flex-start',
-          marginBottom: 22,
-        }}
-      >
-        <IconBadge name="grid" size={28} bg="#EFF6FF" color="#2563EB" />
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 'clamp(26px, 3vw, 34px)',
-              fontWeight: 900,
-              letterSpacing: '-0.5px',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Dashboard
-          </h1>
-          <p style={{ fontSize: 16, color: 'var(--text-3)', maxWidth: 560, margin: '8px 0 0' }}>
-            Growth first, then operations. Use the sidebar groups to open any service.
-          </p>
-        </div>
+      <div className="mb-5">
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+          Operations hub
+        </p>
+        <h1 className="font-heading text-[26px] font-extrabold leading-none tracking-tight text-primary">
+          Dashboard
+        </h1>
+        <p className="mt-2 max-w-[620px] text-[13px] leading-relaxed text-on-surface-variant">
+          Growth first, then operations. Expand any sidebar group to open a service.
+        </p>
       </div>
 
       <Link
         href="/dashboard/analytics"
-        style={{
-          display: 'block',
-          textDecoration: 'none',
-          color: 'inherit',
-          marginBottom: 28,
-          padding: 18,
-          borderRadius: 16,
-          border: '1px solid #BAE6FD',
-          background: 'linear-gradient(135deg, #F0F9FF 0%, #fff 55%)',
-          boxShadow: 'var(--shadow-sm)',
-        }}
+        className="mb-7 block no-underline text-inherit"
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            marginBottom: 14,
-          }}
-        >
-          <div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 12,
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#0369A1',
-              }}
-            >
-              Growth
-            </p>
-            <p style={{ margin: '4px 0 0', fontSize: 16, fontWeight: 800 }}>
-              Visits, installs, MAU, and campaigns
-            </p>
-          </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0369A1' }}>Open analytics →</span>
-        </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: 10,
-          }}
-        >
-          {[
-            { label: 'MAU', value: fmt(strip?.mau) },
-            { label: 'New users (7d)', value: fmt(strip?.newUsers7d) },
-            { label: 'Site sessions', value: fmt(strip?.sessions) },
-            { label: 'Installs', value: fmt(strip?.installs) },
-          ].map(metric => (
-            <div
-              key={metric.label}
-              style={{
-                padding: '12px 14px',
-                borderRadius: 12,
-                background: '#fff',
-                border: '1px solid #E0F2FE',
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>{metric.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 900, marginTop: 4, fontFamily: 'var(--font-display)' }}>
-                {metric.value}
-              </div>
+        <div className="rounded-2xl bg-surface-container-lowest p-5 shadow-[0_2px_12px_rgba(0,31,63,0.06)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,31,63,0.1)]">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+                Growth pulse
+              </p>
+              <p className="mt-1 font-heading text-[18px] font-bold text-primary">
+                Visits, installs, MAU, and campaigns
+              </p>
             </div>
-          ))}
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary-container px-3 py-2 text-[12px] font-bold text-secondary-container">
+              Open analytics
+              <LuArrowUpRight className="text-[14px]" aria-hidden />
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {metrics.map(metric => (
+              <div
+                key={metric.label}
+                className="rounded-xl bg-surface-container-low px-4 py-3"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-on-surface-variant">
+                    {metric.label}
+                  </span>
+                  <metric.Icon className="text-[15px] text-primary-container" aria-hidden />
+                </div>
+                <p className="font-heading text-[24px] font-extrabold leading-none tracking-tight text-primary">
+                  {metric.value}
+                </p>
+                <p className="mt-1 text-[11px] text-on-surface-variant">{metric.hint}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </Link>
 
-      <h2
-        style={{
-          margin: '0 0 14px',
-          fontSize: 15,
-          fontWeight: 800,
-          color: 'var(--text-2)',
-          letterSpacing: '0.02em',
-        }}
-      >
-        Operations
-      </h2>
+      <div className="mb-3.5 flex items-center gap-2.5">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary-container text-secondary-container">
+          <LuActivity className="text-[16px]" aria-hidden />
+        </span>
+        <h2 className="font-heading text-[16px] font-bold text-primary">Operations</h2>
+      </div>
       <DashboardCards />
     </div>
   )

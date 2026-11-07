@@ -213,12 +213,14 @@ export default function DashboardCards() {
               display: 'flex',
               flexDirection: 'column',
               gap: 14,
-              padding: 22,
-              borderRadius: 18,
+              padding: 20,
+              borderRadius: 16,
               background: '#fff',
-              border: showBadge ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-              boxShadow: showBadge ? '0 8px 28px rgba(249,115,22,0.18)' : 'var(--shadow-sm)',
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
+              border: showBadge ? '1.5px solid var(--accent)' : 'none',
+              boxShadow: showBadge
+                ? '0 8px 28px rgba(255,133,27,0.18)'
+                : '0 2px 12px rgba(0,31,63,0.06)',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
               minHeight: 168,
             }}
           >
@@ -233,14 +235,14 @@ export default function DashboardCards() {
                   height: 24,
                   padding: '0 7px',
                   borderRadius: 100,
-                  background: 'var(--primary)',
+                  background: 'var(--accent)',
                   color: '#fff',
                   fontSize: 12,
                   fontWeight: 800,
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 0 0 3px rgba(249,115,22,0.2)',
+                  boxShadow: '0 0 0 3px rgba(255,133,27,0.2)',
                 }}
               >
                 {badgeCount > 99 ? '99+' : badgeCount}
@@ -249,18 +251,23 @@ export default function DashboardCards() {
 
             <div
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 15,
-                background: card.bg,
-                color: card.color,
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: showBadge ? 'var(--primary)' : card.bg,
+                color: showBadge ? 'var(--accent)' : card.color,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 position: 'relative',
               }}
             >
-              <VeroIcon name={card.icon} size={26} color={card.color} strokeWidth={2.35} />
+              <VeroIcon
+                name={card.icon}
+                size={24}
+                color={showBadge ? '#ff851b' : card.color}
+                strokeWidth={2.35}
+              />
               {showBadge && (
                 <span
                   style={{
@@ -308,15 +315,14 @@ export default function DashboardCards() {
       <style>{`
         .dashboard-card:hover {
           transform: translateY(-2px);
-          box-shadow: var(--shadow);
-          border-color: var(--border-2);
+          box-shadow: 0 4px 16px rgba(0,31,63,0.1);
         }
         .dashboard-card-alert {
           animation: helpPulse 1.8s ease-in-out infinite;
         }
         @keyframes helpPulse {
-          0%, 100% { box-shadow: 0 8px 28px rgba(249,115,22,0.18); }
-          50% { box-shadow: 0 10px 36px rgba(249,115,22,0.32); }
+          0%, 100% { box-shadow: 0 8px 28px rgba(255,133,27,0.18); }
+          50% { box-shadow: 0 10px 36px rgba(255,133,27,0.3); }
         }
       `}</style>
     </div>

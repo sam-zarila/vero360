@@ -142,6 +142,7 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
   if (sessionLoading) {
     return (
       <div
+        className="admin-workspace"
         style={{
           minHeight: '100vh',
           display: 'flex',
@@ -151,9 +152,30 @@ function DashboardAuthGate({ children }: { children: React.ReactNode }) {
           padding: 24,
         }}
       >
-        <p style={{ color: 'var(--text-3)', fontSize: 15, fontWeight: 600, margin: 0 }}>
-          Checking admin access…
-        </p>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            borderRadius: 12,
+            background: '#fff',
+            padding: '12px 16px',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 999,
+              background: 'var(--accent)',
+              animation: 'pulse 1.2s ease-in-out infinite',
+            }}
+          />
+          <p style={{ color: 'var(--text-3)', fontSize: 13, fontWeight: 600, margin: 0 }}>
+            Checking admin access…
+          </p>
+        </div>
       </div>
     )
   }
@@ -348,17 +370,18 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             borderRadius: 10,
             fontSize: 13.5,
             fontWeight: active ? 700 : 500,
-            color: active ? 'var(--primary-dark)' : 'var(--text-2)',
-            background: active ? 'var(--primary-50)' : 'transparent',
-            border: active ? '1px solid var(--primary-light)' : '1px solid transparent',
-            transition: 'background 0.15s ease, color 0.15s ease',
+            color: active ? '#fff' : 'var(--text-2)',
+            background: active ? 'var(--primary)' : 'transparent',
+            border: '1px solid transparent',
+            boxShadow: active ? '0 2px 8px rgba(0, 31, 63, 0.18)' : 'none',
+            transition: 'background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
           }}
         >
           <VeroIcon
             name={item.icon}
             size={18}
             strokeWidth={2.35}
-            style={{ flexShrink: 0, opacity: active ? 1 : 0.9 }}
+            style={{ flexShrink: 0, opacity: active ? 1 : 0.85, color: active ? '#ffdcc7' : undefined }}
           />
           <span style={{ flex: 1, lineHeight: 1.25 }}>{item.label}</span>
           {badge && (
@@ -368,7 +391,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 height: 20,
                 padding: '0 5px',
                 borderRadius: 100,
-                background: 'var(--primary)',
+                background: active ? 'var(--accent)' : 'var(--primary)',
                 color: '#fff',
                 fontSize: 10,
                 fontWeight: 800,
@@ -387,7 +410,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="dashboard-shell"
+      className="dashboard-shell admin-workspace"
       style={{
         height: '100dvh',
         maxHeight: '100dvh',
@@ -395,20 +418,22 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--surface)',
+        color: 'var(--text)',
       }}
     >
       <header
         style={{
           flexShrink: 0,
           zIndex: 40,
-          background: '#fff',
+          background: 'rgba(252, 249, 248, 0.92)',
+          backdropFilter: 'blur(10px)',
           borderBottom: '1px solid var(--border)',
           padding: '0 20px',
         }}
       >
         <div
           style={{
-            height: 68,
+            height: 64,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -445,23 +470,25 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               <Logo height={48} />
               <span
                 style={{
-                  fontSize: 13,
-                  fontWeight: 700,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
                   color: isSuperAdmin
                     ? '#6D28D9'
                     : isMarketer
-                      ? '#C2410C'
+                      ? '#964900'
                       : isAgent
                         ? '#0369A1'
-                        : 'var(--primary)',
+                        : '#001f3f',
                   background: isSuperAdmin
                     ? '#F5F3FF'
                     : isMarketer
-                      ? '#FFF7ED'
+                      ? '#ffdcc7'
                       : isAgent
-                        ? '#F0F9FF'
-                        : 'var(--primary-light)',
-                  padding: '4px 10px',
+                        ? '#E0F2FE'
+                        : '#ffdcc7',
+                  padding: '5px 10px',
                   borderRadius: 100,
                 }}
               >
@@ -476,9 +503,18 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <AdminNotifications />
-            <Link href="/" style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-3)' }}>
+            <Link
+              href="/"
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-3)',
+                padding: '8px 10px',
+                borderRadius: 10,
+              }}
+            >
               Website
             </Link>
             <button
@@ -486,8 +522,8 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               onClick={handleSignOut}
               disabled={signingOut}
               style={{
-                fontSize: 14,
-                fontWeight: 600,
+                fontSize: 13,
+                fontWeight: 700,
                 color: '#fff',
                 background: 'var(--primary)',
                 padding: '8px 14px',
@@ -495,6 +531,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 border: 'none',
                 cursor: signingOut ? 'wait' : 'pointer',
                 opacity: signingOut ? 0.75 : 1,
+                boxShadow: '0 2px 8px rgba(0, 31, 63, 0.18)',
               }}
             >
               {signingOut ? 'Signing out…' : 'Sign out'}
@@ -533,9 +570,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         <aside
           className={`dashboard-sidebar${open ? ' is-open' : ''}`}
           style={{
-            width: 272,
+            width: 288,
             flexShrink: 0,
-            background: '#fff',
+            background: '#fcf9f8',
             borderRight: '1px solid var(--border)',
             display: 'flex',
             flexDirection: 'column',
@@ -607,9 +644,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 <div
                   key={group.id}
                   style={{
-                    borderRadius: 12,
-                    background: isGrowth ? '#F0F9FF' : 'transparent',
+                    borderRadius: 14,
+                    background: isGrowth ? 'rgba(255, 133, 27, 0.08)' : 'transparent',
                     padding: isGrowth ? '4px 0' : 0,
+                    border: isGrowth ? '1px solid rgba(255, 133, 27, 0.18)' : 'none',
                   }}
                 >
                   <button
@@ -629,7 +667,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                       background: 'transparent',
                       cursor: 'pointer',
                       font: 'inherit',
-                      color: isGrowth ? '#0369A1' : 'var(--text-4)',
+                      color: isGrowth ? '#964900' : 'var(--text-4)',
                     }}
                   >
                     <span
@@ -650,7 +688,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                             height: 18,
                             padding: '0 5px',
                             borderRadius: 100,
-                            background: 'var(--primary)',
+                            background: isGrowth ? 'var(--accent)' : 'var(--primary)',
                             color: '#fff',
                             fontSize: 10,
                             fontWeight: 800,
@@ -721,7 +759,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                                 padding: '6px 10px',
                                 border: 'none',
                                 borderRadius: 8,
-                                background: '#F8FAFC',
+                                background: '#f0eded',
                                 cursor: 'pointer',
                                 font: 'inherit',
                                 color: 'var(--text-3)',
@@ -736,7 +774,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                                       height: 16,
                                       padding: '0 4px',
                                       borderRadius: 100,
-                                      background: 'var(--primary)',
+                                      background: 'var(--accent)',
                                       color: '#fff',
                                       fontSize: 9,
                                       fontWeight: 800,
@@ -793,10 +831,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             minHeight: 0,
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
-            padding: '28px 24px 64px',
+            padding: '24px 20px 64px',
           }}
         >
-          <div style={{ maxWidth: 1100 }}>
+          <div style={{ maxWidth: 1500, margin: '0 auto' }}>
             {courierToast && (
               <div
                 role="status"
@@ -1367,11 +1405,11 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       </div>
 
       <style>{`
-        .dashboard-nav-link:hover {
-          background: var(--surface) !important;
-        }
-        .dashboard-nav-link.is-active:hover {
-          background: var(--primary-50) !important;
+        @media (min-width: 901px) {
+          .dashboard-main {
+            padding-left: 32px !important;
+            padding-right: 32px !important;
+          }
         }
         @media (max-width: 900px) {
           .dashboard-menu-btn {

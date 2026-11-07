@@ -12,6 +12,12 @@ import GrowthOverviewPanel from '../marketing/GrowthOverviewPanel'
 
 type View = 'growth' | 'app' | 'website'
 
+const TABS: Array<{ id: View; label: string; hint: string }> = [
+  { id: 'growth', label: 'Overview', hint: 'MAU, sessions, campaigns' },
+  { id: 'app', label: 'App activity', hint: 'Users and services' },
+  { id: 'website', label: 'Website', hint: 'GA traffic' },
+]
+
 export default function AppWebsitePerformancePage() {
   const { isMarketer, isFullAdmin, loading: sessionLoading } = usePanelSession()
   const [view, setView] = useState<View>('growth')
@@ -32,29 +38,16 @@ export default function AppWebsitePerformancePage() {
       {isMarketer ? null : <DashboardBackLink />}
       <DashboardPageHeader
         sectionId="analytics"
-        title="Growth"
-        description="Visits, downloads, MAU, campaigns, and service activity."
+        title="Growth analytics"
+        description="Live pulse for visits, downloads, MAU, campaigns, and service activity — same density as the car-hire ops hub."
       />
+
       <div
         role="tablist"
         aria-label="Performance view"
-        style={{
-          display: 'inline-flex',
-          padding: 4,
-          gap: 4,
-          borderRadius: 12,
-          background: '#F1F5F9',
-          marginBottom: 16,
-          flexWrap: 'wrap',
-        }}
+        className="mb-5 inline-flex max-w-full flex-wrap gap-1.5 rounded-xl bg-surface-container p-1"
       >
-        {(
-          [
-            { id: 'growth', label: 'Overview' },
-            { id: 'app', label: 'App activity' },
-            { id: 'website', label: 'Website' },
-          ] as const
-        ).map(tab => {
+        {TABS.map(tab => {
           const active = view === tab.id
           return (
             <button
@@ -63,24 +56,25 @@ export default function AppWebsitePerformancePage() {
               role="tab"
               aria-selected={active}
               onClick={() => setView(tab.id)}
-              style={{
-                border: 0,
-                borderRadius: 9,
-                padding: '8px 16px',
-                font: 'inherit',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: active ? '#fff' : 'transparent',
-                color: active ? '#0F172A' : '#64748B',
-                boxShadow: active ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
-              }}
+              className={`rounded-lg px-4 py-2.5 text-left transition-all ${
+                active
+                  ? 'bg-primary text-on-primary shadow-[0_2px_8px_rgba(0,31,63,0.18)]'
+                  : 'text-on-surface-variant hover:bg-surface-container-lowest'
+              }`}
             >
-              {tab.label}
+              <span className="block text-[13px] font-bold leading-none">{tab.label}</span>
+              <span
+                className={`mt-1 block text-[11px] font-medium ${
+                  active ? 'text-secondary-fixed' : 'text-on-surface-variant/80'
+                }`}
+              >
+                {tab.hint}
+              </span>
             </button>
           )
         })}
       </div>
+
       <div hidden={view !== 'growth'}>
         <GrowthOverviewPanel />
       </div>
