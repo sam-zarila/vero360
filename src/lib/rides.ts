@@ -42,6 +42,10 @@ export type AdminRide = {
   taxiPlate: string | null
   taxiMake: string | null
   taxiModel: string | null
+  /** Last known taxi GPS from driver location updates (may be null). */
+  taxiLatitude: number | null
+  taxiLongitude: number | null
+  taxiLocationUpdatedAt: string | null
   cancellationReason: string | null
   passengerNotes: string | null
   startTime: string | null
@@ -141,6 +145,9 @@ export function parseAdminRide(raw: unknown): AdminRide | null {
     taxiPlate: nullableStr(item.taxiPlate),
     taxiMake: nullableStr(item.taxiMake),
     taxiModel: nullableStr(item.taxiModel),
+    taxiLatitude: item.taxiLatitude == null ? null : toNum(item.taxiLatitude),
+    taxiLongitude: item.taxiLongitude == null ? null : toNum(item.taxiLongitude),
+    taxiLocationUpdatedAt: parseDate(item.taxiLocationUpdatedAt),
     cancellationReason: nullableStr(item.cancellationReason),
     passengerNotes: nullableStr(item.passengerNotes),
     startTime: parseDate(item.startTime),
@@ -266,6 +273,19 @@ export function adminCanCancelRide(ride: AdminRide): boolean {
   return ride.status !== 'COMPLETED' && ride.status !== 'CANCELLED'
 }
 
+export function adminCanAssignRide(ride: AdminRide): boolean {
+  return (
+    ride.status === 'REQUESTED' ||
+    ride.status === 'ACCEPTED' ||
+    ride.status === 'DRIVER_ARRIVED'
+  )
+}
+
 export function adminCanMarkPaid(ride: AdminRide): boolean {
   return ride.status === 'COMPLETED' && ride.paymentStatus.toLowerCase() !== 'paid'
+}
+
+export function formatTaxiCoords(ride: AdminRide): string {
+  if (ride.taxiLatitude == null || ride.taxiLongitude == null) return '—'
+  return `${ride.taxiLatitude.toFixed(5)}, ${ride.taxiLongitude.toFixed(5)}`
 }

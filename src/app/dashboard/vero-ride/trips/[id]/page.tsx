@@ -5,11 +5,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { adminFetch } from '@/lib/panel-client-auth'
 import {
+  adminCanAssignRide,
   adminCanCancelRide,
   adminCanMarkPaid,
   formatDateTime,
   formatRideDistanceKm,
   formatRideFareMwk,
+  formatTaxiCoords,
   paymentStatusTone,
   rideStatusLabel,
   rideStatusTone,
@@ -20,6 +22,7 @@ import { useConfirm } from '../../../ConfirmDialog'
 const ACTION_ACCEPT = { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' }
 const ACTION_REJECT = { bg: '#FEF2F2', color: '#B91C1C', border: '#FECACA' }
 const ACTION_SUCCESS = { bg: '#ECFDF5', color: '#047857', border: '#A7F3D0' }
+const ACTION_WARN = { bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -63,6 +66,8 @@ export default function RideTripDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [paidNote, setPaidNote] = useState('')
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignTaxiId, setAssignTaxiId] = useState('')
 
   const load = useCallback(async () => {
     if (!id) return
@@ -134,6 +139,39 @@ export default function RideTripDetailPage() {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Mark paid failed')
+    } finally {
+      setActing(false)
+    }
+  }
+
+  async function assignDriver() {
+    const taxiId = Number(assignTaxiId.trim())
+    if (!Number.isFinite(taxiId) || taxiId < 1) return
+
+    const isReassign = ride?.taxiId != null
+    const ok = await confirm({
+      title: isReassign ? 'Reassign driver?' : 'Assign driver?',
+      message: isReassign
+        ? `Replace the current taxi with taxi #${taxiId}. The previous driver is freed; the new driver gets the trip as Accepted.`
+        : `Assign taxi #${taxiId} to this requested trip. The taxi must be online/available.`,
+      confirmLabel: isReassign ? 'Reassign' : 'Assign',
+    })
+    if (!ok) return
+
+    setActing(true)
+    setNotice('')
+    setError('')
+    try {
+      const path = isReassign
+        ? `/api/admin/rides/${id}/reassign`
+        : `/api/admin/rides/${id}/assign`
+      await postJson(path, { taxiId })
+      setAssignOpen(false)
+      setAssignTaxiId('')
+      setNotice(isReassign ? 'Driver reassigned.' : 'Driver assigned.')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Assign failed')
     } finally {
       setActing(false)
     }
@@ -271,6 +309,19 @@ export default function RideTripDetailPage() {
           gap: 8,
         }}
       >
+        {adminCanAssignRide(ride) && (
+          <button
+            type="button"
+            disabled={acting}
+            onClick={() => {
+              setAssignTaxiId(ride.taxiId != null ? String(ride.taxiId) : '')
+              setAssignOpen(true)
+            }}
+            style={actionBtn(ACTION_WARN)}
+          >
+            {ride.taxiId != null ? 'Reassign driver' : 'Assign driver'}
+          </button>
+        )}
         {adminCanCancelRide(ride) && (
           <button
             type="button"
@@ -423,6 +474,11 @@ export default function RideTripDetailPage() {
           <DetailRow label="Plate" value={ride.taxiPlate || '—'} />
           <DetailRow label="Driver ID" value={ride.driverId != null ? String(ride.driverId) : '—'} />
           <DetailRow label="Taxi ID" value={ride.taxiId != null ? String(ride.taxiId) : '—'} />
+          <DetailRow label="Last known coords" value={formatTaxiCoords(ride)} />
+          <DetailRow
+            label="Location updated"
+            value={formatDateTime(ride.taxiLocationUpdatedAt) || '—'}
+          />
         </section>
 
         <section
@@ -443,6 +499,76 @@ export default function RideTripDetailPage() {
           )}
         </section>
       </div>
+
+      {assignOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 16,
+            zIndex: 50,
+          }}
+          onClick={() => !acting && setAssignOpen(false)}
+        >
+          <div
+            style={{
+              width: 'min(480px, 100%)',
+              background: '#fff',
+              borderRadius: 16,
+              padding: 20,
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800 }}>
+              {ride.taxiId != null ? 'Reassign driver' : 'Assign driver'}
+            </h3>
+            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: 14 }}>
+              Enter the taxi ID from the driver fleet. The taxi must be available and match the
+              requested vehicle class ({ride.preferredVehicleClass}).
+            </p>
+            <input
+              type="number"
+              min={1}
+              value={assignTaxiId}
+              onChange={e => setAssignTaxiId(e.target.value)}
+              placeholder="Taxi ID"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: '1px solid var(--border)',
+                fontSize: 14,
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => setAssignOpen(false)}
+                style={actionBtn({ bg: '#fff', color: 'var(--text-2)', border: 'var(--border)' })}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                disabled={acting || !assignTaxiId.trim() || Number(assignTaxiId) < 1}
+                onClick={() => void assignDriver()}
+                style={actionBtn(ACTION_WARN)}
+              >
+                {ride.taxiId != null ? 'Reassign' : 'Assign'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cancelOpen && (
         <div

@@ -388,6 +388,7 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
     items: [
       { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: 'car', badgeKey: 'drivers' },
       { href: '/dashboard/vero-ride/trips', label: 'Vero Ride Trips', icon: 'car', badgeKey: 'rides' },
+      { href: '/dashboard/vero-ride/live', label: 'Vero Ride Live', icon: 'car' },
       { href: '/dashboard/vero-courier', label: 'Vero Courier', icon: 'truck', badgeKey: 'courier' },
       { href: '/dashboard/food', label: 'Food', icon: 'food', badgeKey: 'food' },
       { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },

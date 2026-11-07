@@ -144,6 +144,21 @@ export default function VeroRideTripsPage() {
         actions={
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
             <Link
+              href="/dashboard/vero-ride/live"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 10,
+                border: '1px solid var(--border)',
+                background: '#fff',
+                color: 'var(--text-2)',
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              Live
+            </Link>
+            <Link
               href="/dashboard/vero-ride"
               style={{
                 padding: '8px 12px',
