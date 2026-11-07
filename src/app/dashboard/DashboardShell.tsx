@@ -27,9 +27,14 @@ function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard/vero-ride/trips') {
     return pathname === href || pathname.startsWith(`${href}/`)
   }
+  if (href === '/dashboard/vero-ride/live' || href === '/dashboard/vero-ride/sos') {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
   if (href === '/dashboard/vero-ride') {
     if (pathname === '/dashboard/vero-ride') return true
     if (pathname.startsWith('/dashboard/vero-ride/trips')) return false
+    if (pathname.startsWith('/dashboard/vero-ride/live')) return false
+    if (pathname.startsWith('/dashboard/vero-ride/sos')) return false
     return pathname.startsWith('/dashboard/vero-ride/')
   }
   if (href === '/dashboard/marketing/tasks') {

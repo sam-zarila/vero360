@@ -31,6 +31,10 @@ export type AdminRide = {
   actualFare: number | null
   platformFee: number | null
   driverEarnings: number | null
+  cancellationFee: number | null
+  passengerRating: number | null
+  fareBasis: string | null
+  surgeMultiplier: number | null
   passengerId: number
   passengerName: string | null
   passengerPhone: string | null
@@ -52,8 +56,20 @@ export type AdminRide = {
   endTime: string | null
   createdAt: string | null
   updatedAt: string | null
+  openSosCount: number
+  lastSosAt: string | null
   needsAttention: boolean
   attentionReasons: string[]
+}
+
+export type AdminSosIncident = {
+  id: number
+  rideId: number
+  userId: number
+  message: string | null
+  latitude: number | null
+  longitude: number | null
+  createdAt: string | null
 }
 
 export type AdminRideCounts = {
@@ -134,6 +150,10 @@ export function parseAdminRide(raw: unknown): AdminRide | null {
     actualFare: item.actualFare == null ? null : toNum(item.actualFare),
     platformFee: item.platformFee == null ? null : toNum(item.platformFee),
     driverEarnings: item.driverEarnings == null ? null : toNum(item.driverEarnings),
+    cancellationFee: item.cancellationFee == null ? null : toNum(item.cancellationFee),
+    passengerRating: item.passengerRating == null ? null : toNum(item.passengerRating),
+    fareBasis: nullableStr(item.fareBasis),
+    surgeMultiplier: item.surgeMultiplier == null ? null : toNum(item.surgeMultiplier),
     passengerId: toId(item.passengerId),
     passengerName: nullableStr(item.passengerName),
     passengerPhone: nullableStr(item.passengerPhone),
@@ -154,8 +174,46 @@ export function parseAdminRide(raw: unknown): AdminRide | null {
     endTime: parseDate(item.endTime),
     createdAt: parseDate(item.createdAt),
     updatedAt: parseDate(item.updatedAt),
+    openSosCount: toId(item.openSosCount),
+    lastSosAt: parseDate(item.lastSosAt),
     needsAttention: item.needsAttention === true,
     attentionReasons: parseStringArray(item.attentionReasons),
+  }
+}
+
+export function parseAdminSosIncident(raw: unknown): AdminSosIncident | null {
+  const item = asRecord(raw)
+  if (!item) return null
+  const id = toId(item.id)
+  const rideId = toId(item.rideId)
+  if (!id || !rideId) return null
+  return {
+    id,
+    rideId,
+    userId: toId(item.userId),
+    message: nullableStr(item.message),
+    latitude: item.latitude == null ? null : toNum(item.latitude),
+    longitude: item.longitude == null ? null : toNum(item.longitude),
+    createdAt: parseDate(item.createdAt),
+  }
+}
+
+export function parseAdminSosIncidentsResponse(body: unknown): {
+  incidents: AdminSosIncident[]
+  total: number
+} {
+  const root = asRecord(body) ?? {}
+  const raw = Array.isArray(root.incidents)
+    ? root.incidents
+    : Array.isArray(root.items)
+      ? root.items
+      : []
+  const incidents = raw
+    .map(parseAdminSosIncident)
+    .filter((item): item is AdminSosIncident => item != null)
+  return {
+    incidents,
+    total: toId(root.total) || incidents.length,
   }
 }
 

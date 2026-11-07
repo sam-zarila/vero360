@@ -426,15 +426,68 @@ export default function RideTripDetailPage() {
             value={formatRideFareMwk(ride.estimatedFare)}
           />
           <DetailRow label="Actual fare" value={formatRideFareMwk(ride.actualFare)} />
+          <DetailRow label="Fare basis" value={ride.fareBasis || '—'} />
+          <DetailRow
+            label="Surge"
+            value={
+              ride.surgeMultiplier != null && ride.surgeMultiplier > 0
+                ? `${ride.surgeMultiplier.toFixed(2)}×`
+                : '—'
+            }
+          />
           <DetailRow label="Platform fee" value={formatRideFareMwk(ride.platformFee)} />
           <DetailRow
             label="Driver earnings"
             value={formatRideFareMwk(ride.driverEarnings)}
           />
+          <DetailRow
+            label="Cancel fee"
+            value={formatRideFareMwk(ride.cancellationFee)}
+          />
+          <DetailRow
+            label="Passenger rating"
+            value={
+              ride.passengerRating != null ? `${ride.passengerRating}/5` : '—'
+            }
+          />
           <DetailRow label="Payment status" value={ride.paymentStatus} />
           <DetailRow label="Payment channel" value={ride.paymentChannel || '—'} />
           <DetailRow label="Transaction ref" value={ride.paymentTxRef || '—'} />
           <DetailRow label="Paid at" value={formatDateTime(ride.paidAt) || '—'} />
+        </section>
+
+        <section
+          style={{
+            background: '#fff',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            padding: 18,
+          }}
+        >
+          <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800 }}>Safety / SOS</h2>
+          <DetailRow
+            label="Open SOS"
+            value={ride.openSosCount > 0 ? String(ride.openSosCount) : 'None'}
+          />
+          <DetailRow
+            label="Last SOS"
+            value={formatDateTime(ride.lastSosAt) || '—'}
+          />
+          {ride.openSosCount > 0 ? (
+            <div style={{ paddingTop: 12 }}>
+              <Link
+                href="/dashboard/vero-ride/sos"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: '#B91C1C',
+                  textDecoration: 'none',
+                }}
+              >
+                View SOS queue →
+              </Link>
+            </div>
+          ) : null}
         </section>
 
         <section

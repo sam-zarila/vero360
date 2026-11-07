@@ -23,6 +23,7 @@ const POLL_MS = 10_000
 
 export default function VeroRideLivePage() {
   const [items, setItems] = useState<AdminRide[]>([])
+  const [sosCount, setSosCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
@@ -31,12 +32,17 @@ export default function VeroRideLivePage() {
     if (!silent) setLoading(true)
     setError('')
     try {
-      const res = await adminFetch('/api/admin/rides?status=ACTIVE&take=200', {
-        cache: 'no-store',
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to load active rides')
+      const [ridesRes, sosRes] = await Promise.all([
+        adminFetch('/api/admin/rides?status=ACTIVE&take=200', { cache: 'no-store' }),
+        adminFetch('/api/admin/rides/sos?take=1', { cache: 'no-store' }),
+      ])
+      const data = await ridesRes.json()
+      if (!ridesRes.ok) throw new Error(data.error || 'Failed to load active rides')
       setItems(data.items || [])
+      if (sosRes.ok) {
+        const sosData = await sosRes.json()
+        setSosCount(typeof sosData.total === 'number' ? sosData.total : 0)
+      }
       setUpdatedAt(new Date())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load active rides')
@@ -61,6 +67,21 @@ export default function VeroRideLivePage() {
         description="Active rides with last-known driver coordinates from taxi location updates. Refreshes every 10s. (No map library in this panel — table view only.)"
         actions={
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <Link
+              href="/dashboard/vero-ride/sos"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 10,
+                border: '1px solid #FECACA',
+                background: sosCount > 0 ? '#FEF2F2' : '#fff',
+                color: sosCount > 0 ? '#B91C1C' : 'var(--text-2)',
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              SOS{sosCount > 0 ? ` (${sosCount})` : ''}
+            </Link>
             <Link
               href="/dashboard/vero-ride/trips"
               style={{
