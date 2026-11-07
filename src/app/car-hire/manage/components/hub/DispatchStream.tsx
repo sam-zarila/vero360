@@ -106,8 +106,7 @@ export function DispatchStream({
     <div className="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,31,63,0.06)]">
       <HubSectionTitle
         icon={<LuListFilter className="text-[17px]" aria-hidden />}
-        title="Live turnaround & dispatch stream"
-        subtitle="Scheduled handovers, return bays, and deposit reconciliations for today."
+        title="Today"
         trailing={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-xl bg-surface-container-low p-1">

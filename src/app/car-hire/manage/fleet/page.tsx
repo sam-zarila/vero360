@@ -461,9 +461,7 @@ export default function ProviderFleetPage() {
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Provider workspace"
           title="Fleet"
-          description="Vehicles belonging to your approved operator workspace."
         />
         <ProviderLoading label="Loading your fleet…" />
       </>
@@ -474,9 +472,7 @@ export default function ProviderFleetPage() {
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Provider workspace"
           title="Fleet"
-          description="Vehicles belonging to your approved operator workspace."
         />
         <ProviderError
           message={
@@ -500,9 +496,7 @@ export default function ProviderFleetPage() {
   return (
     <>
       <ProviderPageHeading
-        eyebrow="Provider workspace"
         title="Fleet"
-        description="Add and edit the vehicles you own. Listing status and operational availability are separate; date blocks prevent new bookings without unpublishing a listing."
         actions={
           <>
             {vehicleForm ? null : (
@@ -621,7 +615,7 @@ export default function ProviderFleetPage() {
                 <div
                   style={{
                     height: 132,
-                    background: 'linear-gradient(160deg, #FFF7ED, #FFEDD5)',
+                    background: 'linear-gradient(135deg, #001f3f, #000613)',
                     overflow: 'hidden',
                   }}
                 >
@@ -639,7 +633,7 @@ export default function ProviderFleetPage() {
                         height: '100%',
                         display: 'grid',
                         placeItems: 'center',
-                        color: '#C2410C',
+                        color: '#ff851b',
                         fontWeight: 900,
                         fontSize: 13,
                       }}
@@ -679,7 +673,7 @@ export default function ProviderFleetPage() {
                       marginTop: 11,
                     }}
                   >
-                    <span style={{ fontSize: 16, fontWeight: 900, color: '#C2410C' }}>
+                    <span className="font-heading text-[16px] font-extrabold text-primary">
                       {car.dailyRate > 0 ? `${formatMwk(car.dailyRate)} / day` : 'Rate not set'}
                     </span>
                     <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)' }}>
@@ -827,18 +821,17 @@ function BlockDatesForm({
       style={{
         marginTop: 13,
         padding: 13,
-        borderRadius: 13,
-        border: '1px solid #FED7AA',
-        background: '#FFFBF5',
+        borderRadius: 12,
+        background: '#f6f3f2',
         display: 'grid',
         gap: 10,
       }}
     >
       <div>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 900, color: '#9A3412' }}>
+        <p className="font-heading text-[14px] font-bold text-primary" style={{ margin: 0 }}>
           Block {block.carTitle}
         </p>
-        <p style={{ margin: '3px 0 0', fontSize: 11, lineHeight: 1.5, color: '#9A3412' }}>
+        <p style={{ margin: '3px 0 0', fontSize: 11, lineHeight: 1.5, color: '#43474e' }}>
           Blocked vehicles are removed from date-based search for this interval. Existing bookings
           are not cancelled.
         </p>
@@ -1055,7 +1048,7 @@ function VehicleEditor({
               fontWeight: 900,
               letterSpacing: '0.09em',
               textTransform: 'uppercase',
-              color: '#C2410C',
+              color: '#43474e',
             }}
           >
             {editing ? 'Edit listing' : 'New listing'}
@@ -1350,7 +1343,7 @@ function VehicleEditor({
                     margin: 0,
                     borderRadius: 13,
                     overflow: 'hidden',
-                    border: index === 0 ? '2px solid #F97316' : '1px solid var(--border)',
+                    border: index === 0 ? '2px solid #001f3f' : '1px solid var(--border)',
                     background: 'var(--surface)',
                   }}
                 >
@@ -1369,7 +1362,7 @@ function VehicleEditor({
                         left: 6,
                         padding: '3px 7px',
                         borderRadius: 999,
-                        background: '#F97316',
+                        background: '#001f3f',
                         color: '#fff',
                         fontSize: 9,
                         fontWeight: 900,

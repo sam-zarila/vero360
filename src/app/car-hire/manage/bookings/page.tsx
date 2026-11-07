@@ -33,6 +33,9 @@ import {
   ghostButton,
   inputStyle,
   labelStyle,
+  countPillStyle,
+  filterBarStyle,
+  filterChipStyle,
   primaryButton,
 } from '../components/ProviderUI'
 
@@ -156,9 +159,7 @@ export default function ProviderBookingsPage() {
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Provider workspace"
           title="Bookings"
-          description="Review authorised booking requests and rentals for your operator's vehicles."
         />
         <ProviderLoading label="Loading provider bookings…" />
       </>
@@ -169,9 +170,7 @@ export default function ProviderBookingsPage() {
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Provider workspace"
           title="Bookings"
-          description="Review authorised booking requests and rentals for your operator's vehicles."
         />
         <ProviderError
           message={
@@ -201,9 +200,7 @@ export default function ProviderBookingsPage() {
   return (
     <>
       <ProviderPageHeading
-        eyebrow="Provider workspace"
         title="Bookings"
-        description="Confirm or reject pending requests, then check the schedule. The backend is authoritative for status and availability."
         actions={
           <button type="button" onClick={() => void load()} style={ghostButton}>
             Refresh bookings
@@ -217,14 +214,7 @@ export default function ProviderBookingsPage() {
         </div>
       ) : null}
 
-      <div
-        style={{
-          display: 'flex',
-          gap: 7,
-          flexWrap: 'wrap',
-          marginBottom: 16,
-        }}
-      >
+      <div style={{ ...filterBarStyle, marginBottom: 16, width: 'fit-content', maxWidth: '100%' }}>
         {FILTERS.map(item => {
           const active = filter === item.id
           return (
@@ -238,37 +228,10 @@ export default function ProviderBookingsPage() {
                 setActionError('')
               }}
               aria-pressed={active}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '8px 12px',
-                borderRadius: 999,
-                border: `1px solid ${active ? '#FDBA74' : 'var(--border)'}`,
-                background: active ? '#FFF7ED' : '#fff',
-                color: active ? '#9A3412' : 'var(--text-2)',
-                fontSize: 12,
-                fontWeight: 800,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              style={filterChipStyle(active)}
             >
               {item.label}
-              <span
-                style={{
-                  minWidth: 18,
-                  padding: '0 5px',
-                  borderRadius: 999,
-                  background: active ? '#FED7AA' : 'var(--surface)',
-                  color: active ? '#9A3412' : 'var(--text-3)',
-                  fontSize: 10,
-                  fontWeight: 900,
-                  lineHeight: '17px',
-                  textAlign: 'center',
-                }}
-              >
-                {counts.get(item.id) ?? 0}
-              </span>
+              <span style={countPillStyle(active)}>{counts.get(item.id) ?? 0}</span>
             </button>
           )
         })}
@@ -319,7 +282,7 @@ export default function ProviderBookingsPage() {
                         height: 54,
                         borderRadius: 10,
                         overflow: 'hidden',
-                        background: 'linear-gradient(160deg, #FFF7ED, #FFEDD5)',
+                        background: 'linear-gradient(135deg, #001f3f, #000613)',
                         flexShrink: 0,
                       }}
                     >
@@ -338,7 +301,7 @@ export default function ProviderBookingsPage() {
                             height: '100%',
                             display: 'grid',
                             placeItems: 'center',
-                            color: '#C2410C',
+                            color: '#ff851b',
                             fontSize: 10,
                             fontWeight: 900,
                           }}
@@ -569,7 +532,7 @@ export default function ProviderBookingsPage() {
 }
 
 const inlineLink = {
-  color: '#C2410C',
+  color: '#001f3f',
   fontWeight: 700,
   textDecoration: 'none',
 } as const

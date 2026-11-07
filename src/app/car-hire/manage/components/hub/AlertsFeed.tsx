@@ -2,15 +2,7 @@
 
 import Link from 'next/link'
 import { carTitle, type DispatchBoard, type DispatchBooking } from '@/lib/car-hire'
-import {
-  LuArrowUpRight,
-  LuCircleAlert,
-  LuCircleCheck,
-  LuClock,
-  LuRoute,
-  LuTimer,
-  LuWrench,
-} from 'react-icons/lu'
+import { LuCircleAlert, LuCircleCheck, LuClock, LuTimer, LuWrench } from 'react-icons/lu'
 import type { IconType } from 'react-icons'
 import { dayOf, relativeLabel, timeOf } from './format'
 
@@ -25,7 +17,6 @@ type Alert = {
   when: string
   body: string
   primary: { label: string; href: string }
-  secondary?: { label: string; href: string }
 }
 
 const TONE_STYLES: Record<
@@ -85,7 +76,6 @@ function buildAlerts(board: DispatchBoard | null, now: number | null): Alert[] {
         booking.renterName ? ` Renter: ${booking.renterName}.` : ''
       }`,
       primary: { label: 'Open booking', href: bookingHref(booking) },
-      secondary: { label: 'Dispatch board', href: '/car-hire/manage/dispatch' },
     })
   }
 
@@ -102,7 +92,6 @@ function buildAlerts(board: DispatchBoard | null, now: number | null): Alert[] {
         booking.branch ? ` at ${booking.branch.name}` : ''
       }. The car has not been released.`,
       primary: { label: 'Open booking', href: bookingHref(booking) },
-      secondary: { label: 'Dispatch board', href: '/car-hire/manage/dispatch' },
     })
   }
 
@@ -118,7 +107,6 @@ function buildAlerts(board: DispatchBoard | null, now: number | null): Alert[] {
         booking.branch ? ` at ${booking.branch.name}` : ''
       }. Prepare the car.`,
       primary: { label: 'Open booking', href: bookingHref(booking) },
-      secondary: { label: 'All bookings', href: '/car-hire/manage/bookings' },
     })
   }
 
@@ -135,7 +123,6 @@ function buildAlerts(board: DispatchBoard | null, now: number | null): Alert[] {
         booking.holdExpiresAt,
       )}.`,
       primary: { label: 'Decide now', href: bookingHref(booking) },
-      secondary: { label: 'All requests', href: '/car-hire/manage/bookings' },
     })
   }
 
@@ -151,7 +138,6 @@ function buildAlerts(board: DispatchBoard | null, now: number | null): Alert[] {
         item.overdue ? 'past due' : `due on ${dayOf(item.nextServiceDueAt)}`
       }. Book a slot or hold the unit out of dispatch.`,
       primary: { label: 'Open fleet', href: '/car-hire/manage/fleet' },
-      secondary: { label: 'Dispatch board', href: '/car-hire/manage/dispatch' },
     })
   }
 
@@ -169,37 +155,11 @@ export function AlertsFeed({
 
   if (alerts.length === 0) {
     return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="flex items-start gap-3.5 rounded-xl bg-surface-container-lowest p-4 shadow-[0_1px_6px_rgba(0,31,63,0.06)]">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-            <LuCircleCheck className="text-[20px]" aria-hidden />
-          </span>
-          <div>
-            <p className="text-[12.5px] font-bold text-primary">No fleet alerts</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-on-surface-variant">
-              {board
-                ? 'Nothing is overdue, unhanded, or awaiting a decision on today’s board.'
-                : 'The dispatch board could not be loaded, so alert checks are paused.'}
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/car-hire/manage/dispatch"
-          className="flex items-center justify-between gap-3 rounded-xl bg-surface-container-lowest p-4 shadow-[0_1px_6px_rgba(0,31,63,0.06)] transition-colors hover:bg-surface-container-low"
-        >
-          <div className="flex items-center gap-3.5">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface-container text-on-surface">
-              <LuRoute className="text-[20px]" aria-hidden />
-            </span>
-            <div>
-              <p className="text-[12.5px] font-bold text-primary">Open the dispatch board</p>
-              <p className="mt-1 text-[12px] text-on-surface-variant">
-                Handovers, returns, and service due for today.
-              </p>
-            </div>
-          </div>
-          <LuArrowUpRight className="shrink-0 text-[16px] text-outline" aria-hidden />
-        </Link>
+      <div className="flex items-center gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 shadow-[0_1px_6px_rgba(0,31,63,0.06)]">
+        <LuCircleCheck className="shrink-0 text-[18px] text-emerald-700" aria-hidden />
+        <p className="text-[13px] text-on-surface-variant">
+          {board ? 'Nothing needs attention today.' : 'Alerts could not be loaded.'}
+        </p>
       </div>
     )
   }
@@ -234,22 +194,13 @@ export function AlertsFeed({
               <p className="mt-1 text-[12px] leading-relaxed text-on-surface-variant">
                 {alert.body}
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="mt-3">
                 <Link
                   href={alert.primary.href}
-                  className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors ${tone.primary}`}
+                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors ${tone.primary}`}
                 >
                   {alert.primary.label}
-                  <LuArrowUpRight className="text-[13px]" aria-hidden />
                 </Link>
-                {alert.secondary ? (
-                  <Link
-                    href={alert.secondary.href}
-                    className="rounded-lg bg-surface-container-high px-3 py-1.5 text-[11px] font-semibold text-on-surface transition-colors hover:bg-surface-container"
-                  >
-                    {alert.secondary.label}
-                  </Link>
-                ) : null}
               </div>
             </div>
           </article>

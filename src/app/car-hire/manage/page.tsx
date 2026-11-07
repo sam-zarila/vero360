@@ -6,7 +6,6 @@ import { PLAY_STORE_URL } from '@/app/components/landing/veroServices'
 import { IosStoreCta } from '@/app/components/landing/IosReviewNotice'
 import { getDispatchBoard, getFleet, getSummary, ProviderApiError } from '@/lib/car-hire-owner-api'
 import type { DispatchBoard, OwnerVehicle, ProviderSummary } from '@/lib/car-hire'
-import { formatDateTime } from '@/lib/vero-api'
 import { useProviderAuth } from './components/ProviderShell'
 import { ProviderNotice, ghostButton, primaryButton } from './components/ProviderUI'
 import { PulseMetrics } from './components/hub/PulseMetrics'
@@ -14,14 +13,7 @@ import { FleetReadinessBoard, FocusUnitPanel } from './components/hub/FleetReadi
 import { AlertsFeed } from './components/hub/AlertsFeed'
 import { DispatchStream } from './components/hub/DispatchStream'
 import { needsAttention } from './components/hub/format'
-import {
-  LuArrowUpRight,
-  LuCircleAlert,
-  LuPlus,
-  LuRefreshCw,
-  LuRoute,
-  LuTriangleAlert,
-} from 'react-icons/lu'
+import { LuCircleAlert, LuRefreshCw, LuTriangleAlert } from 'react-icons/lu'
 
 type ViewState = 'loading' | 'ready' | 'no-operator' | 'error'
 
@@ -287,10 +279,7 @@ export default function ProviderOverviewPage() {
       />
 
       {actions.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-container-lowest px-3 py-2 shadow-[0_1px_6px_rgba(0,31,63,0.05)]">
-          <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-            Action queues
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
           {actions.map(action => (
             <Link
               key={action.code || action.label}
@@ -314,8 +303,7 @@ export default function ProviderOverviewPage() {
         <div className="flex items-start gap-2.5 rounded-xl border border-secondary-fixed bg-secondary-fixed/30 px-3.5 py-2.5">
           <LuCircleAlert className="mt-0.5 shrink-0 text-[15px] text-secondary" aria-hidden />
           <p className="text-[12px] leading-relaxed text-on-secondary-fixed">
-            {auxError} The counters above are still authoritative; refresh to retry the rest of the
-            hub.
+            {auxError} Refresh to try again.
           </p>
         </div>
       ) : null}
@@ -332,50 +320,16 @@ export default function ProviderOverviewPage() {
           />
         </div>
         <div className="xl:col-span-4">
-          <FocusUnitPanel
-            car={selectedUnit}
-            currency={summary.currency}
-            fleetTotal={summary.fleet.total}
-            now={now}
-          />
+          <FocusUnitPanel car={selectedUnit} currency={summary.currency} now={now} />
         </div>
       </div>
 
       <section className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="font-heading text-[16px] font-bold text-primary">Fleet health alerts</h2>
-            <p className="text-[11.5px] text-on-surface-variant">
-              Overdue returns, unhanded pickups, decisions and service windows, straight from
-              today&apos;s board.
-            </p>
-          </div>
-          <Link
-            href="/car-hire/manage/dispatch"
-            className="flex items-center gap-1 text-[11.5px] font-bold text-primary hover:text-secondary"
-          >
-            Open dispatch board
-            <LuArrowUpRight className="text-[13px]" aria-hidden />
-          </Link>
-        </div>
+        <h2 className="font-heading text-[16px] font-bold text-primary">Alerts</h2>
         <AlertsFeed board={board} now={now} />
       </section>
 
       <DispatchStream board={board} currency={summary.currency} now={now} />
-
-      <div className="space-y-2.5 pb-2">
-        <p className="text-[11.5px] text-on-surface-variant">
-          Data as of{' '}
-          <strong className="font-semibold text-on-surface">
-            {summary.asOf ? formatDateTime(summary.asOf) : 'a time not provided by the API'}
-          </strong>
-          . Time-sensitive availability is rechecked by the backend at booking time.
-        </p>
-        <ProviderNotice tone="info">
-          This workspace shows operational fleet and booking status only. Booking totals are not
-          settled provider payouts, and no payout or revenue figure is inferred from these counts.
-        </ProviderNotice>
-      </div>
     </div>
   )
 }
@@ -394,56 +348,32 @@ function HubHeader({
   currency: string | null
 }) {
   return (
-    <div className="flex flex-col justify-between gap-4 pt-2 xl:flex-row xl:items-end">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.1em] text-on-surface-variant">
-          <span className="font-bold text-secondary">Car hire HQ</span>
-          <span className="text-outline">/</span>
-          <span>Command console</span>
-          <span className="text-outline">/</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container px-2 py-0.5 normal-case tracking-normal">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-            Data sync · {synced}
-          </span>
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-baseline gap-3">
-          <h1 className="font-heading text-[26px] font-extrabold leading-none tracking-tight text-primary sm:text-[32px]">
-            Fleet operations hub
-          </h1>
-          {clockLabel ? (
-            <span className="text-[12px] text-on-surface-variant">{clockLabel}</span>
-          ) : null}
-        </div>
+    <div className="flex flex-col justify-between gap-3 pt-1 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-3">
+        <h1 className="font-heading text-[26px] font-extrabold leading-none tracking-tight text-primary">
+          Overview
+        </h1>
+        {clockLabel ? (
+          <span className="text-[12px] text-on-surface-variant">{clockLabel}</span>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-xl bg-surface-container-lowest px-3 py-2 text-[11.5px] font-semibold text-on-surface shadow-[0_1px_4px_rgba(0,31,63,0.06)]">
-          Currency: {currency || '—'}
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-lowest px-2.5 py-1.5 text-[11.5px] text-on-surface-variant shadow-[0_1px_4px_rgba(0,31,63,0.06)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          Updated {synced}
+          {currency ? ` · ${currency}` : ''}
         </span>
         <button
           type="button"
           onClick={onRefresh}
           disabled={refreshing}
-          title="Refresh from the backend"
-          aria-label="Refresh from the backend"
-          className="grid h-10 w-10 place-items-center rounded-xl bg-surface-container-lowest text-on-surface shadow-[0_1px_4px_rgba(0,31,63,0.06)] transition-colors hover:bg-surface-container disabled:opacity-60"
+          title="Refresh"
+          aria-label="Refresh"
+          className="grid h-9 w-9 place-items-center rounded-xl bg-surface-container-lowest text-on-surface shadow-[0_1px_4px_rgba(0,31,63,0.06)] transition-colors hover:bg-surface-container disabled:opacity-60"
         >
-          <LuRefreshCw className={`text-[18px] ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
+          <LuRefreshCw className={`text-[16px] ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
         </button>
-        <Link
-          href="/car-hire/manage/dispatch"
-          className="flex h-10 items-center gap-1.5 rounded-full bg-surface-container-lowest px-3.5 text-[12px] font-bold text-on-surface shadow-[0_1px_4px_rgba(0,31,63,0.06)] transition-colors hover:bg-surface-container"
-        >
-          <LuRoute className="text-[16px]" aria-hidden />
-          Dispatch
-        </Link>
-        <Link
-          href="/car-hire/manage/fleet"
-          className="flex h-10 items-center gap-1.5 rounded-full bg-secondary-container px-4 text-[12px] font-bold text-on-secondary shadow-[0_2px_8px_rgba(255,133,27,0.28)] transition-all active:scale-95 hover:bg-secondary"
-        >
-          <LuPlus className="text-[16px]" aria-hidden />
-          Add vehicle
-        </Link>
       </div>
     </div>
   )

@@ -176,9 +176,7 @@ export default function ProviderTeamPage() {
 
   const heading = (
     <ProviderPageHeading
-      eyebrow="Provider workspace"
       title="Team"
-      description="Membership roles and permissions for your approved operator. Invitations and removals are authorised by the backend on every request."
       actions={
         <button type="button" onClick={() => void load()} style={ghostButton}>
           Refresh
@@ -554,11 +552,10 @@ const chip = {
   display: 'inline-flex',
   padding: '3px 8px',
   borderRadius: 999,
-  background: '#FFF7ED',
-  border: '1px solid #FED7AA',
-  color: '#9A3412',
+  background: '#f0eded',
+  color: '#000613',
   fontSize: 11,
-  fontWeight: 800,
+  fontWeight: 700,
 } as const
 
 const subTitle = {

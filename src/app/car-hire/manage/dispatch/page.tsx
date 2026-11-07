@@ -65,9 +65,7 @@ export default function ProviderDispatchPage() {
 
   const heading = (
     <ProviderPageHeading
-      eyebrow="Provider workspace"
       title="Dispatch"
-      description="Today's handovers and returns, plus anything that needs attention."
       actions={
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
@@ -169,7 +167,9 @@ export default function ProviderDispatchPage() {
           empty="No returns on this day."
         />
         <ProviderCard>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Service due</h2>
+          <h2 className="font-heading text-[16px] font-bold text-primary" style={{ margin: 0 }}>
+            Service due
+          </h2>
           {board.serviceDue.length === 0 ? (
             <p style={{ ...mutedText, marginTop: 6 }}>
               Nothing due in the next 14 days. Set service dates on each unit in Fleet.
@@ -217,7 +217,9 @@ function BookingSection({
   return (
     <ProviderCard>
       <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>{title}</h2>
+        <h2 className="font-heading text-[16px] font-bold text-primary" style={{ margin: 0 }}>
+          {title}
+        </h2>
         <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-3)' }}>{rows.length}</span>
       </div>
       {hint ? <p style={{ ...mutedText, marginTop: 4 }}>{hint}</p> : null}
@@ -270,11 +272,10 @@ const rowStyle = {
   gap: 8,
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '9px 11px',
-  borderRadius: 10,
-  border: '1px solid var(--border)',
-  background: 'var(--surface)',
+  padding: '10px 12px',
+  borderRadius: 12,
+  background: '#f6f3f2',
 }
 
-const rowTitle = { margin: 0, fontSize: 12, fontWeight: 900, color: 'var(--text-2)' }
-const rowMeta = { margin: '2px 0 0', fontSize: 11, color: 'var(--text-3)' }
+const rowTitle = { margin: 0, fontSize: 12, fontWeight: 700, color: '#000613' }
+const rowMeta = { margin: '2px 0 0', fontSize: 11, color: '#43474e' }

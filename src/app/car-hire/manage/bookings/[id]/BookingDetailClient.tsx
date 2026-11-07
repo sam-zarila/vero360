@@ -520,9 +520,7 @@ export default function BookingDetailClient({ bookingId }: { bookingId: string }
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Booking"
-          title="Booking details"
-          description="Loading the booking, handover inspections, incidents, extensions, and support cases."
+          title="Booking"
         />
         <ProviderLoading label="Loading booking details…" />
       </>
@@ -541,9 +539,7 @@ export default function BookingDetailClient({ bookingId }: { bookingId: string }
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Booking"
-          title="Booking details"
-          description="Handover, incidents, extensions, and support for a single booking."
+          title="Booking"
         />
         <ProviderError
           message={message}
@@ -758,9 +754,7 @@ export default function BookingDetailClient({ bookingId }: { bookingId: string }
   return (
     <>
       <ProviderPageHeading
-        eyebrow="Booking"
         title={booking.bookingNumber}
-        description="Handover inspections, extensions, incidents, and support for this rental. Every action is authorised by the backend and the page refetches afterwards."
         actions={
           <Link href="/car-hire/manage/bookings" style={ghostButton}>
             ← All bookings
@@ -788,7 +782,7 @@ export default function BookingDetailClient({ bookingId }: { bookingId: string }
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {booking.acceptedListingPolicies.chips.map(chip => (
-              <span key={chip.id} style={{ fontSize: 12, fontWeight: 700, padding: '4px 8px', borderRadius: 999, background: '#FFF7ED' }}>
+              <span key={chip.id} style={{ fontSize: 12, fontWeight: 700, padding: '4px 8px', borderRadius: 999, background: '#f0eded', color: '#000613' }}>
                 {chip.label}
               </span>
             ))}
@@ -1724,16 +1718,15 @@ const metaLabel = {
 } as const
 
 const inlineLink = {
-  color: '#C2410C',
-  fontWeight: 800,
+  color: '#001f3f',
+  fontWeight: 700,
   textDecoration: 'none',
 } as const
 
 const subCard = {
-  border: '1px solid var(--border)',
-  borderRadius: 13,
+  borderRadius: 12,
   padding: 13,
-  background: '#fff',
+  background: '#f6f3f2',
 } as const
 
 const rowBetween = {
@@ -1879,9 +1872,8 @@ const formPanel = {
   display: 'grid',
   gap: 10,
   padding: 13,
-  borderRadius: 13,
-  border: '1px solid #FED7AA',
-  background: '#FFFBF5',
+  borderRadius: 12,
+  background: '#f6f3f2',
   marginBottom: 12,
 } as const
 

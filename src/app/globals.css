@@ -3,7 +3,7 @@
 /* ---------------------------------------------------------------------------
    Car-hire operations tokens (Tailwind v4 theme).
    Deep navy chrome + warm neutral surfaces + orange accent, matching the
-   Fleet OS command-hub design. Generates utilities such as:
+   car hire overview dashboard. Generates utilities such as:
      bg-surface-container-lowest  text-on-surface-variant  bg-primary-container
    NOTE: the legacy `--primary` / `--surface` variables below are separate from
    these `--color-*` tokens and continue to drive existing components.
@@ -73,6 +73,24 @@
   --shadow:     0 4px 16px rgba(0,0,0,.08);
   --shadow-lg:  0 12px 40px rgba(0,0,0,.12);
   --shadow-primary: 0 8px 32px rgba(249,115,22,.25);
+}
+
+/* Car hire management uses the same navy surfaces as the overview dashboard.
+   Scoped so the public site keeps its own orange tokens. */
+.manage-workspace {
+  --primary: #001f3f;
+  --primary-dark: #000613;
+  --primary-light: #f6f3f2;
+  --primary-50: #f6f3f2;
+  --text: #1c1b1b;
+  --text-2: #1c1b1b;
+  --text-3: #43474e;
+  --text-4: #74777f;
+  --border: #e5e2e1;
+  --border-2: #c4c6cf;
+  --surface: #f6f3f2;
+  --surface-2: #f0eded;
+  --shadow-sm: 0 2px 10px rgba(0, 31, 63, 0.06);
 }
 
 /* Base resets live in Tailwind's `base` layer so utility classes (bg-*, p-*,

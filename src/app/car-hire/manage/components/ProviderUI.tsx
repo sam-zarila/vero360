@@ -4,6 +4,9 @@ import type { CSSProperties, ReactNode } from 'react'
 import Link from 'next/link'
 import type { StatusTone } from '@/lib/car-hire'
 
+const CARD =
+  'rounded-2xl bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,31,63,0.06)]'
+
 export function ProviderPageHeading({
   eyebrow,
   title,
@@ -16,53 +19,23 @@ export function ProviderPageHeading({
   actions?: ReactNode
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: 14,
-        marginBottom: 20,
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
+    <div className="mb-4 flex flex-col justify-between gap-3 pt-1 sm:flex-row sm:items-center">
+      <div className="min-w-0">
         {eyebrow ? (
-          <p
-            style={{
-              margin: '0 0 5px',
-              fontSize: 11,
-              fontWeight: 900,
-              letterSpacing: 0.7,
-              textTransform: 'uppercase',
-              color: '#C2410C',
-            }}
-          >
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
             {eyebrow}
           </p>
         ) : null}
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 'clamp(25px, 3.4vw, 34px)',
-            fontWeight: 900,
-            letterSpacing: '-0.5px',
-            fontFamily: 'var(--font-display)',
-          }}
-        >
+        <h1 className="font-heading text-[26px] font-extrabold leading-none tracking-tight text-primary">
           {title}
         </h1>
         {description ? (
-          <p style={{ margin: '7px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-3)', maxWidth: 720 }}>
+          <p className="mt-2 max-w-[720px] text-[13px] leading-relaxed text-on-surface-variant">
             {description}
           </p>
         ) : null}
       </div>
-      {actions ? (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {actions}
-        </div>
-      ) : null}
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   )
 }
@@ -70,19 +43,8 @@ export function ProviderPageHeading({
 export function StatusBadge({ tone, label }: { tone: StatusTone; label: string }) {
   return (
     <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '4px 9px',
-        borderRadius: 999,
-        background: tone.bg,
-        color: tone.color,
-        border: `1px solid ${tone.border}`,
-        fontSize: 11,
-        fontWeight: 800,
-        whiteSpace: 'nowrap',
-        lineHeight: 1.4,
-      }}
+      className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold leading-snug"
+      style={{ background: tone.bg, color: tone.color, border: `1px solid ${tone.border}` }}
     >
       {label}
     </span>
@@ -99,16 +61,7 @@ export function ProviderCard({
   padding?: number
 }) {
   return (
-    <div
-      style={{
-        background: '#fff',
-        border: '1px solid var(--border)',
-        borderRadius: 18,
-        boxShadow: 'var(--shadow-sm)',
-        padding,
-        ...style,
-      }}
-    >
+    <div className={CARD} style={{ padding, ...style }}>
       {children}
     </div>
   )
@@ -128,38 +81,48 @@ export function StatCard({
   tone?: 'default' | 'warn' | 'good' | 'muted'
 }) {
   const accent =
-    tone === 'warn' ? '#B45309' : tone === 'good' ? '#047857' : tone === 'muted' ? 'var(--text-3)' : 'var(--text)'
+    tone === 'warn'
+      ? '#964900'
+      : tone === 'good'
+        ? '#047857'
+        : tone === 'muted'
+          ? '#43474e'
+          : '#000613'
   const body = (
     <>
-      <p style={{ margin: 0, fontSize: 11, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text-4)' }}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">
         {label}
       </p>
-      <p style={{ margin: '8px 0 0', fontSize: 30, fontWeight: 900, letterSpacing: '-0.7px', color: accent }}>
+      <p className="mt-2 font-heading text-[30px] font-extrabold leading-none tracking-tight" style={{ color: accent }}>
         {value}
       </p>
-      {hint ? <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.45 }}>{hint}</p> : null}
+      {hint ? <p className="mt-1 text-[12px] leading-snug text-on-surface-variant">{hint}</p> : null}
     </>
   )
+  const className = `${CARD} block min-h-[112px] p-5 text-inherit no-underline`
   if (href) {
     return (
-      <Link href={href} style={{ ...statCardStyle, textDecoration: 'none', color: 'inherit' }}>
+      <Link href={href} className={className}>
         {body}
       </Link>
     )
   }
-  return <div style={statCardStyle}>{body}</div>
+  return <div className={className}>{body}</div>
 }
 
-export function ProviderLoading({ label = 'Loading provider data…' }: { label?: string }) {
+export function ProviderLoading({ label = 'Loading…' }: { label?: string }) {
   return (
-    <ProviderCard>
-      <div style={{ display: 'grid', gap: 10 }}>
-        <div style={{ height: 14, width: '38%', borderRadius: 6, background: 'var(--surface-2)' }} />
-        <div style={{ height: 12, width: '72%', borderRadius: 6, background: 'var(--surface-2)' }} />
-        <div style={{ height: 12, width: '56%', borderRadius: 6, background: 'var(--surface-2)' }} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-[120px] animate-pulse rounded-xl bg-surface-container-lowest shadow-[0_2px_10px_rgba(0,31,63,0.06)]"
+          />
+        ))}
       </div>
-      <p style={{ margin: '14px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--text-3)' }}>{label}</p>
-    </ProviderCard>
+      <p className="text-[12px] font-semibold text-on-surface-variant">{label}</p>
+    </div>
   )
 }
 
@@ -175,11 +138,9 @@ export function ProviderError({
   action?: ReactNode
 }) {
   return (
-    <ProviderCard style={{ borderColor: '#FECACA', background: '#FFF7F7' }}>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#991B1B', lineHeight: 1.55 }}>
-        {message}
-      </p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+    <div className="rounded-2xl border border-error-container bg-error-container/30 p-6">
+      <p className="text-[14px] font-bold leading-relaxed text-error">{message}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
         {onRetry ? (
           <button type="button" onClick={onRetry} style={primaryButton}>
             {retryLabel}
@@ -187,7 +148,7 @@ export function ProviderError({
         ) : null}
         {action}
       </div>
-    </ProviderCard>
+    </div>
   )
 }
 
@@ -201,13 +162,13 @@ export function ProviderEmpty({
   action?: ReactNode
 }) {
   return (
-    <ProviderCard style={{ textAlign: 'center', padding: '38px 22px', borderStyle: 'dashed' }}>
-      <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>{title}</h2>
-      <p style={{ margin: '8px auto 0', maxWidth: 460, fontSize: 14, lineHeight: 1.6, color: 'var(--text-3)' }}>
+    <div className="rounded-2xl border border-dashed border-outline-variant/70 bg-surface-container-low px-6 py-10 text-center">
+      <h2 className="font-heading text-[18px] font-bold text-primary">{title}</h2>
+      <p className="mx-auto mt-2 max-w-[460px] text-[13px] leading-relaxed text-on-surface-variant">
         {body}
       </p>
-      {action ? <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>{action}</div> : null}
-    </ProviderCard>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
+    </div>
   )
 }
 
@@ -218,26 +179,16 @@ export function ProviderNotice({
   tone?: 'info' | 'warn' | 'success' | 'error'
   children: ReactNode
 }) {
-  const palette =
+  const className =
     tone === 'success'
-      ? { bg: '#ECFDF5', color: '#047857', border: '#A7F3D0' }
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
       : tone === 'warn'
-        ? { bg: '#FFFBEB', color: '#B45309', border: '#FDE68A' }
+        ? 'border-secondary-fixed bg-secondary-fixed/40 text-on-secondary-fixed'
         : tone === 'error'
-          ? { bg: '#FEF2F2', color: '#B91C1C', border: '#FECACA' }
-          : { bg: '#FFF7ED', color: '#9A3412', border: '#FED7AA' }
+          ? 'border-error-container bg-error-container/40 text-error'
+          : 'border-secondary-fixed bg-secondary-fixed/30 text-on-secondary-fixed'
   return (
-    <div
-      style={{
-        padding: '11px 13px',
-        borderRadius: 12,
-        background: palette.bg,
-        border: `1px solid ${palette.border}`,
-        color: palette.color,
-        fontSize: 13,
-        lineHeight: 1.55,
-      }}
-    >
+    <div className={`rounded-xl border px-3.5 py-2.5 text-[13px] leading-relaxed ${className}`}>
       {children}
     </div>
   )
@@ -247,75 +198,111 @@ export const primaryButton: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
+  gap: 6,
   border: 'none',
-  background: 'var(--primary)',
+  background: '#001f3f',
   color: '#fff',
-  borderRadius: 11,
-  padding: '11px 15px',
-  fontWeight: 800,
-  fontSize: 13,
+  borderRadius: 12,
+  padding: '10px 14px',
+  fontWeight: 700,
+  fontSize: 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
   textDecoration: 'none',
   textAlign: 'center',
+  boxShadow: '0 2px 8px rgba(0,31,63,0.18)',
 }
 
 export const ghostButton: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  border: '1px solid var(--border)',
+  gap: 6,
+  border: 'none',
   background: '#fff',
-  color: 'var(--text-2)',
-  borderRadius: 11,
-  padding: '11px 14px',
-  fontWeight: 800,
-  fontSize: 13,
+  color: '#1c1b1b',
+  borderRadius: 12,
+  padding: '10px 14px',
+  fontWeight: 700,
+  fontSize: 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
   textDecoration: 'none',
   textAlign: 'center',
+  boxShadow: '0 1px 4px rgba(0,31,63,0.06)',
 }
 
 export const dangerButton: CSSProperties = {
   ...primaryButton,
-  background: '#DC2626',
+  background: '#ba1a1a',
+  boxShadow: 'none',
 }
 
 export const inputStyle: CSSProperties = {
   width: '100%',
-  padding: '11px 12px',
-  borderRadius: 10,
-  border: '1px solid var(--border)',
+  padding: '10px 12px',
+  borderRadius: 12,
+  border: '1px solid #c4c6cf',
   background: '#fff',
   fontSize: 13,
   fontFamily: 'inherit',
-  color: 'var(--text)',
+  color: '#1c1b1b',
   outline: 'none',
 }
 
 export const labelStyle: CSSProperties = {
   display: 'block',
   fontSize: 11,
-  fontWeight: 900,
-  color: 'var(--text-3)',
+  fontWeight: 700,
+  color: '#43474e',
   marginBottom: 5,
-  letterSpacing: 0.25,
+  letterSpacing: 0.4,
+  textTransform: 'uppercase',
 }
 
 export const mutedText: CSSProperties = {
   margin: 0,
   fontSize: 12,
   lineHeight: 1.55,
-  color: 'var(--text-3)',
+  color: '#43474e',
 }
 
-const statCardStyle: CSSProperties = {
-  display: 'block',
-  background: '#fff',
-  border: '1px solid var(--border)',
-  borderRadius: 16,
-  padding: 16,
-  boxShadow: 'var(--shadow-sm)',
-  minHeight: 112,
+export const filterBarStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: 4,
+  padding: 4,
+  borderRadius: 12,
+  background: '#f6f3f2',
 }
+
+export function filterChipStyle(active: boolean): CSSProperties {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 10px',
+    borderRadius: 8,
+    border: 'none',
+    background: active ? '#fff' : 'transparent',
+    color: active ? '#000613' : '#43474e',
+    fontSize: 12,
+    fontWeight: active ? 700 : 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    boxShadow: active ? '0 1px 3px rgba(0,31,63,0.08)' : 'none',
+  }
+}
+
+export const countPillStyle = (active: boolean): CSSProperties => ({
+  minWidth: 18,
+  padding: '0 6px',
+  borderRadius: 999,
+  background: active ? '#f0eded' : 'transparent',
+  color: active ? '#000613' : '#43474e',
+  fontSize: 10,
+  fontWeight: 700,
+  lineHeight: '17px',
+  textAlign: 'center',
+})

@@ -161,9 +161,7 @@ export default function ProviderCalendarPage() {
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Provider workspace"
           title="Calendar"
-          description="Read-only view of vehicle availability and upcoming rentals."
         />
         <ProviderLoading label="Building your availability calendar…" />
       </>
@@ -174,9 +172,7 @@ export default function ProviderCalendarPage() {
     return (
       <>
         <ProviderPageHeading
-          eyebrow="Provider workspace"
           title="Calendar"
-          description="Read-only view of vehicle availability and upcoming rentals."
         />
         <ProviderError
           message={
@@ -206,9 +202,7 @@ export default function ProviderCalendarPage() {
   return (
     <>
       <ProviderPageHeading
-        eyebrow="Provider workspace"
         title="Calendar"
-        description="A read-only 21-day view built from your fleet and bookings. Maintenance blocks are added from Fleet and remove vehicles from date-based search."
         actions={
           <button type="button" onClick={() => void load()} style={ghostButton}>
             Refresh calendar
@@ -227,9 +221,9 @@ export default function ProviderCalendarPage() {
         }}
       >
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Legend swatch="#F97316" label="Reserved / pending hold" />
-          <Legend swatch="#FED7AA" label="Turnaround after return" />
-          <Legend swatch="#FDE68A" label="Today" />
+          <Legend swatch="#ff851b" label="Reserved / pending hold" />
+          <Legend swatch="#ffdcc7" label="Turnaround after return" />
+          <Legend swatch="#001f3f" label="Today" />
           <Legend swatch="#F3F4F6" label="No blocking booking" />
         </div>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--text-3)' }}>
@@ -270,7 +264,7 @@ export default function ProviderCalendarPage() {
                       textAlign: 'center',
                       fontSize: 9,
                       fontWeight: 900,
-                      color: day.getTime() === startOfDay(new Date()).getTime() ? '#C2410C' : 'var(--text-4)',
+                      color: day.getTime() === startOfDay(new Date()).getTime() ? '#001f3f' : 'var(--text-4)',
                       lineHeight: 1.2,
                     }}
                   >
@@ -343,13 +337,13 @@ export default function ProviderCalendarPage() {
                             style={{
                               borderRadius: 5,
                               background: hit
-                                ? '#F97316'
+                                ? '#ff851b'
                                 : turnaround
-                                  ? '#FED7AA'
+                                  ? '#ffdcc7'
                                   : isToday
-                                    ? '#FDE68A'
+                                    ? '#001f3f'
                                     : 'var(--surface-2)',
-                              border: isToday && !hit ? '1px solid #F59E0B' : '1px solid transparent',
+                              border: '1px solid transparent',
                               minHeight: 32,
                             }}
                           />

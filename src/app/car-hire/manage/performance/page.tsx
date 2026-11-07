@@ -17,6 +17,8 @@ import {
   ProviderNotice,
   ProviderPageHeading,
   StatCard,
+  filterBarStyle,
+  filterChipStyle,
   ghostButton,
   primaryButton,
 } from '../components/ProviderUI'
@@ -92,7 +94,7 @@ function BreakdownCard({
                   style={{
                     width: `${Math.max(0, Math.min(100, row.utilizationRate))}%`,
                     height: '100%',
-                    background: '#F97316',
+                    background: '#ff851b',
                   }}
                 />
               </div>
@@ -154,9 +156,7 @@ export default function ProviderPerformancePage() {
 
   const heading = (
     <ProviderPageHeading
-      eyebrow="Provider workspace"
       title="Performance"
-      description="Bookings, completion, cancellations, and revenue for the selected period. Figures come from the backend and are never estimated on this page."
       actions={
         <button type="button" onClick={() => void load()} style={ghostButton}>
           Refresh
@@ -226,7 +226,7 @@ export default function ProviderPerformancePage() {
           marginBottom: 14,
         }}
       >
-        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }} role="group" aria-label="Date range">
+        <div style={filterBarStyle} role="group" aria-label="Date range">
           {PRESETS.map(preset => {
             const active = preset.days === days
             return (
@@ -235,17 +235,7 @@ export default function ProviderPerformancePage() {
                 type="button"
                 onClick={() => setDays(preset.days)}
                 aria-pressed={active}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  border: `1px solid ${active ? '#FDBA74' : 'var(--border)'}`,
-                  background: active ? '#FFF7ED' : '#fff',
-                  color: active ? '#9A3412' : 'var(--text-2)',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
+                style={filterChipStyle(active)}
               >
                 {preset.label}
               </button>

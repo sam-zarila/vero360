@@ -30,7 +30,6 @@ import {
   LuMenu,
   LuPanelLeftClose,
   LuPanelLeftOpen,
-  LuPlus,
   LuRoute,
   LuShieldCheck,
   LuStore,
@@ -66,9 +65,9 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { label: 'Overview', href: '/car-hire/manage', Icon: LuLayoutDashboard },
-  { label: 'Fleet & units', href: '/car-hire/manage/fleet', Icon: LuCarFront },
-  { label: 'Bookings & dispatch', href: '/car-hire/manage/bookings', Icon: LuCalendarCheck },
-  { label: 'Dispatch board', href: '/car-hire/manage/dispatch', Icon: LuRoute },
+  { label: 'Fleet', href: '/car-hire/manage/fleet', Icon: LuCarFront },
+  { label: 'Bookings', href: '/car-hire/manage/bookings', Icon: LuCalendarCheck },
+  { label: 'Dispatch', href: '/car-hire/manage/dispatch', Icon: LuRoute },
   { label: 'Calendar', href: '/car-hire/manage/calendar', Icon: LuCalendarDays },
   { label: 'Performance', href: '/car-hire/manage/performance', Icon: LuTrendingUp },
   { label: 'Team & branches', href: '/car-hire/manage/team', Icon: LuUsers },
@@ -204,7 +203,7 @@ function ProviderChrome({
   const accountLabel = user.email || user.displayName || 'Provider account'
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface">
+    <div className="manage-workspace min-h-screen bg-surface text-on-surface">
       {mobileOpen ? (
         <button
           type="button"
@@ -232,13 +231,12 @@ function ProviderChrome({
               <span className="shrink-0">
                 <Logo height={36} />
               </span>
-              <span className={`min-w-0 ${collapsed ? 'lg:hidden' : ''}`}>
-                <span className="block truncate font-heading text-[17px] font-extrabold leading-tight tracking-tight text-primary">
-                  Vero360
-                </span>
-                <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-secondary">
-                  Fleet OS
-                </span>
+              <span
+                className={`min-w-0 truncate font-heading text-[17px] font-extrabold leading-tight tracking-tight text-primary ${
+                  collapsed ? 'lg:hidden' : ''
+                }`}
+              >
+                Vero360
               </span>
             </Link>
             <button
@@ -249,31 +247,6 @@ function ProviderChrome({
             >
               <LuX className="text-[18px]" aria-hidden />
             </button>
-          </div>
-
-          <div className={`pb-3 ${collapsed ? 'px-3 lg:px-2' : 'px-4'}`}>
-            <div
-              className={`flex items-center justify-between gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 shadow-[0_1px_4px_rgba(0,31,63,0.05)] ${
-                collapsed ? 'lg:justify-center lg:px-0 lg:py-2.5' : ''
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary-container opacity-70" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-secondary-container" />
-                </span>
-                <span
-                  className={`text-[11px] font-bold text-on-surface ${collapsed ? 'lg:hidden' : ''}`}
-                >
-                  Workspace live
-                </span>
-              </span>
-              <span
-                className={`text-[11px] font-medium text-on-surface-variant ${collapsed ? 'lg:hidden' : ''}`}
-              >
-                Provider
-              </span>
-            </div>
           </div>
 
           <nav
@@ -382,52 +355,16 @@ function ProviderChrome({
               </button>
               <Link
                 href="/car-hire"
-                className="group flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 shadow-[0_1px_4px_rgba(0,31,63,0.05)] transition-colors hover:bg-surface-container-low"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 text-[12px] font-semibold text-on-surface shadow-[0_1px_4px_rgba(0,31,63,0.05)] transition-colors hover:bg-surface-container-low"
               >
-                <LuStore className="text-[17px] text-secondary-container" aria-hidden />
-                <span className="hidden text-left sm:block">
-                  <span className="block text-[10px] leading-none text-on-surface-variant">
-                    Public storefront
-                  </span>
-                  <span className="block text-[12px] font-semibold leading-tight text-on-surface">
-                    Vero360 car hire
-                  </span>
-                </span>
-                <LuArrowUpRight
-                  className="text-[15px] text-outline transition-transform group-hover:translate-x-0.5"
-                  aria-hidden
-                />
+                <LuStore className="text-[16px] text-secondary-container" aria-hidden />
+                <span className="hidden sm:inline">View cars</span>
               </Link>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link
-                href="/car-hire/manage/fleet"
-                className="hidden h-10 items-center gap-1.5 rounded-full bg-secondary-container px-4 text-[12px] font-bold text-on-secondary shadow-[0_2px_8px_rgba(255,133,27,0.28)] transition-colors hover:bg-secondary sm:inline-flex"
-              >
-                <LuPlus className="text-[16px]" aria-hidden />
-                Add vehicle
-              </Link>
-              <Link
-                href="/car-hire/manage/dispatch"
-                className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary-container px-3.5 text-[12px] font-bold text-on-primary shadow-[0_2px_8px_rgba(0,31,63,0.18)] transition-colors hover:bg-primary sm:px-4"
-              >
-                <LuRoute className="text-[16px]" aria-hidden />
-                <span className="hidden sm:inline">Dispatch</span>
-              </Link>
-              <div className="flex items-center gap-1.5 pl-1 sm:pl-2">
-                <Link
-                  href="/car-hire/manage/bookings"
-                  title="Booking requests"
-                  className="rounded-xl p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
-                >
-                  <LuCalendarCheck className="text-[20px]" aria-hidden />
-                </Link>
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-[11px] font-bold text-on-primary">
-                  {initialsOf(accountLabel)}
-                </span>
-              </div>
-            </div>
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-[11px] font-bold text-on-primary">
+              {initialsOf(accountLabel)}
+            </span>
           </div>
         </header>
 

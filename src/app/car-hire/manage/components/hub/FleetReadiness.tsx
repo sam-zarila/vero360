@@ -10,12 +10,9 @@ import {
   type OwnerVehicle,
 } from '@/lib/car-hire'
 import {
-  LuArrowUpRight,
   LuCalendarClock,
   LuCarFront,
   LuCircleAlert,
-  LuGauge,
-  LuMapPin,
   LuWarehouse,
 } from 'react-icons/lu'
 import { HubEmpty, HubSectionTitle } from './PulseMetrics'
@@ -73,8 +70,7 @@ export function FleetReadinessBoard({
     <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-surface-container-lowest shadow-[0_2px_12px_rgba(0,31,63,0.06)]">
       <HubSectionTitle
         icon={<LuCarFront className="text-[17px]" aria-hidden />}
-        title="Fleet readiness board"
-        subtitle="Every unit in your workspace, by listing state. Select a unit to inspect it."
+        title="Fleet"
         trailing={
           <div className="flex flex-wrap items-center gap-1 rounded-xl bg-surface-container-low p-1">
             {FILTERS.map(item => {
@@ -192,18 +188,9 @@ export function FleetReadinessBoard({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-surface-container bg-surface-container-low px-4 py-2.5 text-[11px] font-medium text-on-surface-variant">
-        <span>
-          {visible.length.toLocaleString()} of {cars.length.toLocaleString()}{' '}
-          {`unit${cars.length === 1 ? '' : 's'} shown`}
-        </span>
-        <Link
-          href="/car-hire/manage/fleet"
-          className="flex items-center gap-1 font-bold text-primary hover:text-secondary"
-        >
-          Open fleet
-          <LuArrowUpRight className="text-[13px]" aria-hidden />
-        </Link>
+      <div className="border-t border-surface-container bg-surface-container-low px-4 py-2.5 text-[11px] font-medium text-on-surface-variant">
+        {visible.length.toLocaleString()} of {cars.length.toLocaleString()}{' '}
+        {`unit${cars.length === 1 ? '' : 's'}`}
       </div>
     </div>
   )
@@ -212,39 +199,26 @@ export function FleetReadinessBoard({
 export function FocusUnitPanel({
   car,
   currency,
-  fleetTotal,
   now,
 }: {
   car: OwnerVehicle | null
   currency: string
-  fleetTotal: number
   now: number | null
 }) {
   if (!car) {
     return (
       <div className="flex h-full flex-col rounded-2xl bg-surface-container-lowest p-6 shadow-[0_2px_12px_rgba(0,31,63,0.06)]">
-        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">
-          Focus unit
-        </p>
-        <h2 className="mt-1 font-heading text-[18px] font-bold leading-tight text-primary">
+        <h2 className="font-heading text-[18px] font-bold leading-tight text-primary">
           No unit selected
         </h2>
         <div className="mt-4 grid flex-1 place-items-center rounded-xl bg-surface-container-low p-6 text-center">
           <div>
             <LuCarFront className="mx-auto text-[30px] text-outline" aria-hidden />
             <p className="mt-2 text-[12.5px] leading-relaxed text-on-surface-variant">
-              Pick a unit from the readiness board to see its listing state, pricing, and service
-              schedule.
+              Select a vehicle to see its rate, status, and service date.
             </p>
           </div>
         </div>
-        <Link
-          href="/car-hire/manage/fleet"
-          className="mt-4 flex items-center justify-center gap-1.5 rounded-xl bg-primary-container px-3 py-2.5 text-[12px] font-bold text-on-primary transition-colors hover:bg-primary"
-        >
-          Manage fleet
-          <LuArrowUpRight className="text-[14px]" aria-hidden />
-        </Link>
       </div>
     )
   }
@@ -264,10 +238,7 @@ export function FocusUnitPanel({
       <div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">
-              Focus unit
-            </p>
-            <h2 className="mt-0.5 truncate font-heading text-[18px] font-bold leading-tight text-primary">
+            <h2 className="truncate font-heading text-[18px] font-bold leading-tight text-primary">
               {carTitle(car)}
             </h2>
             <span className="mt-1 inline-block rounded bg-surface-container-high px-2 py-0.5 font-mono text-[11px] text-on-surface-variant">
@@ -358,30 +329,17 @@ export function FocusUnitPanel({
           href="/car-hire/manage/fleet"
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-container px-3 py-2.5 text-[12px] font-bold text-on-primary transition-colors hover:bg-primary"
         >
-          <LuGauge className="text-[15px]" aria-hidden />
-          Manage unit
-        </Link>
-        <Link
-          href="/car-hire/manage/bookings"
-          title="Bookings for this fleet"
-          className="grid h-10 w-10 place-items-center rounded-xl bg-surface-container-high text-on-surface transition-colors hover:bg-surface-container"
-        >
-          <LuCalendarClock className="text-[17px]" aria-hidden />
+          Edit vehicle
         </Link>
         <a
           href={`/car-hire/${car.id}`}
           target="_blank"
           rel="noopener noreferrer"
-          title="Open public listing"
-          className="grid h-10 w-10 place-items-center rounded-xl bg-surface-container-high text-on-surface transition-colors hover:bg-surface-container"
+          className="rounded-xl bg-surface-container-high px-3 py-2.5 text-[12px] font-semibold text-on-surface transition-colors hover:bg-surface-container"
         >
-          <LuMapPin className="text-[17px]" aria-hidden />
+          Listing
         </a>
       </div>
-      <p className="mt-2 text-center text-[10px] text-on-surface-variant">
-        Showing 1 of {fleetTotal.toLocaleString()}{' '}
-        {`unit${fleetTotal === 1 ? '' : 's'} in this workspace`}
-      </p>
     </div>
   )
 }

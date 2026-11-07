@@ -269,24 +269,19 @@ export function HubEmpty({ children }: { children: ReactNode }) {
 export function HubSectionTitle({
   icon,
   title,
-  subtitle,
   trailing,
 }: {
   icon: ReactNode
   title: string
-  subtitle: string
   trailing?: ReactNode
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-container p-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-container px-4 py-3">
+      <div className="flex items-center gap-2.5">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-container text-secondary-container">
           {icon}
         </span>
-        <div>
-          <h2 className="font-heading text-[16px] font-bold leading-tight text-primary">{title}</h2>
-          <p className="text-[11px] leading-snug text-on-surface-variant">{subtitle}</p>
-        </div>
+        <h2 className="font-heading text-[16px] font-bold leading-tight text-primary">{title}</h2>
       </div>
       {trailing}
     </div>
