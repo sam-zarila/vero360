@@ -25,6 +25,7 @@ import { useAdminAlerts } from '../AdminAlertsProvider'
 import { DigitalServicesPricingPanel } from './DigitalServicesPricingPanel'
 
 type Tab =
+  | 'today'
   | 'subscriptions'
   | 'active_subs'
   | 'expired_subs'
@@ -73,6 +74,34 @@ function statusTone(o: DigitalServiceOrder): { label: string; bg: string; color:
   return { label: o.status || 'Unknown', bg: '#F1F5F9', color: '#475569' }
 }
 
+function blantyreDay(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Blantyre',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
+
+function orderStamp(o: DigitalServiceOrder) {
+  return o.paidAt || o.createdAt || ''
+}
+
+function isTodayOrder(o: DigitalServiceOrder) {
+  if (!isDigitalOrderPaid(o)) return false
+  const stamp = o.paidAt || o.createdAt || ''
+  if (!stamp) return false
+  return blantyreDay(stamp) === blantyreDay(new Date().toISOString())
+}
+
+function byNewest(a: DigitalServiceOrder, b: DigitalServiceOrder) {
+  const at = orderStamp(a) ? new Date(orderStamp(a)).getTime() : 0
+  const bt = orderStamp(b) ? new Date(orderStamp(b)).getTime() : 0
+  return bt - at
+}
+
 export default function DigitalServicesAdminPage() {
   const confirm = useConfirm()
   const confirmDelete = useConfirmDelete()
@@ -83,7 +112,8 @@ export default function DigitalServicesAdminPage() {
   }, [markDigitalSeen, digitalNew])
   const [items, setItems] = useState<DigitalServiceOrder[]>([])
   const [counts, setCounts] = useState<DigitalServiceOrderCounts>(emptyCounts)
-  const [tab, setTab] = useState<Tab>('subscriptions')
+  const [tab, setTab] = useState<Tab>('today')
+  const [detailsId, setDetailsId] = useState('')
   const [view, setView] = useState<ViewMode>('orders')
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
@@ -119,19 +149,19 @@ export default function DigitalServicesAdminPage() {
 
   const filtered = useMemo(() => {
     let list = items
-    if (tab === 'subscriptions') {
-      list = items.filter(o => isDigitalSubscription(o))
+    if (tab === 'today') {
+      list = items.filter(o => isTodayOrder(o))
+    } else if (tab === 'subscriptions') {
+      list = items.filter(o => isDigitalSubscription(o) && isDigitalOrderPaid(o))
     } else if (tab === 'active_subs') {
       list = items.filter(o => {
-        if (!isDigitalSubscription(o)) return false
-        if (o.status === 'cancelled' || isDigitalOrderPending(o)) return false
+        if (!isDigitalSubscription(o) || !isDigitalOrderPaid(o)) return false
         const timing = getSubscriptionTiming(o)
         return !timing.isExpired
       })
     } else if (tab === 'expired_subs') {
       list = items.filter(o => {
-        if (!isDigitalSubscription(o)) return false
-        if (o.status === 'cancelled' || isDigitalOrderPending(o)) return false
+        if (!isDigitalSubscription(o) || !isDigitalOrderPaid(o)) return false
         const timing = getSubscriptionTiming(o)
         return timing.isExpired
       })
@@ -139,14 +169,17 @@ export default function DigitalServicesAdminPage() {
       // Paid / fulfilled gift cards only — pending ones live under Pending.
       list = items.filter(o => isDigitalGiftCard(o) && isDigitalOrderPaid(o))
     } else if (tab === 'crypto') {
-      list = items.filter(o => isDigitalCrypto(o))
+      list = items.filter(o => isDigitalCrypto(o) && isDigitalOrderPaid(o))
     } else if (tab === 'pending') {
       list = items.filter(o => isDigitalOrderPending(o))
+    } else if (tab === 'all') {
+      list = items.filter(o => isDigitalOrderPaid(o))
     }
 
     const query = q.trim().toLowerCase()
-    if (!query) return list
-    return list.filter(o => {
+    const sorted = [...list].sort(byNewest)
+    if (!query) return sorted
+    return sorted.filter(o => {
       const timing = isDigitalSubscription(o) ? getSubscriptionTiming(o) : null
       const hay = [
         o.productName,
@@ -354,14 +387,25 @@ export default function DigitalServicesAdminPage() {
     }
   }
 
+  const todayCount = useMemo(() => items.filter(o => isTodayOrder(o)).length, [items])
+  const paidSubCount = useMemo(
+    () => items.filter(o => isDigitalSubscription(o) && isDigitalOrderPaid(o)).length,
+    [items],
+  )
+  const paidCryptoCount = useMemo(
+    () => items.filter(o => isDigitalCrypto(o) && isDigitalOrderPaid(o)).length,
+    [items],
+  )
+
   const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'subscriptions', label: `Subscriptions (${counts.subscriptions})` },
+    { id: 'today', label: `Today paid (${todayCount})` },
+    { id: 'all', label: `All paid (${counts.paid})` },
+    { id: 'subscriptions', label: `Subscriptions paid (${paidSubCount})` },
     { id: 'active_subs', label: `Active (${counts.activeSubscriptions})` },
     { id: 'expired_subs', label: `Expired (${counts.expiredSubscriptions})` },
     { id: 'gift_cards', label: `Gift cards paid (${counts.giftCardsPaid})` },
-    { id: 'crypto', label: `Crypto / FX (${counts.crypto})` },
+    { id: 'crypto', label: `Crypto / FX paid (${paidCryptoCount})` },
     { id: 'pending', label: `Pending (${counts.pending})` },
-    { id: 'all', label: `All (${counts.all})` },
   ]
 
   return (
@@ -443,6 +487,7 @@ export default function DigitalServicesAdminPage() {
           marginBottom: 18,
         }}
       >
+        <Metric label="Today" value={String(todayCount)} />
         <Metric label="Subscriptions" value={String(counts.subscriptions)} />
         <Metric label="Active subs" value={String(counts.activeSubscriptions)} />
         <Metric label="Expired subs" value={String(counts.expiredSubscriptions)} />
@@ -496,8 +541,14 @@ export default function DigitalServicesAdminPage() {
           <DashboardEmptyState
             icon={SECTION.icon}
             color={SECTION.color}
-            title="No orders in this view"
-            hint="Paid Spotify / Netflix / gift-card purchases from the app appear here."
+            title={tab === 'today' ? 'No paid orders today' : tab === 'pending' ? 'No pending orders' : 'No paid orders in this view'}
+            hint={
+              tab === 'today'
+                ? 'Only orders paid today, Malawi time, show here. Unpaid orders stay on Pending.'
+                : tab === 'pending'
+                  ? 'Orders still waiting for payment show here.'
+                  : 'These lists show paid orders. Unpaid orders stay on Pending.'
+            }
           />
         ) : (
           <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
@@ -520,172 +571,79 @@ export default function DigitalServicesAdminPage() {
                     background: '#fff',
                   }}
                 >
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{o.productName}</h3>
-                    <span style={{ ...badge, background: tone.bg, color: tone.color }}>{tone.label}</span>
-                    <span
-                      style={{
-                        ...badge,
-                        background: isSub ? '#F5F3FF' : '#FFF7ED',
-                        color: isSub ? '#6D28D9' : '#C2410C',
-                      }}
-                    >
-                      {isSub ? 'Subscription' : isCrypto ? 'Crypto / FX' : 'Gift card'}
-                    </span>
-                    {isSub && timing && !isPending && o.status !== 'cancelled' ? (
-                      <span
-                        style={{
-                          ...badge,
-                          background: timing.isExpired
-                            ? '#FEF2F2'
-                            : timing.isExpiringSoon
-                              ? '#FEF3C7'
-                              : '#ECFDF5',
-                          color: timing.isExpired
-                            ? '#991B1B'
-                            : timing.isExpiringSoon
-                              ? '#92400E'
-                              : '#166534',
-                        }}
-                      >
-                        {timing.isExpired
-                          ? `Expired · ${timing.label}`
-                          : timing.isExpiringSoon
-                            ? `Expiring soon · ${timing.label}`
-                            : `Active · ${timing.label}`}
-                      </span>
-                    ) : null}
-                    {o.isGuest ? (
-                      <span style={{ ...badge, background: '#FFF7ED', color: '#C2410C' }}>
-                        Guest · email
-                      </span>
-                    ) : (
-                      <span style={{ ...badge, background: '#EFF6FF', color: '#1D4ED8' }}>
-                        In-app account
-                      </span>
-                    )}
-                    {o.fulfillment ? (
-                      <span style={{ ...badge, background: '#ECFDF5', color: '#166534' }}>
-                        Details sent
-                      </span>
-                    ) : null}
-                    {o.platformFeeCredited ? (
-                      <span style={{ ...badge, background: '#ECFDF5', color: '#166534' }}>
-                        Fee in wallet
-                      </span>
-                    ) : o.amountMwk > 0 && isPaid ? (
-                      <span style={{ ...badge, background: '#FFF7ED', color: '#C2410C' }}>
-                        Fee pending
-                      </span>
-                    ) : null}
-                    {o.fulfillmentMode === 'auto' && !o.fulfillment ? (
-                      <span style={{ ...badge, background: '#EFF6FF', color: '#1D4ED8' }}>
-                        Auto PIN
-                      </span>
-                    ) : null}
-                    {o.fulfillmentError ? (
-                      <span style={{ ...badge, background: '#FEF2F2', color: '#991B1B' }}>
-                        Auto-fulfill error
-                      </span>
-                    ) : null}
-                  </div>
-                  {o.fulfillmentError ? (
-                    <p style={{ margin: '10px 0 0', fontSize: 13, color: '#991B1B' }}>
-                      PrepaidForge: {o.fulfillmentError} Send details by hand if needed.
-                    </p>
-                  ) : null}
-
-                  {/* Linked Subscription Period Banner */}
-                  {isSub && timing && (
-                    <div
-                      style={{
-                        marginTop: 12,
-                        padding: '10px 14px',
-                        borderRadius: 12,
-                        background:
-                          o.status === 'cancelled'
-                            ? '#F8FAFC'
-                            : timing.isExpired
-                              ? '#FEF2F2'
-                              : '#F0FDF4',
-                        border: `1px solid ${
-                          o.status === 'cancelled'
-                            ? 'var(--border)'
-                            : timing.isExpired
-                              ? '#FECDD3'
-                              : '#BBF7D0'
-                        }`,
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 10,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          flexWrap: 'wrap',
-                          fontSize: 13,
-                        }}
-                      >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 16,
+                      alignItems: 'flex-start',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{o.productName}</h3>
+                        <span style={{ ...badge, background: tone.bg, color: tone.color }}>{tone.label}</span>
                         <span
                           style={{
-                            fontWeight: 800,
-                            color:
-                              o.status === 'cancelled'
-                                ? 'var(--text-3)'
-                                : timing.isExpired
-                                  ? '#991B1B'
-                                  : '#166534',
+                            ...badge,
+                            background: isSub ? '#F5F3FF' : isCrypto ? '#ECFEFF' : '#FFF7ED',
+                            color: isSub ? '#6D28D9' : isCrypto ? '#0E7490' : '#C2410C',
                           }}
                         >
-                          Subscription Period:
+                          {isSub ? 'Subscription' : isCrypto ? 'Crypto / FX' : 'Gift card'}
                         </span>
-                        <span style={{ fontWeight: 700, color: 'var(--text)' }}>
-                          {formatDateTime(timing.startDate)}
-                        </span>
-                        <span style={{ color: 'var(--muted)', fontWeight: 800 }}>→</span>
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            color:
-                              o.status === 'cancelled'
-                                ? 'var(--text-3)'
-                                : timing.isExpired
-                                  ? '#DC2626'
-                                  : '#16A34A',
-                          }}
-                        >
-                          {formatDateTime(timing.endDate)}
-                        </span>
-                        <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>
-                          ({o.periodLabel || o.period || '1 month'})
-                        </span>
+                        {isTodayOrder(o) ? (
+                          <span style={{ ...badge, background: '#FFF7ED', color: '#C2410C' }}>Today</span>
+                        ) : null}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                          Subscription end date:
+                      <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text)', fontWeight: 650 }}>
+                        {o.buyerName || 'Buyer'}
+                        <span style={{ color: 'var(--text-3)', fontWeight: 500 }}>
+                          {' · '}
+                          {o.buyerEmail || 'No email'}
+                          {o.buyerPhone ? ` · ${o.buyerPhone}` : ''}
+                          {' · '}
+                          {o.isGuest ? 'Guest' : 'In-app'}
                         </span>
-                        <strong
-                          style={{
-                            fontSize: 12,
-                            color:
-                              o.status === 'cancelled'
-                                ? 'var(--text-3)'
-                                : timing.isExpired
-                                  ? '#991B1B'
-                                  : '#15803D',
-                          }}
-                        >
-                          {formatDateTime(timing.endDate)}
-                        </strong>
-                      </div>
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-2)' }}>
+                        {isSub && timing
+                          ? `${formatDateTime(timing.startDate)} → ${formatDateTime(timing.endDate)} · ${timing.label}`
+                          : formatDateTime(orderStamp(o)) || 'No date'}
+                        {o.fulfillment ? ' · Details sent' : ''}
+                        {o.platformFeeCredited
+                          ? ' · In wallet'
+                          : o.amountMwk > 0 && isPaid
+                            ? ' · Fee pending'
+                            : ''}
+                      </p>
+                      {o.fulfillmentError ? (
+                        <p style={{ margin: '6px 0 0', fontSize: 13, color: '#991B1B' }}>
+                          PrepaidForge: {o.fulfillmentError} Send details by hand if needed.
+                        </p>
+                      ) : null}
                     </div>
-                  )}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.3px' }}>
+                        {o.selectedUsd != null ? `$${o.selectedUsd}` : formatMwk(o.amountMwk)}
+                      </div>
+                      {o.selectedUsd != null ? (
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                          {formatMwk(o.amountMwk)}
+                        </div>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setDetailsId(id => (id === o.id ? '' : o.id))}
+                        style={{ ...outlineBtn, marginTop: 8, padding: '6px 10px', fontSize: 12 }}
+                      >
+                        {detailsId === o.id ? 'Hide details' : 'Details'}
+                      </button>
+                    </div>
+                  </div>
 
+                  {detailsId === o.id ? (
                   <div
                     style={{
                       display: 'grid',
@@ -695,32 +653,26 @@ export default function DigitalServicesAdminPage() {
                       fontSize: 13,
                     }}
                   >
+                    <Field label="Buyer" value={o.buyerName || '—'} />
+                    <Field label="Email" value={o.buyerEmail || '—'} />
+                    <Field label="Phone" value={o.buyerPhone || '—'} />
+                    <Field
+                      label="Amount"
+                      value={
+                        o.selectedUsd != null
+                          ? `$${o.selectedUsd} · ${formatMwk(o.amountMwk)}`
+                          : formatMwk(o.amountMwk)
+                      }
+                    />
                     {isSub ? (
                       <>
-                        <Field label="Subscriber" value={o.buyerName || '—'} />
-                        <Field label="Email" value={o.buyerEmail || '—'} />
                         <Field label="Period" value={o.periodLabel || o.period || 'monthly'} />
-                        <Field label="Amount" value={formatMwk(o.amountMwk)} />
-                        <Field label="Start date" value={formatDateTime(timing?.startDate)} />
-                        <Field label="End date (linked)" value={formatDateTime(timing?.endDate)} />
+                        <Field label="Start" value={formatDateTime(timing?.startDate)} />
+                        <Field label="End" value={formatDateTime(timing?.endDate)} />
                       </>
                     ) : (
-                      <>
-                        <Field label="Buyer" value={o.buyerName || '—'} />
-                        <Field label="Email" value={o.buyerEmail || '—'} />
-                        <Field label="Gift card" value={o.productName} />
-                        <Field
-                          label="Face value"
-                          value={
-                            o.selectedUsd != null
-                              ? `$${o.selectedUsd} · ${formatMwk(o.amountMwk)}`
-                              : formatMwk(o.amountMwk)
-                          }
-                        />
-                        <Field label="Date" value={formatDateTime(o.paidAt || o.createdAt)} />
-                      </>
+                      <Field label="Date" value={formatDateTime(orderStamp(o))} />
                     )}
-                    <Field label="Phone" value={o.buyerPhone || '—'} />
                     <Field
                       label="Pay method"
                       value={
@@ -733,8 +685,9 @@ export default function DigitalServicesAdminPage() {
                     <Field label="Tx ref" value={o.txRef || '—'} mono />
                     <Field label="Brand" value={o.brandTag || o.productKey || '—'} />
                   </div>
+                  ) : null}
 
-                  {o.bankProofUrl ? (
+                  {detailsId === o.id && o.bankProofUrl ? (
                     <div
                       style={{
                         marginTop: 14,
@@ -751,7 +704,7 @@ export default function DigitalServicesAdminPage() {
                     </div>
                   ) : null}
 
-                  {kyc ? (
+                  {detailsId === o.id && kyc ? (
                     <div
                       style={{
                         marginTop: 14,
@@ -785,7 +738,7 @@ export default function DigitalServicesAdminPage() {
                     </div>
                   ) : null}
 
-                  {o.fulfillment ? (
+                  {detailsId === o.id && o.fulfillment ? (
                     <div
                       style={{
                         marginTop: 12,

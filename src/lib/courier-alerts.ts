@@ -14,7 +14,7 @@ export type CourierAlertState = {
 
 function readKnownIds(): number[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed)
@@ -27,7 +27,7 @@ function readKnownIds(): number[] {
 
 function writeKnownIds(ids: number[]) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 200)))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 200)))
   } catch {
     // ignore quota / private mode
   }
@@ -93,11 +93,12 @@ export function useCourierAlerts(enabled = true): CourierAlertState {
         setPending(count)
 
         const known = readKnownIds()
-        if (!primed.current) {
-          writeKnownIds(pendingIds.length ? pendingIds : known)
+        if (!primed.current && known.length === 0) {
+          writeKnownIds(pendingIds)
           primed.current = true
           return
         }
+        primed.current = true
 
         const knownSet = new Set(known)
         const fresh = pendingIds.filter(id => !knownSet.has(id))

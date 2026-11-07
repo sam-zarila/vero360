@@ -23,6 +23,7 @@ import {
   type StoredPawaPayDeposit,
 } from '@/lib/pawapay-deposits'
 import { recordAudit } from '@/lib/audit-trail-admin'
+import { sendAdminPush } from '@/lib/admin-web-push'
 
 export async function settleConfirmedDeposit(deposit: StoredPawaPayDeposit) {
   if (deposit.status !== 'completed') {
@@ -66,6 +67,11 @@ export async function settleConfirmedDeposit(deposit: StoredPawaPayDeposit) {
         actorEmail: '',
         actorName: 'PawaPay',
         actorRole: 'webhook',
+      })
+      await sendAdminPush({
+        title: 'Digital order paid',
+        body: `A digital service payment just came in (${txRef}).`,
+        url: '/dashboard/digital-services',
       })
     }
     return {
@@ -125,6 +131,19 @@ export async function settleConfirmedDeposit(deposit: StoredPawaPayDeposit) {
         actorName: 'PawaPay',
         actorRole: 'webhook',
       })
+      const guestAlert =
+        settled.kind === 'food'
+          ? { title: 'Food order paid', url: '/dashboard/food' }
+          : settled.kind === 'stay'
+            ? { title: 'Stay booking paid', url: '/dashboard/stay' }
+            : settled.kind === 'courier'
+              ? { title: 'Courier order paid', url: '/dashboard/vero-courier' }
+              : { title: 'Marketplace order paid', url: '/dashboard/orders' }
+      await sendAdminPush({
+        title: guestAlert.title,
+        body: `A guest payment just came in (${txRef}).`,
+        url: guestAlert.url,
+      })
     }
     return {
       success: true,
@@ -156,6 +175,11 @@ export async function settleConfirmedDeposit(deposit: StoredPawaPayDeposit) {
         actorEmail: '',
         actorName: 'PawaPay',
         actorRole: 'webhook',
+      })
+      await sendAdminPush({
+        title: 'Promotion paid',
+        body: `A marketplace promotion payment just came in (${txRef}).`,
+        url: '/dashboard/marketplace-promotions',
       })
     }
     return {

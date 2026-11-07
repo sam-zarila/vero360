@@ -41,7 +41,7 @@ type PaidItem = {
 
 function readIds(key: string): string[] {
   try {
-    const raw = sessionStorage.getItem(key)
+    const raw = localStorage.getItem(key)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []
@@ -52,7 +52,7 @@ function readIds(key: string): string[] {
 
 function writeIds(key: string, ids: string[]) {
   try {
-    sessionStorage.setItem(key, JSON.stringify(ids.slice(0, 500)))
+    localStorage.setItem(key, JSON.stringify(ids.slice(0, 500)))
   } catch {
     // ignore
   }
@@ -237,6 +237,11 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
         const bankNotified = readIds(BANK_NOTIFIED_KEY)
 
         if (!primed.current) {
+          const hadHistory =
+            digitalNotified.length > 0 ||
+            adsNotified.length > 0 ||
+            promoNotified.length > 0 ||
+            bankNotified.length > 0
           if (!digitalSeen.length) writeIds(DIGITAL_SEEN_KEY, digitalIds)
           if (!adsSeen.length) writeIds(ADS_SEEN_KEY, adIds)
           if (!promoSeen.length) writeIds(PROMO_SEEN_KEY, promoIds)
@@ -246,13 +251,13 @@ export function usePaymentAlerts(enabled = true): PaymentAlertState {
           if (!promoNotified.length) writeIds(PROMO_NOTIFIED_KEY, promoIds)
           if (!bankNotified.length) writeIds(BANK_NOTIFIED_KEY, bankIds)
           primed.current = true
-          setDigitalNew(
-            digitalIds.filter(id => !new Set(readIds(DIGITAL_SEEN_KEY)).has(id)).length,
-          )
-          setHomepageAdNew(adIds.filter(id => !new Set(readIds(ADS_SEEN_KEY)).has(id)).length)
-          setPromoNew(promoIds.filter(id => !new Set(readIds(PROMO_SEEN_KEY)).has(id)).length)
-          setBankNew(bankIds.filter(id => !new Set(readIds(BANK_SEEN_KEY)).has(id)).length)
-          return
+          if (!hadHistory) {
+            setDigitalNew(0)
+            setHomepageAdNew(0)
+            setPromoNew(0)
+            setBankNew(0)
+            return
+          }
         }
 
         const digitalSeenSet = new Set(readIds(DIGITAL_SEEN_KEY))

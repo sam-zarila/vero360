@@ -4,6 +4,7 @@ import { syncExternalJobs } from '@/lib/sync-jobs-external'
 import { syncMalawiJobs } from '@/lib/sync-jobs-malawi'
 import { syncMalawiTenders } from '@/lib/sync-tenders-malawi'
 import { sendDueSubscriptionReminders } from '@/lib/digital-subscription-reminders'
+import { scanAndPushAdminAlerts } from '@/lib/admin-alert-scan'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 180
@@ -27,6 +28,13 @@ export async function GET(request: Request) {
   } catch (err) {
     out.jobsMalawiError = err instanceof Error ? err.message : 'Malawi jobs sync failed'
     console.error('Cron combined Malawi jobs sync:', out.jobsMalawiError)
+  }
+
+  try {
+    out.adminAlerts = await scanAndPushAdminAlerts()
+  } catch (err) {
+    out.adminAlertsError = err instanceof Error ? err.message : 'Admin alerts failed'
+    console.error('Cron admin alerts:', out.adminAlertsError)
   }
 
   try {

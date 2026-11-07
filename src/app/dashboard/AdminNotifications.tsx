@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { VeroIcon } from '@/app/components/landing/icons'
+import { adminFetch } from '@/lib/panel-client-auth'
 import { useAdminAlerts } from './AdminAlertsProvider'
 
 type InboxItem = {
@@ -48,7 +49,25 @@ function writeInbox(items: InboxItem[]) {
 function timeLabel(iso: string) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const sameDay = d.toDateString() === new Date().toDateString()
+  if (sameDay) {
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  }
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = window.atob(base64)
+  const out = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i)
+  return out
 }
 
 export default function AdminNotifications() {
@@ -66,8 +85,64 @@ export default function AdminNotifications() {
   } = useAdminAlerts()
   const [items, setItems] = useState<InboxItem[]>([])
   const [open, setOpen] = useState(false)
+  const [pushState, setPushState] = useState<'unknown' | 'on' | 'off' | 'unsupported'>('unknown')
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushError, setPushError] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
   const seenToasts = useRef(new Set<string>())
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushState('unsupported')
+      return
+    }
+    void navigator.serviceWorker.getRegistration('/admin-alerts-sw.js').then(async reg => {
+      const sub = await reg?.pushManager.getSubscription()
+      setPushState(sub ? 'on' : 'off')
+    }).catch(() => setPushState('off'))
+  }, [])
+
+  const enableDeviceAlerts = async () => {
+    setPushError('')
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setPushState('unsupported')
+      setPushError('This browser cannot receive alerts when you are signed out.')
+      return
+    }
+    setPushBusy(true)
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        setPushError('Allow notifications for this site, then try again.')
+        return
+      }
+      const registration = await navigator.serviceWorker.register('/admin-alerts-sw.js')
+      const keyRes = await adminFetch('/api/admin/push-subscription', { cache: 'no-store' })
+      const keyData = (await keyRes.json()) as { publicKey?: string; error?: string }
+      if (!keyRes.ok || !keyData.publicKey) {
+        throw new Error(keyData.error || 'Could not prepare device alerts')
+      }
+      const existing = await registration.pushManager.getSubscription()
+      const subscription =
+        existing ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+        }))
+      const save = await adminFetch('/api/admin/push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription.toJSON()),
+      })
+      const saved = (await save.json()) as { error?: string }
+      if (!save.ok) throw new Error(saved.error || 'Could not save this device')
+      setPushState('on')
+    } catch (err) {
+      setPushError(err instanceof Error ? err.message : 'Could not turn on device alerts')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   useEffect(() => {
     setItems(readInbox())
@@ -152,10 +227,7 @@ export default function AdminNotifications() {
         type="button"
         aria-label={unread ? `${unread} new notifications` : 'Notifications'}
         aria-expanded={open}
-        onClick={() => {
-          setOpen(o => !o)
-          if (!open) markAllRead()
-        }}
+        onClick={() => setOpen(o => !o)}
         style={{
           width: 40,
           height: 40,
@@ -217,15 +289,71 @@ export default function AdminNotifications() {
             style={{
               padding: '12px 14px',
               borderBottom: '1px solid var(--border)',
-              fontSize: 13,
-              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
             }}
           >
-            Notifications
+            <div style={{ fontSize: 13, fontWeight: 800 }}>Notifications</div>
+            {unread > 0 ? (
+              <button
+                type="button"
+                onClick={markAllRead}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#C2410C',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                Mark read
+              </button>
+            ) : null}
+          </div>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', background: '#FFF7ED' }}>
+            {pushState === 'on' ? (
+              <p style={{ margin: 0, fontSize: 12, color: '#9A3412', lineHeight: 1.45 }}>
+                This device will alert you when a new order or payment comes in, even if you are signed out.
+              </p>
+            ) : pushState === 'unsupported' ? (
+              <p style={{ margin: 0, fontSize: 12, color: '#9A3412', lineHeight: 1.45 }}>
+                This browser cannot show alerts after you leave the dashboard. Use Chrome or Edge on this computer.
+              </p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={pushBusy}
+                  onClick={() => void enableDeviceAlerts()}
+                  style={{
+                    border: 'none',
+                    background: '#EA580C',
+                    color: '#fff',
+                    borderRadius: 8,
+                    padding: '8px 10px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {pushBusy ? 'Turning on…' : 'Alert this device when I am away'}
+                </button>
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#9A3412', lineHeight: 1.45 }}>
+                  You will get a notification for new orders and payments without staying signed in.
+                </p>
+              </>
+            )}
+            {pushError ? (
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#991B1B' }}>{pushError}</p>
+            ) : null}
           </div>
           {items.length === 0 ? (
             <p style={{ padding: 16, margin: 0, fontSize: 13, color: 'var(--text-3)' }}>
-              New orders, food, rides, stays, courier jobs, car hire, and payments will show here.
+              New orders, food, rides, stays, courier jobs, car hire, and payments show here. Anything that arrived while you were away appears the next time you open the dashboard.
             </p>
           ) : (
             <div style={{ maxHeight: 380, overflowY: 'auto' }}>
@@ -233,7 +361,10 @@ export default function AdminNotifications() {
                 <Link
                   key={item.id}
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false)
+                    setItems(prev => prev.map(row => (row.id === item.id ? { ...row, read: true } : row)))
+                  }}
                   style={{
                     display: 'block',
                     padding: '12px 14px',
