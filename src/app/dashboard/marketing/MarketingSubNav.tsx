@@ -11,6 +11,7 @@ export function MarketingSubNav() {
   const demoAvailable = isMarketingKpiDemoAvailable()
 
   const links = [
+    { href: '/dashboard/marketing/campaigns', label: 'Campaigns' },
     { href: '/dashboard/marketing/tasks', label: 'Tasks' },
     ...(isMarketer
       ? [
@@ -21,6 +22,7 @@ export function MarketingSubNav() {
           },
         ]
       : [{ href: '/dashboard/marketing/kpi', label: 'KPI tracker' }]),
+    { href: '/dashboard/analytics', label: 'Analytics' },
   ]
 
   return (

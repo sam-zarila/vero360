@@ -115,11 +115,12 @@ export const SUPER_ADMIN_ONLY_PATHS = [
   '/dashboard/audit',
 ] as const
 
-export const MARKETER_HOME = '/dashboard/marketing/tasks'
+export const MARKETER_HOME = '/dashboard/analytics'
 
 export const MARKETER_ALLOWED_PATHS = [
   '/dashboard/marketing',
   '/dashboard/marketing/website',
+  '/dashboard/marketing/campaigns',
   '/dashboard/marketing/tasks',
   '/dashboard/marketing/progress',
   '/dashboard/marketing/kpi',

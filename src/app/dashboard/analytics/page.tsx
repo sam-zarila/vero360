@@ -8,19 +8,20 @@ import {
 import { usePanelSession } from '../PanelSessionProvider'
 import AppActivityPanel from '../marketing/AppActivityPanel'
 import WebsitePerformancePanel from '../marketing/WebsitePerformancePanel'
+import GrowthOverviewPanel from '../marketing/GrowthOverviewPanel'
 
-type View = 'app' | 'website'
+type View = 'growth' | 'app' | 'website'
 
 export default function AppWebsitePerformancePage() {
   const { isMarketer, isFullAdmin, loading: sessionLoading } = usePanelSession()
-  const [view, setView] = useState<View>('app')
+  const [view, setView] = useState<View>('growth')
 
   if (!sessionLoading && !isFullAdmin && !isMarketer) {
     return (
       <div>
         <DashboardBackLink />
         <p style={{ color: 'var(--text-3)' }}>
-          Only admins and marketers can view app and website performance.
+          Only admins and marketers can view growth analytics.
         </p>
       </div>
     )
@@ -31,8 +32,8 @@ export default function AppWebsitePerformancePage() {
       {isMarketer ? null : <DashboardBackLink />}
       <DashboardPageHeader
         sectionId="analytics"
-        title="App and website performance"
-        description="Accounts, service activity, and website traffic."
+        title="Growth"
+        description="Visits, downloads, MAU, campaigns, and service activity."
       />
       <div
         role="tablist"
@@ -44,11 +45,13 @@ export default function AppWebsitePerformancePage() {
           borderRadius: 12,
           background: '#F1F5F9',
           marginBottom: 16,
+          flexWrap: 'wrap',
         }}
       >
         {(
           [
-            { id: 'app', label: 'App' },
+            { id: 'growth', label: 'Overview' },
+            { id: 'app', label: 'App activity' },
             { id: 'website', label: 'Website' },
           ] as const
         ).map(tab => {
@@ -77,6 +80,9 @@ export default function AppWebsitePerformancePage() {
             </button>
           )
         })}
+      </div>
+      <div hidden={view !== 'growth'}>
+        <GrowthOverviewPanel />
       </div>
       <div hidden={view !== 'app'}>
         <AppActivityPanel />

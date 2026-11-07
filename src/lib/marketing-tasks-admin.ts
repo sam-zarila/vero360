@@ -75,6 +75,7 @@ export function parseMarketingTask(
     dateCompleted: dateOnlyToIso(data.dateCompleted),
     approvedBy: str(data.approvedBy) || null,
     notes: str(data.notes),
+    campaignId: str(data.campaignId) || null,
     createdByUid: str(data.createdByUid) || null,
     createdByRole: str(data.createdByRole) || null,
     createdByName: str(data.createdByName) || null,
@@ -177,6 +178,7 @@ export async function createMarketingTask(
     dateCompleted: dateCompleted || null,
     approvedBy: str(input.approvedBy) || null,
     notes: str(input.notes),
+    campaignId: str(input.campaignId) || null,
     createdByUid: meta.createdByUid,
     createdByRole: meta.createdByRole,
     createdByName: str(meta.createdByName) || null,
@@ -217,6 +219,7 @@ export async function updateMarketingTask(
   if (patch.category !== undefined) updates.category = str(patch.category) || 'Other'
   if (patch.platform !== undefined) updates.platform = normalizeMarketingTaskPlatform(patch.platform)
   if (patch.notes !== undefined) updates.notes = str(patch.notes)
+  if (patch.campaignId !== undefined) updates.campaignId = str(patch.campaignId) || null
   if (patch.datePosted !== undefined || patch.dateAssigned !== undefined) {
     const posted =
       dateOnlyToIso(patch.datePosted) || dateOnlyToIso(patch.dateAssigned)

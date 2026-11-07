@@ -74,6 +74,7 @@ const MARKETING_PRINT_CSS = `
     .print-only { display: block !important; }
     .no-print { display: none !important; }
 
+    .dashboard-shell,
     .dashboard-sidebar,
     .dashboard-sidebar-backdrop,
     .dashboard-menu-btn,

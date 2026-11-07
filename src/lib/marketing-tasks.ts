@@ -24,6 +24,8 @@ export type MarketingTask = {
   dateCompleted: string | null
   approvedBy: string | null
   notes: string
+  /** Optional link to a growth campaign (`marketing_campaigns`). */
+  campaignId: string | null
   createdByUid: string | null
   createdByRole: string | null
   /** Display name of who created/assigned the task (admin or marketer). */
@@ -71,6 +73,7 @@ export type CreateMarketingTaskInput = {
   dateCompleted?: string | null
   approvedBy?: string | null
   notes?: string
+  campaignId?: string | null
 }
 
 export type UpdateMarketingTaskInput = Partial<CreateMarketingTaskInput>
@@ -460,6 +463,7 @@ export function buildDemoMarketingTasks(dayCount = 14): MarketingTask[] {
           dateCompleted: `${dayKey}T18:00:00.000Z`,
           approvedBy: null,
           notes: 'Demo sample',
+          campaignId: null,
           createdByUid: null,
           createdByRole: 'admin',
           createdByName: 'Demo Admin',

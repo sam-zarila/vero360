@@ -241,3 +241,100 @@ export async function fetchWebsiteOverview(opts?: {
     fetchedAt: new Date().toISOString(),
   }
 }
+
+export type GaChannelRow = {
+  label: string
+  sessions: number
+  users: number
+}
+
+export type GaCampaignTraffic = {
+  utmCampaign: string
+  sessions: number
+  users: number
+  newUsers: number
+  rangeLabel: string
+}
+
+export async function fetchTrafficBreakdown(opts?: {
+  days?: number
+}): Promise<{ channels: GaChannelRow[]; sources: GaChannelRow[]; campaigns: GaChannelRow[] }> {
+  const days = Math.min(90, Math.max(1, opts?.days ?? 28))
+  const startDate = `${days}daysAgo`
+  const token = await getAccessToken()
+
+  const [channelsReport, sourcesReport, campaignsReport] = await Promise.all([
+    runReport(token, {
+      dateRanges: [{ startDate, endDate: 'today' }],
+      dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+      metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 8,
+    }),
+    runReport(token, {
+      dateRanges: [{ startDate, endDate: 'today' }],
+      dimensions: [{ name: 'sessionSource' }],
+      metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 8,
+    }),
+    runReport(token, {
+      dateRanges: [{ startDate, endDate: 'today' }],
+      dimensions: [{ name: 'sessionCampaignName' }],
+      metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 8,
+    }),
+  ])
+
+  const mapRows = (report: RunReportResponse): GaChannelRow[] =>
+    (report.rows || []).map(row => ({
+      label: String(row.dimensionValues?.[0]?.value || '(not set)'),
+      sessions: Number(row.metricValues?.[0]?.value || 0) || 0,
+      users: Number(row.metricValues?.[1]?.value || 0) || 0,
+    }))
+
+  return {
+    channels: mapRows(channelsReport),
+    sources: mapRows(sourcesReport),
+    campaigns: mapRows(campaignsReport).filter(
+      row => row.label && row.label !== '(not set)' && row.label !== '(direct)',
+    ),
+  }
+}
+
+export async function fetchCampaignTraffic(opts: {
+  utmCampaign: string
+  days?: number
+}): Promise<GaCampaignTraffic> {
+  const days = Math.min(90, Math.max(1, opts.days ?? 28))
+  const startDate = `${days}daysAgo`
+  const token = await getAccessToken()
+  const report = await runReport(token, {
+    dateRanges: [{ startDate, endDate: 'today' }],
+    dimensions: [{ name: 'sessionCampaignName' }],
+    metrics: [
+      { name: 'sessions' },
+      { name: 'activeUsers' },
+      { name: 'newUsers' },
+    ],
+    dimensionFilter: {
+      filter: {
+        fieldName: 'sessionCampaignName',
+        stringFilter: {
+          matchType: 'EXACT',
+          value: opts.utmCampaign,
+        },
+      },
+    },
+    limit: 1,
+  })
+
+  return {
+    utmCampaign: opts.utmCampaign,
+    sessions: metricNumber(report.rows, 0),
+    users: metricNumber(report.rows, 1),
+    newUsers: metricNumber(report.rows, 2),
+    rangeLabel: `Last ${days} days`,
+  }
+}

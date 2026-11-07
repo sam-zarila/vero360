@@ -7,7 +7,13 @@ import { signOut } from 'firebase/auth'
 import Logo from '@/app/components/landing/Logo'
 import { VeroIcon } from '@/app/components/landing/icons'
 import { auth } from '@/lib/firebase'
-import { DASHBOARD_NAV_GROUPS } from '@/lib/dashboard-sections'
+import {
+  DASHBOARD_NAV_GROUPS,
+  flattenNavGroupItems,
+  type DashboardNavGroup,
+  type DashboardNavItem,
+  type DashboardNavSubgroup,
+} from '@/lib/dashboard-sections'
 import { AdminAlertsProvider, useAdminAlerts, useNavBadgeCounts } from './AdminAlertsProvider'
 import AdminNotifications from './AdminNotifications'
 import { ConfirmDialogProvider } from './ConfirmDialog'
@@ -46,15 +52,57 @@ function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard/marketing/kpi') {
     return pathname === href || pathname.startsWith(`${href}/`)
   }
+  if (href === '/dashboard/marketing/campaigns') {
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
   if (href === '/dashboard/marketing') {
     if (pathname === '/dashboard/marketing') return true
     if (pathname.startsWith('/dashboard/marketing/tasks')) return false
     if (pathname.startsWith('/dashboard/marketing/progress')) return false
     if (pathname.startsWith('/dashboard/marketing/kpi')) return false
+    if (pathname.startsWith('/dashboard/marketing/campaigns')) return false
     if (pathname === '/dashboard/marketing-tasks') return false
     return pathname.startsWith('/dashboard/marketing/')
   }
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function filterNavItem(
+  item: DashboardNavItem,
+  opts: { isSuperAdmin: boolean; isMarketer: boolean; isAgent: boolean },
+) {
+  if (opts.isMarketer) return Boolean(item.marketerAllowed)
+  if (opts.isAgent) return Boolean(item.agentAllowed)
+  if (item.marketerOnly || item.agentOnly) return false
+  if (item.superAdminOnly && !opts.isSuperAdmin) return false
+  return true
+}
+
+function filterNavGroup(
+  group: DashboardNavGroup,
+  opts: { isSuperAdmin: boolean; isMarketer: boolean; isAgent: boolean },
+): DashboardNavGroup | null {
+  const items = (group.items ?? []).filter(item => filterNavItem(item, opts))
+  const subgroups = (group.subgroups ?? [])
+    .map(sub => ({
+      ...sub,
+      items: sub.items.filter(item => filterNavItem(item, opts)),
+    }))
+    .filter(sub => sub.items.length > 0)
+  if (items.length === 0 && subgroups.length === 0) return null
+  return { ...group, items, subgroups }
+}
+
+function groupContainsPath(group: DashboardNavGroup, pathname: string) {
+  return flattenNavGroupItems(group).some(item => isActivePath(pathname, item.href))
+}
+
+function subgroupContainsPath(sub: DashboardNavSubgroup, pathname: string) {
+  return sub.items.some(item => isActivePath(pathname, item.href))
+}
+
+function navStorageKey(role: string) {
+  return `vero-dashboard-nav-open:${role}`
 }
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -150,18 +198,49 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     carHire: { toast: carHireToast, clearToast: clearCarHireToast },
   } = useAdminAlerts()
 
+  const roleKey = isMarketer ? 'marketer' : isAgent ? 'agent' : isSuperAdmin ? 'super_admin' : 'admin'
+
   const navGroups = useMemo(() => {
-    return DASHBOARD_NAV_GROUPS.map(group => ({
-      ...group,
-      items: group.items.filter(item => {
-        if (isMarketer) return Boolean(item.marketerAllowed)
-        if (isAgent) return Boolean(item.agentAllowed)
-        if (item.marketerOnly || item.agentOnly) return false
-        if (item.superAdminOnly && !isSuperAdmin) return false
-        return true
-      }),
-    })).filter(group => group.items.length > 0)
+    return DASHBOARD_NAV_GROUPS.map(group =>
+      filterNavGroup(group, { isSuperAdmin, isMarketer, isAgent }),
+    ).filter((group): group is DashboardNavGroup => group != null)
   }, [isSuperAdmin, isMarketer, isAgent])
+
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    let stored: Record<string, boolean> = {}
+    try {
+      const raw = window.localStorage.getItem(navStorageKey(roleKey))
+      if (raw) stored = JSON.parse(raw) as Record<string, boolean>
+    } catch {
+      stored = {}
+    }
+    setOpenSections(prev => {
+      const next: Record<string, boolean> = { ...stored, ...prev }
+      if (next.growth === undefined) next.growth = true
+      if (next.home === undefined && !isMarketer) next.home = true
+      for (const group of navGroups) {
+        if (groupContainsPath(group, pathname)) next[group.id] = true
+        for (const sub of group.subgroups ?? []) {
+          if (subgroupContainsPath(sub, pathname)) next[`${group.id}:${sub.id}`] = true
+        }
+      }
+      return next
+    })
+  }, [roleKey, navGroups, pathname, isMarketer])
+
+  const toggleSection = (id: string) => {
+    setOpenSections(prev => {
+      const next = { ...prev, [id]: !prev[id] }
+      try {
+        window.localStorage.setItem(navStorageKey(roleKey), JSON.stringify(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     if (!courierToast) return
@@ -251,12 +330,76 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     router.replace('/dashboard')
   }
 
+  const renderNavLink = (item: DashboardNavItem) => {
+    const active = isActivePath(pathname, item.href)
+    const badgeCount = item.badgeKey ? navBadges[item.badgeKey] || 0 : 0
+    const badge = badgeCount > 0 ? (badgeCount > 99 ? '99+' : String(badgeCount)) : null
+
+    return (
+      <li key={item.href}>
+        <Link
+          href={item.href}
+          className={`dashboard-nav-link${active ? ' is-active' : ''}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 12px',
+            borderRadius: 10,
+            fontSize: 13.5,
+            fontWeight: active ? 700 : 500,
+            color: active ? 'var(--primary-dark)' : 'var(--text-2)',
+            background: active ? 'var(--primary-50)' : 'transparent',
+            border: active ? '1px solid var(--primary-light)' : '1px solid transparent',
+            transition: 'background 0.15s ease, color 0.15s ease',
+          }}
+        >
+          <VeroIcon
+            name={item.icon}
+            size={18}
+            strokeWidth={2.35}
+            style={{ flexShrink: 0, opacity: active ? 1 : 0.9 }}
+          />
+          <span style={{ flex: 1, lineHeight: 1.25 }}>{item.label}</span>
+          {badge && (
+            <span
+              style={{
+                minWidth: 20,
+                height: 20,
+                padding: '0 5px',
+                borderRadius: 100,
+                background: 'var(--primary)',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {badge}
+            </span>
+          )}
+        </Link>
+      </li>
+    )
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface)' }}>
+    <div
+      className="dashboard-shell"
+      style={{
+        height: '100dvh',
+        maxHeight: '100dvh',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--surface)',
+      }}
+    >
       <header
         style={{
-          position: 'sticky',
-          top: 0,
+          flexShrink: 0,
           zIndex: 40,
           background: '#fff',
           borderBottom: '1px solid var(--border)',
@@ -295,19 +438,40 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               ☰
             </button>
 
-            <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link
+              href={isMarketer ? MARKETER_HOME : isAgent ? AGENT_HOME : '/dashboard'}
+              style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+            >
               <Logo height={48} />
               <span
                 style={{
                   fontSize: 13,
                   fontWeight: 700,
-                  color: isSuperAdmin ? '#6D28D9' : 'var(--primary)',
-                  background: isSuperAdmin ? '#F5F3FF' : 'var(--primary-light)',
+                  color: isSuperAdmin
+                    ? '#6D28D9'
+                    : isMarketer
+                      ? '#C2410C'
+                      : isAgent
+                        ? '#0369A1'
+                        : 'var(--primary)',
+                  background: isSuperAdmin
+                    ? '#F5F3FF'
+                    : isMarketer
+                      ? '#FFF7ED'
+                      : isAgent
+                        ? '#F0F9FF'
+                        : 'var(--primary-light)',
                   padding: '4px 10px',
                   borderRadius: 100,
                 }}
               >
-                {isSuperAdmin ? 'Super admin' : 'Admin'}
+                {isSuperAdmin
+                  ? 'Super admin'
+                  : isMarketer
+                    ? 'Marketer'
+                    : isAgent
+                      ? 'Agent'
+                      : 'Admin'}
               </span>
             </Link>
           </div>
@@ -339,7 +503,16 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 'calc(100vh - 68px)' }}>
+      <div
+        className="dashboard-body"
+        style={{
+          display: 'flex',
+          alignItems: 'stretch',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
         {open && (
           <button
             type="button"
@@ -360,16 +533,16 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         <aside
           className={`dashboard-sidebar${open ? ' is-open' : ''}`}
           style={{
-            width: 260,
+            width: 272,
             flexShrink: 0,
             background: '#fff',
             borderRight: '1px solid var(--border)',
             display: 'flex',
             flexDirection: 'column',
-            minHeight: 'calc(100vh - 68px)',
-            position: 'sticky',
-            top: 68,
-            alignSelf: 'flex-start',
+            height: '100%',
+            maxHeight: '100%',
+            overflow: 'hidden',
+            minHeight: 0,
           }}
         >
           <div
@@ -410,8 +583,8 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 22,
-              padding: '20px 12px 28px',
+              gap: 6,
+              padding: '12px 10px 24px',
               overflowY: 'auto',
               flex: 1,
               minHeight: 0,
@@ -420,120 +593,206 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             }}
           >
             {navGroups.map(group => {
-              const groupCount = group.items.reduce((sum, item) => {
+              const flat = flattenNavGroupItems(group)
+              const groupCount = flat.reduce((sum, item) => {
                 if (!item.badgeKey) return sum
                 return sum + (navBadges[item.badgeKey] || 0)
               }, 0)
               const groupBadge =
                 groupCount > 0 ? (groupCount > 99 ? '99+' : String(groupCount)) : null
+              const expanded = Boolean(openSections[group.id])
+              const isGrowth = group.id === 'growth'
 
               return (
-              <div key={group.title}>
-                <p
+                <div
+                  key={group.id}
                   style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-4)',
-                    margin: '0 10px 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
+                    borderRadius: 12,
+                    background: isGrowth ? '#F0F9FF' : 'transparent',
+                    padding: isGrowth ? '4px 0' : 0,
                   }}
                 >
-                  <span>{group.title}</span>
-                  {groupBadge ? (
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    onClick={() => toggleSection(group.id)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      margin: 0,
+                      padding: '8px 10px',
+                      border: 'none',
+                      borderRadius: 10,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      color: isGrowth ? '#0369A1' : 'var(--text-4)',
+                    }}
+                  >
                     <span
                       style={{
-                        minWidth: 18,
-                        height: 18,
-                        padding: '0 5px',
-                        borderRadius: 100,
-                        background: 'var(--primary)',
-                        color: '#fff',
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: 800,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        letterSpacing: 0,
-                        textTransform: 'none',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
                       }}
                     >
-                      {groupBadge}
+                      {group.title}
                     </span>
-                  ) : null}
-                </p>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
-                  {group.items.map(item => {
-                    const active = isActivePath(pathname, item.href)
-                    const badgeCount = item.badgeKey ? navBadges[item.badgeKey] || 0 : 0
-                    const badge =
-                      badgeCount > 0 ? (badgeCount > 99 ? '99+' : String(badgeCount)) : null
-
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className={`dashboard-nav-link${active ? ' is-active' : ''}`}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {groupBadge && !expanded ? (
+                        <span
                           style={{
-                            display: 'flex',
+                            minWidth: 18,
+                            height: 18,
+                            padding: '0 5px',
+                            borderRadius: 100,
+                            background: 'var(--primary)',
+                            color: '#fff',
+                            fontSize: 10,
+                            fontWeight: 800,
+                            display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 10,
-                            padding: '9px 12px',
-                            borderRadius: 10,
-                            fontSize: 14,
-                            fontWeight: active ? 700 : 500,
-                            color: active ? 'var(--primary-dark)' : 'var(--text-2)',
-                            background: active ? 'var(--primary-50)' : 'transparent',
-                            border: active
-                              ? '1px solid var(--primary-light)'
-                              : '1px solid transparent',
-                            transition: 'background 0.15s ease, color 0.15s ease',
+                            justifyContent: 'center',
+                            letterSpacing: 0,
+                            textTransform: 'none',
                           }}
                         >
-                          <VeroIcon
-                            name={item.icon}
-                            size={20}
-                            strokeWidth={2.35}
-                            style={{ flexShrink: 0, opacity: active ? 1 : 0.9 }}
-                          />
-                          <span style={{ flex: 1 }}>{item.label}</span>
-                          {badge && (
-                            <span
+                          {groupBadge}
+                        </span>
+                      ) : null}
+                      <span
+                        aria-hidden
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          transform: expanded ? 'rotate(90deg)' : 'none',
+                          transition: 'transform 0.15s ease',
+                          color: 'var(--text-4)',
+                        }}
+                      >
+                        ›
+                      </span>
+                    </span>
+                  </button>
+
+                  {expanded ? (
+                    <div style={{ padding: '0 4px 6px' }}>
+                      {(group.items?.length ?? 0) > 0 ? (
+                        <ul
+                          style={{
+                            listStyle: 'none',
+                            margin: 0,
+                            padding: 0,
+                            display: 'grid',
+                            gap: 2,
+                          }}
+                        >
+                          {group.items!.map(renderNavLink)}
+                        </ul>
+                      ) : null}
+
+                      {(group.subgroups ?? []).map(sub => {
+                        const subId = `${group.id}:${sub.id}`
+                        const subExpanded = Boolean(openSections[subId])
+                        const subCount = sub.items.reduce((sum, item) => {
+                          if (!item.badgeKey) return sum
+                          return sum + (navBadges[item.badgeKey] || 0)
+                        }, 0)
+                        const subBadge =
+                          subCount > 0 ? (subCount > 99 ? '99+' : String(subCount)) : null
+
+                        return (
+                          <div key={sub.id} style={{ marginTop: 6 }}>
+                            <button
+                              type="button"
+                              aria-expanded={subExpanded}
+                              onClick={() => toggleSection(subId)}
                               style={{
-                                minWidth: 22,
-                                height: 22,
-                                padding: '0 6px',
-                                borderRadius: 100,
-                                background: 'var(--primary)',
-                                color: '#fff',
-                                fontSize: 11,
-                                fontWeight: 800,
-                                display: 'inline-flex',
+                                width: '100%',
+                                display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                                margin: 0,
+                                padding: '6px 10px',
+                                border: 'none',
+                                borderRadius: 8,
+                                background: '#F8FAFC',
+                                cursor: 'pointer',
+                                font: 'inherit',
+                                color: 'var(--text-3)',
                               }}
                             >
-                              {badge}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            )})}
+                              <span style={{ fontSize: 12, fontWeight: 700 }}>{sub.title}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                {subBadge && !subExpanded ? (
+                                  <span
+                                    style={{
+                                      minWidth: 16,
+                                      height: 16,
+                                      padding: '0 4px',
+                                      borderRadius: 100,
+                                      background: 'var(--primary)',
+                                      color: '#fff',
+                                      fontSize: 9,
+                                      fontWeight: 800,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    {subBadge}
+                                  </span>
+                                ) : null}
+                                <span
+                                  aria-hidden
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    transform: subExpanded ? 'rotate(90deg)' : 'none',
+                                    transition: 'transform 0.15s ease',
+                                  }}
+                                >
+                                  ›
+                                </span>
+                              </span>
+                            </button>
+                            {subExpanded ? (
+                              <ul
+                                style={{
+                                  listStyle: 'none',
+                                  margin: '4px 0 0',
+                                  padding: '0 0 0 4px',
+                                  display: 'grid',
+                                  gap: 2,
+                                }}
+                              >
+                                {sub.items.map(renderNavLink)}
+                              </ul>
+                            ) : null}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
           </nav>
         </aside>
 
         <main
+          className="dashboard-main"
           style={{
             flex: 1,
             minWidth: 0,
+            minHeight: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
             padding: '28px 24px 64px',
           }}
         >
@@ -1144,6 +1403,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           }
           .dashboard-sidebar-mobile-head {
             display: flex !important;
+          }
+          .dashboard-main {
+            overflow-y: auto !important;
           }
         }
       `}</style>

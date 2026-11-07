@@ -42,6 +42,26 @@ export default function DashboardCards() {
   const bankTransfersNew = useBankTransfersNewBadge()
   const { isSuperAdmin, isMarketer, isAgent } = usePanelSession()
 
+  const priority: Record<string, number> = {
+    analytics: 0,
+    marketing: 1,
+    users: 2,
+    verochat: 3,
+    'vero-ride': 4,
+    'vero-courier': 5,
+    food: 6,
+    marketplace: 7,
+    orders: 8,
+  }
+
+  const cards = DASHBOARD_SECTIONS.filter(card => {
+    if (isMarketer) return card.id === 'marketing' || card.id === 'analytics'
+    if (isAgent) return card.id === 'agents'
+    // Home shows a compact ops grid; Growth is the strip above.
+    if (card.id === 'analytics') return false
+    return !card.superAdminOnly || isSuperAdmin
+  }).sort((a, b) => (priority[a.id] ?? 50) - (priority[b.id] ?? 50))
+
   return (
     <div
       className="dashboard-grid"
@@ -51,11 +71,7 @@ export default function DashboardCards() {
         gap: 18,
       }}
     >
-      {DASHBOARD_SECTIONS.filter(card => {
-        if (isMarketer) return card.id === 'marketing' || card.id === 'analytics'
-        if (isAgent) return card.id === 'agents'
-        return !card.superAdminOnly || isSuperAdmin
-      }).map(card => {
+      {cards.map(card => {
         const isHelp = card.id === 'verochat'
         const isCourier = card.id === 'vero-courier'
         const isDrivers = card.id === 'vero-ride'

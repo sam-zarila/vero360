@@ -147,8 +147,8 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   },
   {
     id: 'analytics',
-    title: 'App and website performance',
-    desc: 'Account totals, service activity, and website traffic',
+    title: 'Growth',
+    desc: 'Visits, downloads, MAU, campaigns, and app performance',
     icon: 'layers',
     color: '#0369A1',
     bg: '#F0F9FF',
@@ -365,78 +365,35 @@ export type DashboardNavItem = {
   agentOnly?: boolean
 }
 
-export type DashboardNavGroup = {
+export type DashboardNavSubgroup = {
+  id: string
   title: string
   items: DashboardNavItem[]
 }
 
+export type DashboardNavGroup = {
+  id: string
+  title: string
+  /** Direct links at this group level. */
+  items?: DashboardNavItem[]
+  /** Nested collapsible subgroups (e.g. Ride under Services). */
+  subgroups?: DashboardNavSubgroup[]
+}
+
+/** Flatten every link under a nav group (items + subgroup items). */
+export function flattenNavGroupItems(group: DashboardNavGroup): DashboardNavItem[] {
+  return [
+    ...(group.items ?? []),
+    ...(group.subgroups ?? []).flatMap(sub => sub.items),
+  ]
+}
+
 export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
   {
-    title: 'Overview',
+    id: 'home',
+    title: 'Home',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
-      {
-        href: '/dashboard/analytics',
-        label: 'App and website performance',
-        icon: 'layers',
-        marketerAllowed: true,
-      },
-    ],
-  },
-  {
-    title: 'Services',
-    items: [
-      { href: '/dashboard/vero-ride', label: 'Vero Ride Drivers', icon: 'car', badgeKey: 'drivers' },
-      { href: '/dashboard/vero-ride/trips', label: 'Vero Ride Trips', icon: 'car', badgeKey: 'rides' },
-      { href: '/dashboard/vero-ride/live', label: 'Vero Ride Live', icon: 'car' },
-      { href: '/dashboard/vero-ride/sos', label: 'Vero Ride SOS', icon: 'car' },
-      { href: '/dashboard/vero-courier', label: 'Vero Courier', icon: 'truck', badgeKey: 'courier' },
-      { href: '/dashboard/food', label: 'Food', icon: 'food', badgeKey: 'food' },
-      { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
-      { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },
-      { href: '/dashboard/stay', label: 'Stay', icon: 'bed', badgeKey: 'stay' },
-      { href: '/dashboard/car-hire', label: 'Car Hire', icon: 'car', badgeKey: 'carHire' },
-      { href: '/dashboard/car-hire/listings', label: 'Car Hire listings', icon: 'car', badgeKey: 'carHireListings' },
-      { href: '/dashboard/car-hire/leads', label: 'Car Hire leads', icon: 'briefcase', badgeKey: 'carHireLeads' },
-      { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'cart' },
-      { href: '/dashboard/orders', label: 'Orders', icon: 'package', badgeKey: 'orders' },
-      { href: '/dashboard/refunds', label: 'Refunds', icon: 'refund' },
-      { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: 'flag', badgeKey: 'reports' },
-      { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
-      { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
-      { href: '/dashboard/marketplace-promotions', label: 'Promoted ads', icon: 'megaphone', badgeKey: 'promotions' },
-      { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
-      { href: '/dashboard/marketing/tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
-      {
-        href: '/dashboard/marketing/progress',
-        label: 'My progress',
-        icon: 'layers',
-        marketerAllowed: true,
-        marketerOnly: true,
-      },
-      {
-        href: '/dashboard/marketing/kpi',
-        label: isMarketingKpiDemoAvailable() ? 'Demo KPI' : 'My KPI',
-        icon: 'layers',
-        marketerAllowed: true,
-        marketerOnly: true,
-      },
-      { href: '/dashboard/marketing/kpi', label: 'Marketing KPI', icon: 'layers' },
-      { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
-      { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
-      { href: '/dashboard/home-crawl', label: 'Home crawl', icon: 'megaphone' },
-      { href: '/dashboard/sell-banners', label: 'Sell banners', icon: 'shop' },
-      { href: '/dashboard/push', label: 'Push notification', icon: 'bell' },
-      { href: '/dashboard/important-files', label: 'Important files', icon: 'file-text' },
-    ],
-  },
-  {
-    title: 'People',
-    items: [
-      { href: '/dashboard/users', label: 'Users', icon: 'users', badgeKey: 'users' },
-      { href: '/dashboard/kyc', label: 'KYC', icon: 'shield' },
-      { href: '/dashboard/agents', label: 'Agents', icon: 'briefcase' },
-      { href: '/dashboard/agents/registrations', label: 'Agent registrations', icon: 'users' },
       {
         href: '/dashboard/agent',
         label: 'Agent portal',
@@ -466,24 +423,149 @@ export const DASHBOARD_NAV_GROUPS: DashboardNavGroup[] = [
         agentOnly: true,
         badgeKey: 'drivers',
       },
-      { href: '/dashboard/admins', label: 'Admins', icon: 'shield', superAdminOnly: true },
-      { href: '/dashboard/verochat', label: 'Help Center', icon: 'headset', badgeKey: 'help' },
     ],
   },
   {
-    title: 'System',
+    id: 'growth',
+    title: 'Growth',
+    items: [
+      {
+        href: '/dashboard/analytics',
+        label: 'Analytics',
+        icon: 'layers',
+        marketerAllowed: true,
+      },
+      {
+        href: '/dashboard/marketing/campaigns',
+        label: 'Campaigns',
+        icon: 'megaphone',
+        marketerAllowed: true,
+      },
+      { href: '/dashboard/marketing/tasks', label: 'Marketing tasks', icon: 'megaphone', marketerAllowed: true },
+      {
+        href: '/dashboard/marketing/progress',
+        label: 'My progress',
+        icon: 'layers',
+        marketerAllowed: true,
+        marketerOnly: true,
+      },
+      {
+        href: '/dashboard/marketing/kpi',
+        label: isMarketingKpiDemoAvailable() ? 'Demo KPI' : 'My KPI',
+        icon: 'layers',
+        marketerAllowed: true,
+        marketerOnly: true,
+      },
+      { href: '/dashboard/marketing/kpi', label: 'Marketing KPI', icon: 'layers' },
+    ],
+  },
+  {
+    id: 'services',
+    title: 'Services',
+    subgroups: [
+      {
+        id: 'ride',
+        title: 'Vero Ride',
+        items: [
+          { href: '/dashboard/vero-ride', label: 'Drivers', icon: 'car', badgeKey: 'drivers' },
+          { href: '/dashboard/vero-ride/trips', label: 'Trips', icon: 'car', badgeKey: 'rides' },
+          { href: '/dashboard/vero-ride/live', label: 'Live map', icon: 'car' },
+          { href: '/dashboard/vero-ride/sos', label: 'SOS', icon: 'car' },
+        ],
+      },
+      {
+        id: 'courier',
+        title: 'Courier & food',
+        items: [
+          { href: '/dashboard/vero-courier', label: 'Vero Courier', icon: 'truck', badgeKey: 'courier' },
+          { href: '/dashboard/food', label: 'Food', icon: 'food', badgeKey: 'food' },
+        ],
+      },
+      {
+        id: 'marketplace',
+        title: 'Marketplace & orders',
+        items: [
+          { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'cart' },
+          { href: '/dashboard/orders', label: 'Orders', icon: 'package', badgeKey: 'orders' },
+          { href: '/dashboard/refunds', label: 'Refunds', icon: 'refund' },
+          { href: '/dashboard/merchant-reports', label: 'Merchant reports', icon: 'flag', badgeKey: 'reports' },
+        ],
+      },
+      {
+        id: 'stay-hire',
+        title: 'Stay & car hire',
+        items: [
+          { href: '/dashboard/stay', label: 'Stay', icon: 'bed', badgeKey: 'stay' },
+          { href: '/dashboard/car-hire', label: 'Car Hire', icon: 'car', badgeKey: 'carHire' },
+          { href: '/dashboard/car-hire/listings', label: 'Listings', icon: 'car', badgeKey: 'carHireListings' },
+          { href: '/dashboard/car-hire/leads', label: 'Leads', icon: 'briefcase', badgeKey: 'carHireLeads' },
+        ],
+      },
+      {
+        id: 'jobs-digital',
+        title: 'Jobs & digital',
+        items: [
+          { href: '/dashboard/jobs', label: 'Jobs', icon: 'briefcase' },
+          { href: '/dashboard/tenders', label: 'Tenders', icon: 'file-text' },
+          { href: '/dashboard/digital-services', label: 'Digital services', icon: 'sparkles', badgeKey: 'digital' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'acquire',
+    title: 'Acquire & engage',
+    items: [
+      { href: '/dashboard/promotion', label: 'Promotion', icon: 'megaphone' },
+      { href: '/dashboard/homepage-ads', label: 'Homepage ads', icon: 'megaphone', badgeKey: 'homepageAds' },
+      { href: '/dashboard/marketplace-promotions', label: 'Promoted ads', icon: 'megaphone', badgeKey: 'promotions' },
+      { href: '/dashboard/latest-arrivals', label: 'Latest arrivals', icon: 'sparkles' },
+      { href: '/dashboard/announcements', label: 'Announcements', icon: 'bell' },
+      { href: '/dashboard/home-crawl', label: 'Home crawl', icon: 'megaphone' },
+      { href: '/dashboard/sell-banners', label: 'Sell banners', icon: 'shop' },
+      { href: '/dashboard/push', label: 'Push notification', icon: 'bell' },
+    ],
+  },
+  {
+    id: 'people',
+    title: 'People',
+    items: [
+      { href: '/dashboard/users', label: 'Users', icon: 'users', badgeKey: 'users' },
+      { href: '/dashboard/kyc', label: 'KYC', icon: 'shield' },
+      { href: '/dashboard/agents', label: 'Agents', icon: 'briefcase' },
+      { href: '/dashboard/agents/registrations', label: 'Agent registrations', icon: 'users' },
+      { href: '/dashboard/admins', label: 'Admins', icon: 'shield', superAdminOnly: true },
+    ],
+  },
+  {
+    id: 'finance',
+    title: 'Finance',
     items: [
       { href: '/dashboard/bank-transfers', label: 'Bank transfers', icon: 'wallet', badgeKey: 'bankTransfers' },
       { href: '/dashboard/finance', label: 'Finance (PawaPay)', icon: 'wallet' },
       { href: '/dashboard/wallet', label: 'Platform wallet', icon: 'wallet', superAdminOnly: true },
-      { href: '/dashboard/audit', label: 'Audit trail', icon: 'shield', superAdminOnly: true },
       {
         href: '/dashboard/rewards',
         label: 'Vero Coins',
         icon: 'sparkles',
         superAdminOnly: true,
       },
+    ],
+  },
+  {
+    id: 'support',
+    title: 'Support & content',
+    items: [
+      { href: '/dashboard/verochat', label: 'Help Center', icon: 'headset', badgeKey: 'help' },
       { href: '/dashboard/get-started', label: 'Get started videos', icon: 'video' },
+      { href: '/dashboard/important-files', label: 'Important files', icon: 'file-text' },
+    ],
+  },
+  {
+    id: 'system',
+    title: 'System',
+    items: [
+      { href: '/dashboard/audit', label: 'Audit trail', icon: 'shield', superAdminOnly: true },
       {
         href: '/dashboard/settings',
         label: 'Settings',

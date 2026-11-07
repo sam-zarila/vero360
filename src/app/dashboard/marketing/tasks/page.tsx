@@ -59,6 +59,7 @@ type FormState = {
   status: MarketingTaskStatus
   dateCompleted: string
   notes: string
+  campaignId: string
 }
 
 function emptyForm(defaults?: Partial<FormState>): FormState {
@@ -73,6 +74,7 @@ function emptyForm(defaults?: Partial<FormState>): FormState {
     status: 'not_started',
     dateCompleted: '',
     notes: '',
+    campaignId: '',
     ...defaults,
   }
 }
@@ -88,6 +90,7 @@ function formFromTask(t: MarketingTask): FormState {
     status: t.status,
     dateCompleted: toDateInputValue(t.dateCompleted),
     notes: t.notes || '',
+    campaignId: t.campaignId || '',
   }
 }
 
@@ -99,6 +102,7 @@ export default function MarketingTasksPage() {
   const [items, setItems] = useState<MarketingTask[]>([])
   const [counts, setCounts] = useState<MarketingTaskCounts>(emptyCounts)
   const [marketers, setMarketers] = useState<MarketerOption[]>([])
+  const [campaigns, setCampaigns] = useState<Array<{ id: string; name: string }>>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -127,6 +131,16 @@ export default function MarketingTasksPage() {
         const mRes = await adminFetch('/api/admin/marketers', { cache: 'no-store' })
         const mData = await mRes.json()
         if (mRes.ok) setMarketers(mData.marketers || [])
+      }
+      const cRes = await adminFetch('/api/admin/marketing-campaigns', { cache: 'no-store' })
+      const cData = await cRes.json().catch(() => ({}))
+      if (cRes.ok && Array.isArray(cData.items)) {
+        setCampaigns(
+          cData.items.map((c: { id: string; name: string }) => ({
+            id: c.id,
+            name: c.name,
+          })),
+        )
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks')
@@ -223,6 +237,7 @@ export default function MarketingTasksPage() {
             : null
           : form.dateCompleted || null,
         notes: form.notes,
+        campaignId: form.campaignId || null,
       }
 
       const res = await adminFetch(
@@ -544,6 +559,20 @@ export default function MarketingTasksPage() {
               </>
             ) : null}
           </div>
+          <Field label="Campaign (optional)">
+            <select
+              value={form.campaignId}
+              onChange={e => setForm(f => ({ ...f, campaignId: e.target.value }))}
+              style={{ ...input, marginTop: 12 }}
+            >
+              <option value="">No campaign</option>
+              {campaigns.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Notes">
             <textarea
               value={form.notes}
